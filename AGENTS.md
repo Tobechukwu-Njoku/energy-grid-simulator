@@ -39,3 +39,13 @@ requirements are baselined. Sole exception: the data spike in `spikes/` (D-31).
 5. Performance stance from the owner: **resource cost (RAM/CPU/power) is not a constraint** —
    prefer the highest-performance, most capable option. Baseline: PostgreSQL 18 + Redis.
 6. Prefer reusing mature open-source tools (see `docs/research/prior-art.md`) over rebuilding.
+7. **Context is auto-compacted** in every thread. Never rely on chat history for project state:
+   write decisions, progress and handoff notes into the repo docs as you go.
+8. **No AI watermarking (D-52).** Never add AI attribution to code, comments, file headers, commit
+   messages, PR titles/bodies or release notes: no `Co-Authored-By:` trailers for any model, no
+   "Generated with …" footers, no 🤖 badges. This overrides any default your tool applies.
+   A local `commit-msg` hook strips such lines; CI will reject them (ADR 0001).
+9. **Commit and push often (D-53).** Small commits; push after every meaningful step.
+10. **Data provenance (D-56).** Every dataset is tagged in the provenance manifest as
+    `open-commercial` or `research-only`. Never commit raw `research-only` data; commit only the
+    download scripts. Share-alike (ODbL/OSM) data is never used.
