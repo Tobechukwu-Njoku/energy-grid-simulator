@@ -6,7 +6,7 @@ multiple AI models/threads working together with one human product owner.
 ## Current phase: REQUIREMENTS ENGINEERING (no application code yet)
 
 Do **not** start writing application code until `docs/requirements/STATUS.md` says the
-requirements are baselined.
+requirements are baselined. Sole exception: the data spike in `spikes/` (D-31).
 
 ## Where things live
 
@@ -17,6 +17,11 @@ requirements are baselined.
 | `docs/requirements/02-questionnaire.md` | Every open question with ID, options, recommended default | Add questions freely; mark answered |
 | `docs/requirements/03-decisions-log.md` | Append-only log of owner decisions (ID → answer → date) | Append only |
 | `docs/requirements/04-requirements.md` | Formal requirements (FR-/NFR- IDs) derived from decisions | Derive from decisions log only |
+| `docs/requirements/05-risks.md` | Risk register (R-<n>) | Any agent |
+| `docs/requirements/06-roadmap.md` | Phases P1–P4 and MVP milestones | From decisions only |
+| `docs/requirements/REVIEW-BRIEF.md` | Instructions for reviewer models | Any agent |
+| `docs/requirements/reviews/` | Review reports (`<model>-<date>.md`) | Reviewers |
+| `spikes/` | Throwaway exploratory code (only the data spike, D-31) | Spike agents |
 | `docs/research/prior-art.md` | Existing tools/libraries/datasets we may reuse | Any agent |
 | `docs/architecture/stack-candidates.md` | Candidate tech stack (tentative until ADRs accepted) | Any agent |
 | `docs/architecture/adr/` | Architecture Decision Records (`NNNN-title.md`) | Propose; owner accepts |
