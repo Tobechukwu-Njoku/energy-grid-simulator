@@ -1,6 +1,6 @@
 # Team & Roles
 
-_Source: D-45, D-49, D-51, D-28, D-22. Owner checks milestones; agents plan, build, review and merge._
+_Source: D-45, D-49, D-51, D-53, D-28, D-22. Owner checks milestones; agents plan, build, review and merge._
 
 | Model | Role | Use for | Do not use for |
 |---|---|---|---|
@@ -16,3 +16,8 @@ _Source: D-45, D-49, D-51, D-28, D-22. Owner checks milestones; agents plan, bui
    is checked by GPT 6.1 Sol (D-51) before it is used or merged. Gemini never reviews or merges.
 3. Merge gates in D-28 apply to everyone; reviewer approval does not override a failing gate.
 4. GPU work: SSH for development, self-hosted GitHub Actions runner for GPU CI gates (D-43).
+5. **Commit and push frequently (D-53):** small commits, pushed after every meaningful step.
+6. **Adversarial review by Gemini (D-53):** every substantive PR or document also gets a Gemini review whose
+   job is to break it: contradictions, wrong facts, missing edge cases, failure modes. Use the two Gemini
+   accounts alternately. Gemini's findings are claims, not facts: GPT or the coordinator triages them
+   (accept / reject with reason) before anything changes.
