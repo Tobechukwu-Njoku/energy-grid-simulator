@@ -2,7 +2,7 @@
 
 _Last updated: 2026-11-12_
 
-**Phase:** Requirements engineering. Decisions D-1 … D-39 (D-5 superseded by D-23).
+**Phase:** Requirements engineering. Decisions D-1 … D-50 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** No, except the **data spike** (D-31) in `spikes/`.
 **Repo:** private, https://github.com/Tobechukwu-Njoku/energy-grid-simulator
@@ -10,24 +10,24 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 ## Snapshot of what's decided
 
 Research + market-forecasting simulator (short-term and seasonal, D-25) of **GB + all-island
-Ireland** with interconnectors. Targets: consultancy/research, forecast customers, grants (D-33).
-End state: transmission + distribution, all physics time-scales, full market replica with
-pluggable designs (zonal/nodal). Delivered in phases (`06-roadmap.md`, D-24); distribution is P2.
-**MVP (6+ months, quality first):** full transmission network, weather-year dispatch with
-**unit commitment + Balancing Mechanism redispatch**, map, prices, historic backtest.
-**Rust everywhere code is needed**; TypeScript web UI. PostgreSQL 18 + Redis; owner's
-Linux + NVIDIA machine plus Mac (CPU-only must work). Pluggable solvers. Future commercial SaaS,
-so **no share-alike data** (D-30). Fully autonomous team with strict merge gates (D-28).
+Ireland** with interconnectors, for consultancy/research, forecast customers (battery operators,
+traders, suppliers/large users) and grants (D-33, D-41).
+**Guiding principle (D-44): answer the present first.** Model today's grid accurately, validate it,
+then scale out. Phases (`06-roadmap.md`): **P1** today's full transmission network with
+unit commitment + Balancing Mechanism redispatch and a historic backtest → **P2** distribution,
+home DER, statistical behavioural demand, AC power flow and voltages → **P3** zonal pricing and
+2030 scenarios → **P4** dynamic stability and SaaS hardening.
+The owner's core questions are listed in D-40.
+**Rust everywhere code is needed**; TypeScript web UI in a pro-analytics, dark-mode style (D-47).
+PostgreSQL 18 + Redis. Linux machine: Ryzen 5900X / 128 GB, consumer NVIDIA GPU, so the **CPU
+path is primary** (R-14). Pluggable solvers. Future commercial SaaS, so **no share-alike data**.
+Team (`docs/process/team.md`): Claude Opus 5.5 codes, GPT 6.1 Sol architects and reviews,
+Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
-## Still open (owner)
+## Still open (non-blocking)
 
-- Q-A-5 example questions the simulator must answer (most valuable input)
-- Q-A-8 first forecast customer segment and what they buy
-- Q-H-7 GPU machine specs and agent access
-- Q-K-1 which models/providers build it
-- Q-M-3 explicit non-goals
-- Q-G-4 look and feel references
-- Confirm draft phases P2–P4 in `06-roadmap.md`
+- Linux distro (Q-H-7)
+- Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
 ## Next steps (agents may do now)
 

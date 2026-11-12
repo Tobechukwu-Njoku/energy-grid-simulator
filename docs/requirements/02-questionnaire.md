@@ -27,9 +27,9 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   seasonal · long-term 10–30-year market outlooks · several? Each implies different modelling.
 - [x] **Q-A-7 Funding target (from D-23):** grants (Innovate UK, Ofgem SIF, UKRI) · investors ·
   selling forecasts to customers? Decides validation/documentation/polish needed for v1.
-- [ ] **Q-A-8 Forecast customers (review #14, D-33):** which segment first: traders, battery
+- [x] **Q-A-8 Forecast customers (review #14, D-33):** which segment first: traders, battery
   operators, generators, suppliers, developers? What do they buy: price curves, spreads, risk?
-- [ ] **Q-A-5 Example questions.** Please list 3–5 concrete questions you want the
+- [x] **Q-A-5 Example questions.** Please list 3–5 concrete questions you want the
   simulator to answer. *(This is the single most useful input.)*
 
 ## B. Simulation domain & physics fidelity
@@ -54,6 +54,7 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-B-6 Uncertainty.** Deterministic runs only, or stochastic (Monte Carlo, ensemble
   weather years, probabilistic reliability metrics like LOLE/EUE)?
 - [x] **Q-B-8 MVP market fidelity (review #8):** merit order · UC · UC + BM redispatch → D-26.
+- [x] **Q-B-9 Behavioural demand detail (from D-40):** → D-50 (statistical profiles).
 - [ ] **Q-B-7 Protection & failures.** Simulate equipment failures, cascading outages,
   protection relays, restoration/black-start?
 
@@ -117,7 +118,7 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [ ] **Q-G-2 Visualization:** 2D map (MapLibre/deck.gl), 3D globe, single-line diagrams,
   time-series charts, animated playback of a day?
 - [ ] **Q-G-3 Grid editing:** draw/edit network topology in the UI?
-- [ ] **Q-G-4 Design/aesthetic references** you like (apps, dashboards, games)?
+- [x] **Q-G-4 Design/aesthetic references** you like (apps, dashboards, games)?
 
 ## H. Performance, scale & deployment
 
@@ -127,7 +128,7 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   _Why:_ "unconstrained" still needs a target; GPU solvers (cuOpt, cuDSS, CUDA) need NVIDIA.
 - [x] **Q-H-3 Deployment target:** single beefy workstation (Docker Compose) · on-prem
   cluster / Kubernetes · cloud (AWS/GCP/Azure) · hybrid burst-to-cloud for sweeps?
-- [ ] **Q-H-7 GPU machine specs (from D-29):** GPU model(s) and VRAM, CPU cores, RAM, OS/distro, reachable remotely by agents?
+- [x] **Q-H-7 GPU machine specs (from D-29):** GPU model(s) and VRAM, CPU cores, RAM, OS/distro, reachable remotely by agents?
 - [ ] **Q-H-4 Concurrency:** how many simultaneous simulations / users?
 - [x] **Q-H-5 Data volume:** retain all time-series results of all runs forever, or prune?
   (A 100k-bus × 8,760 h × 1,000 scenarios run is ~TBs.)
@@ -166,7 +167,7 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 
 ## K. Multi-model development process
 
-- [ ] **Q-K-1 Team topology:** which models/providers will build (Claude, Codex/GPT,
+- [x] **Q-K-1 Team topology:** which models/providers will build (Claude, Codex/GPT,
   Gemini…)? Any role split you have in mind (architect, backend, solver, frontend, QA)?
 - [x] **Q-K-2 Coordination:** GitHub repo with issues/PRs per task? Monorepo? Branch-per-agent
   with worktrees? Who reviews/merges — you, or a designated reviewer model?
@@ -190,4 +191,4 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 
 - [x] **Q-M-1 Timeline:** first usable version when? Any hard deadline?
 - [x] **Q-M-2 MVP slice:** if you could only have one thing working first, what is it?
-- [ ] **Q-M-3 Non-goals:** anything explicitly out of scope?
+- [x] **Q-M-3 Non-goals:** anything explicitly out of scope?

@@ -1,16 +1,16 @@
 # 06 — Phased Roadmap
 
-_Source: D-24 (phasing), D-18 (MVP), D-25 (forecast horizons), D-26 (MVP market fidelity). Phases 2–4 are DRAFT until the owner confirms._
+_Source: D-24, D-44 (phasing), D-18 (MVP), D-25 (forecast horizons), D-26 (MVP market fidelity). Phase order confirmed by D-44._
 
 The data model must represent everything in the end state (D-6, D-12) from day one; phases
 control which features are *implemented*.
 
 | Phase | Scope | Status |
 |---|---|---|
-| **P1 — MVP** (6+ months, D-34) | GB + all-island Ireland **full transmission network** (D-32); weather-year dispatch with **unit commitment + Balancing Mechanism redispatch** (D-26); national GB price, I-SEM price, constraint costs, unserved energy; map UI; **backtest vs one historic year** (prices, generation mix) | Confirmed |
-| **P2** | **Distribution + DER** (EVs, heat pumps, rooftop solar) (D-24); AC power flow + N-1; batch scenario sweeps; **short-term (day-ahead/intraday) forecasting** with live data feeds (D-25) | DRAFT |
-| **P3** | Zonal / nodal alternative market designs; full I-SEM detail; capacity expansion; **seasonal forecasting** (D-25) | DRAFT |
-| **P4** | Dynamic stability; SaaS multi-tenancy hardening | DRAFT |
+| **P1 — MVP** (6+ months, D-34) | **Today's** GB + all-island Ireland **full transmission network** (D-32); weather-year dispatch with **unit commitment + Balancing Mechanism redispatch** (D-26); national GB price, I-SEM price, constraint costs, unserved energy; pro-analytics map UI (D-47); **backtest vs historic years** (prices, generation mix) | Confirmed |
+| **P2 — Distribution (present day)** | Distribution networks + DER (home batteries, rooftop solar, EVs, heat pumps) (D-24, D-44); **behaviour-driven demand** (D-40 #5); **AC power flow, voltages** (D-40 #4); short-term forecasting with live feeds (D-25); Monte Carlo weather years (D-35); batch sweeps | Confirmed order (D-44) |
+| **P3 — Market designs & futures** | **Zonal pricing** (and nodal) (D-40 #2); **2030 deployment scenarios**, grid-scale vs distributed storage (D-40 #3); capacity expansion; full I-SEM detail; seasonal forecasting (D-25) | Confirmed order (D-44) |
+| **P4 — Dynamics & SaaS** | Dynamic stability / instability (D-40 #4); SaaS multi-tenancy hardening (D-39) | Confirmed order (D-44) |
 
 ## MVP milestones (draft, from Fable review)
 
