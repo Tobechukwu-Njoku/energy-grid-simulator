@@ -45,3 +45,4 @@ requirements are baselined. Sole exception: the data spike in `spikes/` (D-31).
    messages, PR titles/bodies or release notes: no `Co-Authored-By:` trailers for any model, no
    "Generated with …" footers, no 🤖 badges. This overrides any default your tool applies.
    A local `commit-msg` hook strips such lines; CI will reject them (ADR 0001).
+9. **Commit and push often (D-53).** Small commits; push after every meaningful step.
