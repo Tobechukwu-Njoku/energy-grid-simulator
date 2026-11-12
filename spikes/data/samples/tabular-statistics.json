@@ -1,0 +1,117 @@
+{
+  "demand_2024": {
+    "rows": 17568,
+    "days": 366,
+    "day_period_counts": {
+      "48": 364,
+      "46": 1,
+      "50": 1
+    },
+    "non_48_period_dates": {
+      "31-MAR-2024": 46,
+      "27-OCT-2024": 50
+    },
+    "duplicate_keys": 0,
+    "missing_cells": 0
+  },
+  "generation_2024": {
+    "rows": 17568,
+    "first": "2024-01-01T00:00:00",
+    "last": "2024-12-31T23:30:00",
+    "duplicate_timestamps": 0,
+    "missing_cells": 0
+  },
+  "tec-register.csv": {
+    "rows": 2220,
+    "status_counts": {
+      "Scoping": 1400,
+      "Built": 389,
+      "Consents Approved": 222,
+      "Awaiting Consents": 164,
+      "Under Construction/Commissioning": 45
+    }
+  },
+  "repd.csv": {
+    "rows": 14657,
+    "status_counts": {
+      "Decommissioned": 32,
+      "Planning Application Withdrawn": 671,
+      "Operational": 3132,
+      "Planning Permission Refused": 920,
+      "Abandoned": 391,
+      "Appeal Refused": 316,
+      "Revised": 826,
+      "Appeal Withdrawn": 49,
+      "Planning Permission Expired": 334,
+      "Under Construction": 457,
+      "Planning Permission Granted": 5709,
+      "No Application Required": 15,
+      "Secretary of State - Refusal": 21,
+      "Planning Application Submitted": 1539,
+      "Appeal Granted": 220,
+      "Secretary of State - Granted": 5,
+      "Appeal Lodged": 6,
+      "Planning permission Granted": 8,
+      "Planning permission granted": 6
+    }
+  },
+  "nged-circuits.csv": {
+    "rows": 22516,
+    "status_counts": {
+      "Unchanged": 17596,
+      "Updated": 202,
+      "New": 3281,
+      "Removed": 1437
+    },
+    "132kv_rows_including_changes": 4183,
+    "132kv_equipment_counts": {
+      "Disconnector": 1862,
+      "Circuit Breaker": 1183,
+      "Circuit": 1138
+    },
+    "132kv_numeric_r_x_b_and_winter_summer_ratings": 1138
+  },
+  "nged-nodes.csv": {
+    "rows": 22590,
+    "status_counts": {
+      "Unchanged": 18534,
+      "Removed": 1587,
+      "New": 2469
+    }
+  },
+  "nged-transformers.csv": {
+    "rows": 2705,
+    "status_counts": {
+      "Updated": 2270,
+      "Removed": 201,
+      "New": 164,
+      "Existing": 53,
+      "Unchanged": 17
+    }
+  },
+  "bmunits.json": {
+    "rows": 3134
+  },
+  "demand-day-correct.json": {
+    "rows": 48
+  },
+  "fuel-day.json": {
+    "rows": 288
+  },
+  "bod-period.json": {
+    "rows": 1206
+  },
+  "boa-period.json": {
+    "rows": 65
+  },
+  "market-index-day.json": {
+    "rows": 98
+  },
+  "dukes_5_11": {
+    "full_list_rows_with_numeric_capacity": 1364
+  },
+  "isem_scheduled_flow_sample": {
+    "interval_records": 192,
+    "timeseries": 4
+  }
+}

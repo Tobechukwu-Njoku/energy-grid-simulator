@@ -1,0 +1,157 @@
+[
+  {
+    "file": "etys-2025-appendix-b.xlsx",
+    "bytes": 1237005,
+    "sha256": "d5cacf238292e8c78af989a5ee3a0c9bd8619acc6e6e67f451d6b44c71fa5e0c"
+  },
+  {
+    "file": "tytfs-2024.zip",
+    "bytes": 11954215,
+    "sha256": "1dae320fa3b504f9795c4986258f03a948785d1ecc375b74262a8f7dfed700ba"
+  },
+  {
+    "file": "tytfs-2024.pdf",
+    "bytes": 40408830,
+    "sha256": "f46173a3118fd08d23e44e14f5b70711b1691ded0c428bb673d310b8fc10a0ca"
+  },
+  {
+    "file": "etys-boundaries.zip",
+    "bytes": 87714,
+    "sha256": "0e6dbd110a5d87cd53982dc0a5fdf80badb3c86d5ab10c8c4702fcbbc02f6433"
+  },
+  {
+    "file": "demand-2024.csv",
+    "bytes": 1809707,
+    "sha256": "fa7895b6e9ab5eb1b450949d969cb18ffeb6005359fc71c79c87e1c47e59cac6"
+  },
+  {
+    "file": "generation-mix.csv",
+    "bytes": 63066409,
+    "sha256": "18cd8e069bcc4076876bb81525ed397df503cfc24eb89d34e950a3f1d98aecde"
+  },
+  {
+    "file": "tec-register.csv",
+    "bytes": 445749,
+    "sha256": "0f19d9b411c9da3711739eb2647d099cedc2a421abcd04a5cf913168ac817df3"
+  },
+  {
+    "file": "repd.csv",
+    "bytes": 5087389,
+    "sha256": "84c1b5f958a934d8b4b86ec88f50bdcf43830ded7ff2efc27bffca0c98695035"
+  },
+  {
+    "file": "dukes-5.11.xlsx",
+    "bytes": 1247443,
+    "sha256": "760286f4cb3168f04a5ee1b581dbfcb35e1d65a5ea0151bb2dd4dc12dca2c72a"
+  },
+  {
+    "file": "nged-circuits.csv",
+    "bytes": 2663962,
+    "sha256": "b299289eb4f951b7e1c6c710d8dca8979e9418745ceb539121f3005b4128c615"
+  },
+  {
+    "file": "nged-nodes.csv",
+    "bytes": 1826097,
+    "sha256": "cf1ff667fd939a1847f73e218a19248bb0824c81cccd8d79cf98b80109c5613e"
+  },
+  {
+    "file": "nged-transformers.csv",
+    "bytes": 308177,
+    "sha256": "bcf2c7bf15e3b717aeea224ecddcc66891299f02e849ea48b9bd330d8c8ff8ae"
+  },
+  {
+    "file": "bmunits.json",
+    "bytes": 2171607,
+    "sha256": "f01571db37fffcc1b3cbbf2268517d6e725bbcb756ea3714ec27a11ce8ecb3b0"
+  },
+  {
+    "file": "demand-day-correct.json",
+    "bytes": 9738,
+    "sha256": "6e3c98c1bbfc91ff3b126fc518052262444a55ee2dc9e60df75112afc1aafe46"
+  },
+  {
+    "file": "fuel-day.json",
+    "bytes": 180374,
+    "sha256": "063d1a03cc60dc620a9f5c1a30eba96edc6209fd3736034a112e8cac9bdc890d"
+  },
+  {
+    "file": "bod-period.json",
+    "bytes": 289923,
+    "sha256": "e6fea7464e21f88f24cba15963559beb7cd99efeee7801c7eebeacc6d899b069"
+  },
+  {
+    "file": "boa-period.json",
+    "bytes": 23383,
+    "sha256": "89772826e87869819f5b44ad5a1d18974c33dad39b479644ceab8411418819c8"
+  },
+  {
+    "file": "market-index-day.json",
+    "bytes": 14172,
+    "sha256": "200f5209d01c536995cef8cb2957a666deffbb0eef5f282f0b0e24b817b5d983"
+  },
+  {
+    "file": "isem-flow-20240101.xml",
+    "bytes": 27819,
+    "sha256": "5a4f485902ccc42c3cc0d23b8c40feb289c56ebfad1c88d55edeb9c01f34997f"
+  },
+  {
+    "file": "neso-licence.html",
+    "bytes": 1236156,
+    "sha256": "0a652a16dd94ce47c64e482b9a75c723d2dd5aa1d6c7351531587ec58777e56b"
+  },
+  {
+    "file": "neso-terms.html",
+    "bytes": 1279171,
+    "sha256": "06f90a6d73a82032a7069e2549b9509b4f7d8295e5e79af9228adfbeb31f7795"
+  },
+  {
+    "file": "eirgrid-disclaimer.html",
+    "bytes": 53472,
+    "sha256": "8986eda65f9591858e81c5cc5b02c09348814f763de0ffd30a86e0eda6b68460"
+  },
+  {
+    "file": "elexon-data-licence.html",
+    "bytes": 191133,
+    "sha256": "30535c369f732537c527a4c3ccf15896e8e1178639bfb452a150d4fe69f6b089"
+  },
+  {
+    "file": "nged-licence.html",
+    "bytes": 110179,
+    "sha256": "cc730b106d1aef1faa57742a8328419d6bec87536cbabbfc5236e8252c56e653"
+  },
+  {
+    "file": "nged-tabular-page.html",
+    "bytes": 50690,
+    "sha256": "137cc64292e9e0f193e3f628d6df6a88b9d6018d2ff777a61b88e0644cb5da86"
+  },
+  {
+    "file": "era5-page.html",
+    "bytes": 424554,
+    "sha256": "7b1349b8122b8d9cc5a9bb209f6784959f5f0cced2cea298183d22a7241a9fae"
+  },
+  {
+    "file": "era5-licence.html",
+    "bytes": 48608,
+    "sha256": "5297c05d2969af8938841fde6d2527c9c95b349c7381363ccabf0bf640271274"
+  },
+  {
+    "file": "era5-catalogue.json",
+    "bytes": 7666,
+    "sha256": "cec083511302199f9a0889177b4cdba5472f299436af018c3a768b1b5acdda27"
+  },
+  {
+    "file": "era5-api-process.json",
+    "bytes": 15195,
+    "sha256": "0e81203e5cd1d9b7b805bd22a668e3d72ad618656cc4daafdf16158f02a63d24"
+  },
+  {
+    "file": "ogl.html",
+    "bytes": 10450,
+    "sha256": "f5b2b9f2af63647cde889fa6c3508f5705925295b74912c68caa28dd37e64aa5"
+  },
+  {
+    "file": "cc-by.html",
+    "bytes": 31950,
+    "sha256": "8dda1ccec4be91fc80821d4e4fd5c568072b9a3a74b2fdc07c249a27e920ef01"
+  }
+]
