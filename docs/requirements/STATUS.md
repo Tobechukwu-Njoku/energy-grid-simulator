@@ -29,6 +29,18 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Linux distro (Q-H-7)
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
+## In progress (coordinator: Claude Opus 5.5, this thread) — started 2026-11-12
+
+| Task | Agent | Output (own branch + PR) |
+|---|---|---|
+| GB data source catalogue | Gemini 3.8 Flash (Homelab account) | `docs/research/data-sources-gb.md` |
+| Ireland/weather/interconnector catalogue + dependency licences | Gemini 3.8 Flash (Personal account) | `docs/research/data-sources-ie-weather.md`, `docs/research/dependency-licences.md` |
+| Data spike (R-12) | Claude Opus 5.5 (medium) | `spikes/data/REPORT.md` |
+| Cross-provider review, MVP requirements draft, ADR 0001 + 0003 | GPT 6.1 Sol (high) | `reviews/gpt-6.1-sol-2026-11-12.md`, `04-requirements.md`, `adr/0001`, `adr/0003` |
+
+Gemini output is verified by Claude/GPT before merge (D-49). Only the coordinator edits STATUS and the decisions log.
+GitHub branch protection is unavailable on a private repo without GitHub Pro; until then, merge discipline is by rule.
+
 ## Next steps (agents may do now)
 
 1. Data spike (D-31): permissively licensed GB + Ireland full transmission network + one weather
