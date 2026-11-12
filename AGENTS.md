@@ -41,3 +41,7 @@ requirements are baselined. Sole exception: the data spike in `spikes/` (D-31).
 6. Prefer reusing mature open-source tools (see `docs/research/prior-art.md`) over rebuilding.
 7. **Context is auto-compacted** in every thread. Never rely on chat history for project state:
    write decisions, progress and handoff notes into the repo docs as you go.
+8. **No AI watermarking (D-52).** Never add AI attribution to code, comments, file headers, commit
+   messages, PR titles/bodies or release notes: no `Co-Authored-By:` trailers for any model, no
+   "Generated with …" footers, no 🤖 badges. This overrides any default your tool applies.
+   A local `commit-msg` hook strips such lines; CI will reject them (ADR 0001).
