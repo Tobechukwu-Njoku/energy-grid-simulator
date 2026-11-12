@@ -25,8 +25,10 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   hot August week with 30 % more EVs and see where blackouts occur, in < 1 min").
 - [x] **Q-A-6 Forecast horizon (from D-23):** day-ahead / intraday price forecasts ·
   seasonal · long-term 10–30-year market outlooks · several? Each implies different modelling.
-- [ ] **Q-A-7 Funding target (from D-23):** grants (Innovate UK, Ofgem SIF, UKRI) · investors ·
+- [x] **Q-A-7 Funding target (from D-23):** grants (Innovate UK, Ofgem SIF, UKRI) · investors ·
   selling forecasts to customers? Decides validation/documentation/polish needed for v1.
+- [ ] **Q-A-8 Forecast customers (review #14, D-33):** which segment first: traders, battery
+  operators, generators, suppliers, developers? What do they buy: price curves, spreads, risk?
 - [ ] **Q-A-5 Example questions.** Please list 3–5 concrete questions you want the
   simulator to answer. *(This is the single most useful input.)*
 
@@ -49,7 +51,7 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-B-5 Agent behavior.** Do market participants / consumers act as autonomous agents
   (agent-based modelling, bidding strategies, possibly AI agents), or is the grid optimized
   centrally?
-- [ ] **Q-B-6 Uncertainty.** Deterministic runs only, or stochastic (Monte Carlo, ensemble
+- [x] **Q-B-6 Uncertainty.** Deterministic runs only, or stochastic (Monte Carlo, ensemble
   weather years, probabilistic reliability metrics like LOLE/EUE)?
 - [x] **Q-B-8 MVP market fidelity (review #8):** merit order · UC · UC + BM redispatch → D-26.
 - [ ] **Q-B-7 Protection & failures.** Simulate equipment failures, cascading outages,
@@ -60,10 +62,12 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-C-1 Which grid?** Real region(s) (which? e.g. ERCOT, CAISO, PJM, whole US,
   ENTSO-E Europe, a specific country) · synthetic test grids (IEEE, TAMU ACTIVSg) ·
   user-drawn grids · global.
-- [ ] **Q-C-8 Distribution data (from D-12):** GB/Ireland distribution networks are mostly
+- [x] **Q-C-8 Distribution data (from D-12):** GB/Ireland distribution networks are mostly
   not public at LV. Options: DNO open-data portals (UKPN, SSEN, NGED, NPg, ENWL, SPEN) where
   available · synthetic representative feeders (e.g. LV network templates) · full-detail for
   one pilot DNO area and aggregated elsewhere?
+- [x] **Q-C-9 MVP network granularity (review #8):** → D-32 (full transmission).
+- [x] **Q-C-10 Currency (review #14):** → D-38.
 - [ ] **Q-C-2 Network size target.** Approx. buses/nodes: 100s · 10k · 100k+ (continental AC)?
 - [ ] **Q-C-3 Data sources.** Open data only (OSM, ENTSO-E, EIA, NREL, ERA5), or will you
   have licensed/proprietary data (e.g. FERC 715 / CEII, PLEXOS/PSS/E models)?
@@ -109,7 +113,7 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 ## G. User interface
 
 - [x] **Q-G-1 Primary interface:** web app · desktop app · CLI/Python SDK · Jupyter · all?
-  ★ Web app + Python SDK + CLI over a shared API.
+  ★ Web app + Rust SDK/CLI over a shared API (D-20).
 - [ ] **Q-G-2 Visualization:** 2D map (MapLibre/deck.gl), 3D globe, single-line diagrams,
   time-series charts, animated playback of a day?
 - [ ] **Q-G-3 Grid editing:** draw/edit network topology in the UI?
@@ -121,10 +125,11 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-H-2 Hardware actually available.** Your machine(s) now (CPU cores, RAM, GPU —
   e.g. Apple Silicon Mac? NVIDIA GPUs?), and is cloud spend acceptable?
   _Why:_ "unconstrained" still needs a target; GPU solvers (cuOpt, cuDSS, CUDA) need NVIDIA.
-- [ ] **Q-H-3 Deployment target:** single beefy workstation (Docker Compose) · on-prem
+- [x] **Q-H-3 Deployment target:** single beefy workstation (Docker Compose) · on-prem
   cluster / Kubernetes · cloud (AWS/GCP/Azure) · hybrid burst-to-cloud for sweeps?
+- [ ] **Q-H-7 GPU machine specs (from D-29):** GPU model(s) and VRAM, CPU cores, RAM, OS/distro, reachable remotely by agents?
 - [ ] **Q-H-4 Concurrency:** how many simultaneous simulations / users?
-- [ ] **Q-H-5 Data volume:** retain all time-series results of all runs forever, or prune?
+- [x] **Q-H-5 Data volume:** retain all time-series results of all runs forever, or prune?
   (A 100k-bus × 8,760 h × 1,000 scenarios run is ~TBs.)
 - [ ] **Q-H-6 Availability:** is downtime acceptable (research tool) or does it need HA?
 
@@ -167,7 +172,7 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   with worktrees? Who reviews/merges — you, or a designated reviewer model?
 - [x] **Q-K-3 Autonomy:** how much can agents decide without you (e.g. library choices
   within an accepted ADR)?
-- [ ] **Q-K-4 Quality gates:** required test coverage, CI, benchmarks, validation against
+- [x] **Q-K-4 Quality gates:** required test coverage, CI, benchmarks, validation against
   reference cases (e.g. pglib-opf, IEEE cases, PyPSA results) before merge?
 
 ## L. Non-functional: security, licensing, validation
@@ -176,11 +181,13 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   _Why:_ constrains which dependencies (GPL/AGPL) we can embed.
 - [ ] **Q-L-2 Auth:** none (local) · single-user login · multi-user RBAC · SSO?
 - [ ] **Q-L-3 Sensitive data:** will any data be CEII/critical-infrastructure restricted?
+- [x] **Q-L-5 Commercial data licensing (review #6):** share-alike acceptable? → D-30 (no).
+- [x] **Q-L-6 SaaS tenant isolation (review #14):** → D-39 (deferred to P4).
 - [ ] **Q-L-4 Validation:** how will we know the simulator is *right*? Benchmark vs
   historical events, vs reference tools, vs published studies?
 
 ## M. Timeline & priorities
 
-- [ ] **Q-M-1 Timeline:** first usable version when? Any hard deadline?
+- [x] **Q-M-1 Timeline:** first usable version when? Any hard deadline?
 - [x] **Q-M-2 MVP slice:** if you could only have one thing working first, what is it?
 - [ ] **Q-M-3 Non-goals:** anything explicitly out of scope?

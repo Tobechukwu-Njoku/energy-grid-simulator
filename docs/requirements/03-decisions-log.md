@@ -31,3 +31,15 @@ Format: `D-<n> | <question IDs> | <decision> | <date> | <source>`
 | D-25 | Q-A-6 | Forecast horizons: **short-term (day-ahead / intraday)** and **seasonal (weeks to a year)**. Long-term 10–30-year outlooks are not a forecasting target (capacity-expansion what-ifs remain in scope per D-6) | 2026-11-12 | Owner, review round A |
 | D-26 | Q-B-8 | MVP market fidelity: **unit commitment + Balancing Mechanism redispatch** (national GB price + I-SEM price, then constraint/BM actions and costs) | 2026-11-12 | Owner, review round A |
 | D-27 | Review #1 | Repository: first commit + **private GitHub repo**, pushed | 2026-11-12 | Owner, review round A |
+| D-28 | Q-K-4 | Merge gates (all required): `cargo fmt --check`, `cargo clippy -D warnings`, tests, `cargo-deny` licence/advisory check, numerical results match reference cases (pglib-opf / PyPSA etc.) within stated tolerance, no benchmark regression, review by a model other than the author | 2026-11-12 | Owner, review round B |
+| D-29 | Q-H-3 | Owner **owns a Linux + NVIDIA machine** (specs TBD, Q-H-7) for GPU build/test/benchmark; Mac remains a dev machine, so the core must also build and run CPU-only | 2026-11-12 | Owner, review round B |
+| D-30 | Q-L-5 | Data licensing: **avoid share-alike data** (e.g. ODbL / OSM-derived network data). Only commercially permissive datasets; build our own network model where needed. Licence recorded per dataset | 2026-11-12 | Owner, review round B |
+| D-31 | Review #5, #7 | Exception to "no code yet": **data spike only** (assemble GB + Ireland network and one weather year from permissively licensed sources; throwaway code in `spikes/`; write-up informs ADRs). No engine/optimisation spike; engine code waits for baseline | 2026-11-12 | Owner, review round B |
+| D-32 | Q-C-9 | MVP network: **full transmission** (all 400/275/132 kV nodes in GB; 400/220/110 kV in Ireland), built from permissively licensed sources (D-30). Feasibility to be confirmed by the data spike (D-31) | 2026-11-12 | Owner, review round C |
+| D-33 | Q-A-7 | Funding/customer targets: **consultancy/research, forecast customers, grants** (not VC-first). Implies documented methods, published validation, reliable API | 2026-11-12 | Owner, review round C |
+| D-34 | Q-M-1 | MVP timeline: **6+ months; quality and validation first** | 2026-11-12 | Owner, review round C |
+| D-35 | Q-B-6 | Uncertainty: deterministic MVP; Monte Carlo across historic weather years with LOLE/EUE in P2 | 2026-11-12 | Owner accepted default, round C |
+| D-36 | Q-H-5 | Retention: summaries kept forever; full-resolution results kept for pinned runs, others deleted after 90 days | 2026-11-12 | Owner accepted default, round C |
+| D-37 | Q-C-8 | Distribution data (P2): DNO open-data portals where licence allows (D-30), synthetic representative feeders elsewhere | 2026-11-12 | Owner accepted default, round C |
+| D-38 | Q-C-10 | Currency: each market in native currency (GBP / EUR); daily FX rates for cross-border flows | 2026-11-12 | Owner accepted default, round C |
+| D-39 | Q-L-6 | SaaS tenant isolation model: deferred to P4 | 2026-11-12 | Owner accepted default, round C |

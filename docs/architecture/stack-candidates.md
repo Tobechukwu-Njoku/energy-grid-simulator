@@ -16,7 +16,7 @@ Guiding stance (D-2): performance and capability over resource cost.
 | Analytics | Rust **Polars** / **DataFusion** over Arrow/Parquet | DuckDB | D-20 |
 | SDK / CLI | Rust crate + CLI (primary); Python bindings optional later | — | D-20 |
 | Frontend | TypeScript + React, **MapLibre GL + deck.gl** (GPU map rendering), Apache ECharts / uPlot for time series | Svelte | Q-G-* |
-| Data interchange | Apache Arrow (zero-copy between Python/Julia/Rust) | — | — |
+| Data interchange | Apache Arrow / Parquet (Rust `arrow-rs`; also readable by offline Python/Julia validators) | — | — |
 | Observability | OpenTelemetry → Prometheus + Grafana + Tempo/Loki | — | — |
 | Packaging/Deploy | Docker Compose (workstation) → Kubernetes (cluster) | Nomad | Q-H-3 |
 

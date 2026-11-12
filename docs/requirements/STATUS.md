@@ -2,42 +2,39 @@
 
 _Last updated: 2026-11-12_
 
-**Phase:** Requirements engineering — Rounds 1–4 answered (D-5 … D-23; D-5 superseded by D-23). Round 5 pending.
-**Code allowed?** No.
+**Phase:** Requirements engineering. Decisions D-1 … D-39 (D-5 superseded by D-23).
+Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
+**Code allowed?** No, except the **data spike** (D-31) in `spikes/`.
+**Repo:** private, https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
 ## Snapshot of what's decided
 
-Research + market-forecasting simulator (future funding in view) of **GB + all-island Ireland** (with interconnectors), **transmission +
-distribution**, **all physics time-scales** (planning → dispatch → power flow/N-1 → dynamics),
-**full market replica** with pluggable alternative designs (zonal/nodal). **Rust everywhere code
-is needed** (core, backend, SDK/CLI), TypeScript web UI. PostgreSQL 18 + Redis, Linux + NVIDIA
-GPUs, pluggable OSS/commercial solvers. Future **commercial SaaS**. Interactive sandbox + batch
-sweeps + API. MVP = **weather-year dispatch** with weather extremes. Built by **fully autonomous**
-team of models. See `03-decisions-log.md`; risks in `05-risks.md`.
+Research + market-forecasting simulator (short-term and seasonal, D-25) of **GB + all-island
+Ireland** with interconnectors. Targets: consultancy/research, forecast customers, grants (D-33).
+End state: transmission + distribution, all physics time-scales, full market replica with
+pluggable designs (zonal/nodal). Delivered in phases (`06-roadmap.md`, D-24); distribution is P2.
+**MVP (6+ months, quality first):** full transmission network, weather-year dispatch with
+**unit commitment + Balancing Mechanism redispatch**, map, prices, historic backtest.
+**Rust everywhere code is needed**; TypeScript web UI. PostgreSQL 18 + Redis; owner's
+Linux + NVIDIA machine plus Mac (CPU-only must work). Pluggable solvers. Future commercial SaaS,
+so **no share-alike data** (D-30). Fully autonomous team with strict merge gates (D-28).
 
-## Progress by section (see 02-questionnaire.md)
+## Still open (owner)
 
-| Section | State |
-|---|---|
-| A Purpose & users | partial (A-1, A-2 done; A-3..A-5 open) |
-| B Physics fidelity | partial (B-1, B-2, B-4, B-5 done) |
-| C Geography & data | partial (C-1, C-7 done) |
-| D Scenarios | partial (D-1, D-2, D-4 done) |
-| E Time horizon | partial (E-2 done) |
-| F Outputs | open |
-| G UI | partial (G-1 done) |
-| H Performance/deploy | partial (H-1, H-2 done) |
-| I Stack | mostly done |
-| J Integration | open |
-| K Multi-model process | partial (K-2, K-3 done; K-1, K-4 open) |
-| L Non-functional | partial (L-1 done) |
-| M Timeline | partial (M-2 done) |
+- Q-A-5 example questions the simulator must answer (most valuable input)
+- Q-A-8 first forecast customer segment and what they buy
+- Q-H-7 GPU machine specs and agent access
+- Q-K-1 which models/providers build it
+- Q-M-3 explicit non-goals
+- Q-G-4 look and feel references
+- Confirm draft phases P2–P4 in `06-roadmap.md`
 
-## Next steps
+## Next steps (agents may do now)
 
-1. Round 5 (asked, awaiting owner): Q-A-5 (example questions), Q-A-6 (forecast horizon), Q-A-7 (funding target),
-   Q-C-8 (distribution data), Q-K-1 (which models), Q-K-4 (quality gates), Q-H-3 (deployment),
-   Q-H-5 (retention), Q-B-6 (uncertainty), Q-M-1 (timeline), Q-G-4 (look & feel).
-2. Derive FR/NFR in `04-requirements.md`.
-3. ADRs: engine architecture, market-design plugin model, storage, distributed execution.
-4. Break work into tasks for the autonomous build team.
+1. Data spike (D-31): permissively licensed GB + Ireland full transmission network + one weather
+   year; record licence per dataset; answers R-12.
+2. Add GB + Ireland data sources to `prior-art.md` with licences (review #7); verify licence
+   flags for cuDSS, SuiteSparse/KLU, TimescaleDB on PG18 (review #11).
+3. Draft MVP requirements baseline in `04-requirements.md` (review #12), marking open items `ASSUMPTION:`.
+4. ADRs 0001–0006 (review §4 step 8).
+5. Flip to "code allowed" once 3 and ADRs 0001–0003 are accepted.
