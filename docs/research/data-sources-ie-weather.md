@@ -1,172 +1,186 @@
 # Data Sources Catalogue: Ireland, Weather, Interconnectors & FX
 
-_Last updated: 2026-11-12. Access date for all sources: 2026-11-12._
+_Reviewed: 2026-11-12. Source availability and licence observations are date-specific._
 
-## Summary
+## Scope and admission rule
 
-This catalogue evaluates datasets for the GB + Ireland electricity grid and market simulator against two governing product decisions:
-- **D-17:** Future commercial SaaS product.
-- **D-30:** Avoid share-alike licensed data (e.g. ODbL, CC BY-SA, OpenStreetMap-derived data). Only commercially permissive datasets with clear lineage are permitted.
+This is a research inventory, not permission to ingest every public download. **D-17** requires
+commercial-SaaS compatibility; **D-30** excludes share-alike data. **D-32** requires a full
+transmission model, whose feasibility remains subject to the **D-31** data spike.
 
-### What is Usable for a Commercial Product
-- **Operational System Data:** EirGrid & SONI Smart Grid Dashboard and System Data Downloads are available under the **EirGrid Group Open Data Licence**, which explicitly permits commercial exploitation subject to the attribution `"Supported by EirGrid Group Data"`.
-- **GB Balancing & Interconnector Flows:** Elexon Insights Solution (formerly BMRS) is published under the **Licence to use BMRS open data**, permitting commercial exploitation of half-hourly and 5-minute physical flows and schedules for all GB interconnectors (`INTFR`, `INTIFA2`, `INTELEC`, `INTNED`, `INTNEM`, `INTNSL`, `INTVKL`, `INTMOY`, `INTIRL`, `INTGRN`).
-- **European Cross-Border Flows & Capacities:** ENTSO-E Transparency Platform items on the *List of Data Available for Free Re-Use* (physical flows, transfer capacities, scheduled commercial exchanges, total load forecasts) are licensed under **CC BY 4.0**, permitting commercial use with attribution.
-- **Distribution Networks:** NIE Networks publishes asset and GIS data on its Open Data Portal under **CC BY 4.0** and **OGL v3.0**. ESB Networks publishes selected datasets on `data.gov.ie` under **CC BY 4.0**.
-- **Weather & Reanalysis:** 
-  - ECMWF / Copernicus Climate Data Store (ERA5 and ERA5-Land) provides hourly multi-decade weather under the **Licence to Use Copernicus Products**, explicitly permitting commercial exploitation.
-  - Met Éireann publishes historical synoptic observations and MÉRA reanalysis under **CC BY 4.0**.
-  - Met Office **MIDAS Open** (via CEDA) is under **UK OGL v3.0**, permitting commercial use.
-  - Solar and wind resource maps from **PVGIS** (European Commission Open Data Policy), **Global Wind Atlas** (CC BY 4.0), **Global Solar Atlas** (CC BY 4.0), and **NREL NSRDB** (CC BY 4.0 / CC BY 3.0 US) are fully permissive for commercial use.
-- **Exchange Rates:** Daily EUR/GBP spot and reference exchange rates from both the **European Central Bank** (ESCB statistics reuse policy) and the **Bank of England** (UK OGL v3.0) are open for commercial integration.
+**UNVERIFIED** means that the stated right, coverage, interface or specification could not be
+established from the cited primary evidence. Do not admit such data into the commercial pipeline
+until that specific issue is resolved. Public access, a statutory publication duty and a copyright
+notice are not interchangeable with a dataset-specific reuse licence. Publication copyright and
+permission to reuse underlying data must be assessed separately.
 
-### What is Blocked or Requires Commercial Clearance
-- **Renewables.ninja:** Strictly licensed under **CC BY-NC 4.0** (Non-Commercial). It **cannot** be incorporated into a commercial SaaS or used to generate commercial outputs without an explicit bilateral commercial agreement. (Alternative: compute capacity factors directly from ERA5 / ERA5-Land using open physics models like `atlite`).
-- **Full Met Office MIDAS Archive (CEDA):** Restricted to non-commercial academic research under the Met Office Standard Agreement. Only the **MIDAS Open** subset may be used.
-- **JAO (Joint Allocation Office) Capacity Auction Data:** Platform terms define permitted use as "internal" or "educational/academic"; commercial exploitation and redistribution require formal licensing via `contact@jao.eu`.
-- **SEMOpx / EPEX SPOT Wholesale Prices:** Real-time and unredacted historical exchange price feeds require registration as a **Data Service Entity (DSE)** and annual subscription / data vendor fees. Public D+1 transparency reports are restricted by EirGrid/SONI copyright ("All rights reserved") for external commercial distribution.
-- **ENTSO-E Article 12.1.d (Wholesale / Day-Ahead Prices):** Explicitly excluded from ENTSO-E's *List of Data Available for Free Re-Use*; owned by NEMOs (EPEX SPOT, Nord Pool) and cannot be republished without commercial vendor contracts.
+## Confirmed conclusions
 
-### Biggest Gaps
-1. **Ireland Transmission Network Impedances (TYTFS):** While the EirGrid/SONI Ten Year Transmission Forecast Statement contains complete node, branch, impedance, and rating tables, the published PDF and workbook files carry full copyright notices ("All rights reserved... without prior written permission"). To remain strictly compliant with D-30 without legal exposure, we must either (a) obtain written permission from EirGrid and SONI for data extraction, or (b) construct the Ireland transmission topology and line parameters from public statutory grid development filings, DNO connection registers, and open engineering standards.
-2. **ESB Networks Primary Feeders & GIS:** Unlike NIE Networks and UK DNOs, ESB Networks does not provide an open-licensed complete distribution GIS dataset; network heatmaps on `esbnetworks.ie` are under restrictive copyright. Synthetic representative feeders will be required for Republic of Ireland distribution networks in Phase 2 (D-37).
+- The EirGrid Group Open Data Licence permits commercial exploitation of covered information,
+  with attribution and exclusions. It is not proof that every group publication is covered.
+- The **2024 TYTFS PDF really does reserve rights**. No commercially permissive licence for a
+  complete all-island transmission parameter dataset was established in this review.
+- The current CDS catalogue identifies **both ERA5 and ERA5-Land as CC BY 4.0**. The previously
+  quoted legacy Copernicus commercial-use sentence was not verbatim and is removed.
+- ENTSO-E's free-reuse list really is **CC BY 4.0**, but has provider/item exclusions, including
+  **IFA and Nemo Link**. It is not an open licence for the entire platform.
+- Renewables.ninja is **CC BY-NC 4.0**: exclude its data from commercial use unless separately licensed.
+- Elexon's licence permits commercial reuse of covered BMRS data. Its live reference API confirms
+  ten interconnector identifiers, including corrections for EWIC, Moyle and Greenlink below.
 
----
+## Ireland: network, operations and market data
 
-## Catalogue Table
+| Source and official evidence | Contents / access actually established | Licence and commercial position |
+|---|---|---|
+| **EirGrid Smart Grid Dashboard** — [dashboard](https://www.smartgriddashboard.com/all/), [Open Data Licence](https://www.smartgriddashboard.com/all/open-data-license/) | Public dashboard; the licence refers to specified datasets in EirGrid/SONI libraries and dashboards, and information from group subsidiaries. | Commercial reuse of covered information is allowed, with attribution and third-party-rights exclusions. The original undocumented `dashboard/getallislanddata` route and circa-2014 archive start are **UNVERIFIED**. |
+| **EirGrid system data** — [system and renewable data reports](https://www.eirgrid.ie/grid/system-and-renewable-data-reports), [2026 quarter-hourly publication](https://www.eirgrid.ie/publications/system-data-quarter-hourly-2026) | Download links for operational spreadsheets, including quarter-hourly system data. SONI has its own [reports page](https://www.soni.ltd.uk/grid/system-and-renewable-data-reports). | Apply the group licence only to covered datasets; retain the precise download and its terms. A uniform circa-2011 start date, frequency and schema for every series are **UNVERIFIED**. |
+| **All-Island TYTFS 2024** — [publication](https://www.eirgrid.ie/all-island-ten-year-transmission-forecast-statement-2024), [actual PDF](https://www.eirgrid.ie/sites/default/files/publications/All-Island-Ten-Year-Transmission-Forecast-Statement-2024_1.pdf) | Network models/data, planning snapshots, diagrams and parameter tables. The second physical PDF page contains the copyright notice. | **Not commercially cleared.** The publication reserves rights and requires prior written permission for reproduction/transmission. Whether a separate parameter workbook is explicitly covered by the group open-data licence is **UNVERIFIED**; do not infer a workbook's terms solely from the PDF. |
+| **GCS 2023–2032** — [publication and workbook link](https://www.eirgrid.ie/generation-capacity-statement-2023-2032), [PDF](https://www.eirgrid.ie/sites/default/files/publications/19035-EirGrid-Generation-Capacity-Statement-Combined-2023-V5-Jan-2024.pdf) | A named historical generation/demand adequacy statement and linked workbook, not a claim that this is the latest adequacy publication. | The PDF's printed page 22 reserves rights, including reproduction and use outside its designated purpose without permission. Separate workbook reuse rights are **UNVERIFIED**. |
+| **SEMO balancing data** — [market data](https://www.sem-o.com/market-data), [actual disclaimer](https://www.sem-o.com/disclaimer) | Public market-data reports; availability is distinct from permission to redistribute them. | The disclaimer concerns accuracy/reliance, **not** the restrictive copyright quotation previously attributed to it. The group licence names SEMO, but rights in each selected report, including third-party inputs, remain **UNVERIFIED** until its coverage is established. |
+| **SEMOpx day-ahead/intraday data** — [market data](https://www.semopx.com/market-data), [document library](https://www.semopx.com/market-data/document-library), [disclaimer](https://www.semopx.com/disclaimer), [joining information](https://www.semopx.com/joining-the-market/how-to-join) | Public reports and a separate exchange-membership process. Use actual market-time-unit timestamps; do not assume all present-day DAM data is hourly. | **UNVERIFIED** dataset-specific reuse. The group licence expressly names SEMOpx, subject to scope/exclusions; the disclaimer does not establish a blanket commercial ban. The mandatory DSE agreement, universal annual data fee and approximately €3,500 tariff were not substantiated and are withdrawn. Trading membership is not a data-reuse licence. |
+| **Claimed ESB Networks catalogue on data.gov.ie** — [official catalogue query](https://data.gov.ie/api/3/action/package_search?q=organization%3Aesb-networks) | The originally cited organisation page returned 404; this organisation query returned zero datasets. | **UNVERIFIED**: no evidence for the claimed ESB-published CC BY collection of substations, EV charging and public-lighting datasets. Searches can instead return other publishers' ESB-related **CC BY-SA** connection statistics, which fail D-30; see the [catalogue search](https://data.gov.ie/api/3/action/package_search?q=%22ESB%20Networks%22&rows=8). |
+| **ESB Networks maps / capacity publications** — [publisher](https://www.esbnetworks.ie/), [copyright policy](https://www.esbnetworks.ie/data-legal/copyright) | Website/network publications; no complete, commercially cleared feeder-parameter model was established. | Website copyright is reserved; obtain the specific dataset's permission. Do not turn this into a claim that every ESB dataset is unusable or that no open dataset exists. D-37's synthetic-feeder fallback remains relevant. |
+| **NIE Networks portal** — [portal](https://nienetworks.opendatasoft.com/pages/home/), [terms](https://nienetworks.opendatasoft.com/terms/terms-and-conditions/), [dataset metadata API](https://nienetworks.opendatasoft.com/api/explore/v2.1/catalog/datasets?limit=20) | The 20 returned records, including substations, transformers and transmission switchgear, identify **CC BY 4.0**. The terms require checking each dataset's information tab. | Commercial reuse is allowed for appropriately licensed layers with attribution. The portal also identifies OGL-covered Ordnance Survey NI information; basemaps/third-party rights are separate. Complete feeder impedances, quarterly updates and half-hourly profiles across the catalogue are **UNVERIFIED**. |
 
-| Data Source | Publisher | Official URL / API Docs | Contents | Time Coverage & Resolution | Access Method | Licence Name & Key Commercial Clause | Commercial Use? | Share-Alike? | Relevance |
-|---|---|---|---|---|---|---|---|---|---|
-| **EirGrid Smart Grid Dashboard** | EirGrid Group (EirGrid plc & SONI Ltd) | [smartgriddashboard.com](https://www.smartgriddashboard.com) (API: `smartgriddashboard.com/dashboard/getallislanddata`) | All-island demand, wind & solar generation, frequency, CO2, fuel mix, SNSP, interconnector flows | ~2014–present; 15-min operational | REST API (JSON), CSV bulk; No auth | **EirGrid Group Open Data Licence** ([licence](https://www.smartgriddashboard.com/open-data-licence)): *"You are free to... exploit the Information commercially and non-commercially... Mandatory attribution: Supported by EirGrid Group Data"* | **Yes** | **No** | Generation, Demand, Balancing, Interconnectors |
-| **EirGrid System Data Downloads** | EirGrid plc | [eirgrid.ie/grid/system-data](https://www.eirgrid.ie/grid/system-data) | 15-min and hourly operational data: actual & forecast wind/demand, system frequency, interconnector flows | ~2011–present; 15-min & hourly | Bulk CSV/XLS download; No auth | **EirGrid Group Open Data Licence** ([licence](https://www.smartgriddashboard.com/open-data-licence)): *"You are free to... exploit the Information commercially and non-commercially"* | **Yes** | **No** | Generation, Demand, Balancing |
-| **All-Island Ten Year Transmission Forecast Statement (TYTFS)** | EirGrid plc & SONI Ltd | [eirgrid.ie/grid/transmission-system-forecasts](https://www.eirgrid.ie/grid/transmission-system-forecasts) | Transmission network data: buses, lines, cables, transformers, impedances (R, X, B), MVA ratings, generator connections | 10-year planning horizon snapshots; updated annually | Direct download (PDF reports & Excel workbooks) | **EirGrid & SONI Copyright Notice** ([terms](https://www.eirgrid.ie)): *"All rights reserved. This entire publication is subject to the laws of copyright. No part of this publication may be reproduced or transmitted in any form... without the prior written permission of EirGrid plc and SONI Limited."* | **No** (Written permission required) | **No** | Network Model (Transmission 400/275/220/110 kV) |
-| **All-Island Generation Capacity Statement (GCS)** | EirGrid plc & SONI Ltd | [eirgrid.ie/grid/generation-capacity-statement](https://www.eirgrid.ie/grid/generation-capacity-statement) | 10-year generation and demand outlooks, generator technical capacities, decommissioning dates, LOLE adequacy assessments | 10-year annual projections; updated annually | Direct download (PDF reports & data tables) | **EirGrid & SONI Copyright Notice** ([terms](https://www.eirgrid.ie)): *"All rights reserved. No part of this work may be modified or reproduced or copied in any form or by any means... or used for any purpose other than its designated purpose, without the written permission of EirGrid and SONI"* | **No** (Unclear / requires permission) | **No** | Generation, Demand scenarios, Adequacy |
-| **SEMO Balancing Market Data** | Single Electricity Market Operator (EirGrid & SONI JV) | [sem-o.com](https://www.sem-o.com) | Imbalance settlement prices (ISP), balancing energy actions, physical notifications (PN), generator dynamic parameters | Oct 2018–present (I-SEM); 30-min settlement, 5-min dispatch | Dynamic reporting web portal, XML/CSV downloads; SFTP for participants | **SEMO Website Disclaimer & Copyright** ([terms](https://www.sem-o.com/disclaimer-terms-of-use/)): *"All rights reserved... No part of this publication may be reproduced or transmitted... without prior written permission of EirGrid plc and SONI Limited."* | **No** (Direct public reports require clearance; open portal items follow Open Data Licence) | **No** | Balancing, Prices, Dispatch |
-| **SEMOpx Day-Ahead & Intraday Market Data** | SEMOpx (EirGrid & SONI with EPEX SPOT) | [semopx.com](https://www.semopx.com) | Day-Ahead Market (DAM) hourly clearing prices & volumes; Intraday Auctions (IDA1-3) 30-min clearing; continuous intraday trades | Oct 2018–present; Hourly & 30-min | Public D+1 CSV reports; Trading API (ETS / M7) via Data Service Entity (DSE) | **SEMOpx Terms of Use / EPEX SPOT Market Data Policy** ([rules](https://www.semopx.com/rules-and-education/market-rules/data-publication-guide/)): Public reports copyright EirGrid & SONI. Direct commercial API distribution requires registered Data Service Entity agreement and annual fee. | **No** (Free public tier restricted; commercial redistribution requires DSE contract) | **No** | Wholesale Day-Ahead & Intraday Prices |
-| **ESB Networks Open Data Portal** | ESB Networks DAC | [data.gov.ie/organization/esb-networks](https://data.gov.ie/organization/esb-networks) | Substation locations, EV charging points, aggregate distribution statistics, public lighting | Historical & annual updates; variable | REST API, CSV/GeoJSON download via data.gov.ie; No auth | **Creative Commons Attribution 4.0 International (CC BY 4.0)** ([licence](https://creativecommons.org/licenses/by/4.0/)): *"You are free to... copy and redistribute the material... remix, transform, and build upon the material for any purpose, even commercially."* | **Yes** (For datasets explicitly tagged CC BY 4.0) | **No** (Avoid legacy CC BY-SA datasets) | Distribution (P2), Network Model |
-| **ESB Networks Network Heatmaps & Capacity Workbooks** | ESB Networks DAC | [esbnetworks.ie](https://www.esbnetworks.ie) | Availability capacity heatmaps, distribution substation headroom workbooks, generation connection registers | Periodic planning updates | Interactive map & Excel downloads; No auth | **ESB Copyright Policy** ([disclaimer](https://www.esbnetworks.ie)): *"Materials on this website may not be copied, modified, reproduced, republished... distributed or used for any public or commercial purposes without prior permission."* | **No** (Commercial use strictly prohibited without written consent) | **No** | Distribution capacity, Headroom |
-| **NIE Networks Open Data Portal** | Northern Ireland Electricity Networks Ltd | [nienetworks.opendatasoft.com](https://nienetworks.opendatasoft.com) | Grid Supply Points (GSPs), 33/11 kV primary substations, distribution lines/cables, capacity heatmaps, EV & solar connections | GIS assets, updated quarterly; half-hourly load profiles | OpenDataSoft REST API, GeoJSON, CSV, Shapefile; Free account registration required | **Creative Commons Attribution 4.0 International (CC BY 4.0)** / **OGL v3.0** ([terms](https://nienetworks.opendatasoft.com)): *"You are free to... share and adapt the material for any purpose, even commercially... Mandatory credit to NIE Networks."* | **Yes** | **No** | Distribution Network (P2), Substation Topology |
-| **ENTSO-E Transparency Platform (Free Re-Use List)** | ENTSO-E | [transparency.entsoe.eu](https://transparency.entsoe.eu) (API: `transparency.entsoe.eu/api`) | Cross-border physical flows, scheduled commercial exchanges, transfer capacities (NTC/ATC), load forecasts, generation per unit/type | 2015–present; 15-min, 30-min, 60-min | REST API (token via free account), Web GUI, SFTP | **Creative Commons Attribution 4.0 International (CC BY 4.0)** ([Terms of Use Cl. 2.5](https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html)): *"ENTSO-E licences the data on the List of Data Available for Free Re-Use under Creative Commons Attribution 4.0 International... permitted for any purpose, even commercially."* | **Yes** (For Free Re-Use items) | **No** | Interconnectors, Cross-border flows, Generation, Demand |
-| **ENTSO-E Transparency Platform (Restricted Items)** | ENTSO-E / NEMOs (EPEX SPOT, Nord Pool) | [transparency.entsoe.eu](https://transparency.entsoe.eu) | Day-ahead wholesale electricity prices (Article 12.1.d), certain merchant interconnector data | 2015–present; Hourly / half-hourly | Web GUI, REST API | **ENTSO-E Terms of Use (General)**: Proprietary data belonging to Primary Owners (NEMOs). Commercial redistribution, publishing, or integration into commercial derivative products is prohibited without primary owner license. | **No** | **No** | Wholesale Prices |
-| **Elexon Insights Solution (BMRS)** | Elexon Limited | [data.elexon.co.uk](https://data.elexon.co.uk) (API: `data.elexon.co.uk/bmrs/api/v1`) | Metered physical flows, interconnector schedules (`INTFR`, `INTIFA2`, `INTELEC`, `INTNED`, `INTNEM`, `INTNSL`, `INTVKL`, `INTMOY`, `INTIRL`, `INTGRN`), BM unit dispatch, system prices | Comprehensive multi-year; 5-min operational, 30-min settlement | REST API, streaming IRIS push (WebSocket), CSV; Free API key | **Licence to use BMRS open data** ([licence](https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/bmrs-open-data-licence/)): *"grants you a worldwide, royalty-free, perpetual, non-exclusive licence to... exploit the data commercially... Attribution: Contains BMRS data © Elexon Limited copyright and database right [Year]"* | **Yes** | **No** | Interconnectors, GB Balancing, Unit Dispatch |
-| **JAO (Joint Allocation Office)** | Joint Allocation Office S.A. | [jao.eu](https://www.jao.eu) | Forward, day-ahead, intraday cross-border transmission capacity allocations, auction shadow prices, REMIT outage declarations | 2015–present; Auction-based & real-time | Web portal, CSV downloads, REMIT API | **JAO Terms of Use** ([terms](https://www.jao.eu)): *"Legitimate Use is defined as educational, academic or internal purposes... Should a User be interested to use or exploit any portion of the Content for specific purposes (e.g. commercial use, etc), an email can be sent to contact@jao.eu in order to discuss potential licensing arrangements."* | **No** (Requires bilateral commercial licence) | **No** | Interconnectors (Capacity Auctions) |
-| **Direct Interconnector Portals (IFA, IFA2, BritNed, Nemo Link, ElecLink, NSL, Viking Link, Moyle, EWIC, Greenlink)** | Respective Interconnector Operators | IFA: [ifa1interconnector.com](https://www.ifa1interconnector.com)<br>BritNed: [britned.com](https://www.britned.com)<br>Nemo: [nemolink.co.uk](https://www.nemolink.co.uk)<br>ElecLink: [eleclink.co.uk](https://www.eleclink.co.uk)<br>NSL: [northsealink.com](https://www.northsealink.com)<br>Viking: [viking-link.com](https://www.viking-link.com)<br>Moyle: [mutual-energy.com](https://www.mutual-energy.com)<br>Greenlink: [greenlink.interconnector.eu](https://www.greenlink.interconnector.eu) | Operational capacity, technical ratings, outage calendars, explicit capacity auction results | Historic & operational | Proprietary web portals, trading systems (e.g. Empire, EPEX, JAO); Market registration required | **Standard Corporate Copyright / All Rights Reserved**: Content is protected by corporate copyright. Operational flow data is mandated to be published via Elexon BMRS and ENTSO-E TP under their respective open data terms. | **No** (Direct website data requires permission; use Elexon/ENTSO-E streams instead) | **No** | Interconnectors |
-| **ERA5 & ERA5-Land Reanalysis** | ECMWF / Copernicus Climate Change Service (C3S) | [cds.climate.copernicus.eu](https://cds.climate.copernicus.eu) | Global atmospheric reanalysis: 10m/100m wind vectors (u, v), 2m temperature, downward solar radiation (SSRD), surface pressure, precipitation | ERA5: 1940–present, hourly, 0.25° (~31 km). ERA5-Land: 1950–present, hourly, 0.1° (~9 km) | CDS Python API (`cdsapi`), NetCDF/GRIB download; Free registered account | **Licence to Use Copernicus Products** ([licence](https://cds.climate.copernicus.eu)): *"grants the Licensee a free of charge, worldwide, non-exclusive, royalty-free and perpetual licence to use the Copernicus Products for any lawful purpose, which includes commercial and non-commercial exploitation... Mandatory attribution: Contains modified Copernicus Climate Change Service information [Year]"* | **Yes** | **No** | Weather, Wind & Solar profiles, Heat demand |
-| **Met Office Weather DataHub** | UK Met Office | [datahub.metoffice.gov.uk](https://datahub.metoffice.gov.uk) | Numerical weather prediction model data (UKV 2 km, Global 10 km), spot forecasts, observation feeds, rainfall radar | Forecasts & near real-time; hourly & 3-hourly | REST API (JSON, GRIB2); Free API key (with daily quotas) / Paid commercial tiers | **Met Office Weather DataHub Terms & Conditions** ([terms](https://datahub.metoffice.gov.uk)): *"grants a perpetual, worldwide, non-exclusive, non-transferable licence to download, use, copy, publish, distribute, transmit, adapt and exploit the data for use in applications... both non-commercial and commercial use are allowed."* | **Yes** (Paid plan required if quota exceeded) | **No** | Weather (GB & NI), Forecasts |
-| **Met Office MIDAS Open** | UK Met Office / CEDA Archive | [catalogue.ceda.ac.uk](https://catalogue.ceda.ac.uk/uuid/dbd451271eb04662beade68da1591372) | Surface meteorological observations from UK land stations: hourly/daily temperature, wind speed/direction, rainfall, solar radiation | 1853–present; Hourly and daily | CEDA Archive download (CSV/NetCDF); Free registered account | **UK Open Government Licence v3.0 (OGL v3.0)** ([licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)): *"You are free to... copy, publish, distribute and transmit the Information; adapt the Information; exploit the Information commercially and non-commercially... Mandatory attribution: Contains Met Office data licensed under OGL v3.0"* | **Yes** | **No** | Weather (GB & NI station backtest) |
-| **Full Met Office MIDAS Collection** | UK Met Office / CEDA Archive | [catalogue.ceda.ac.uk](https://catalogue.ceda.ac.uk) | Complete UK and global land and marine surface station observations | Historical multi-decade | CEDA Archive application process | **Met Office Standard Agreement**: Access restricted strictly to bona fide non-commercial academic research and UK government use. Commercial use is expressly prohibited without a direct commercial contract with Met Office Commercial Services. | **No** (Academic/research only) | **No** | Weather (Blocked for SaaS) |
-| **Met Éireann Open Data** | Met Éireann | [met.ie/open-data](https://www.met.ie/open-data) | 25 synoptic stations hourly/daily weather (temperature, wind, rain, radiation), MÉRA reanalysis (2.5 km, 1981–2019), live forecasts API | 1941–present; Hourly, daily, monthly | Direct CSV download, REST API (XML/JSON); No auth | **Creative Commons Attribution 4.0 International (CC BY 4.0)** ([terms](https://www.met.ie/open-data)): *"This data is published under CC BY 4.0... You are free to... copy, redistribute, remix, transform and build upon the material for any purpose, even commercially."* Live forecast API requires mandatory display of active weather warnings. | **Yes** | **No** | Weather (Ireland station backtest, MÉRA) |
-| **Renewables.ninja** | Imperial College London & ETH Zürich | [renewables.ninja](https://www.renewables.ninja) (API: `renewables.ninja/api`) | Simulated hourly wind and solar capacity factors and power outputs for Europe and global grid cells | 1980–present; Hourly | Web UI, REST API (JSON); Free registered API key | **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)** ([licence](https://creativecommons.org/licenses/by-nc/4.0/)): *"NonCommercial — You may not use the material for commercial purposes... If you wish to use the data for commercial purposes, please contact us."* | **No** (Strictly non-commercial) | **No** | Wind & Solar Capacity Factors (Blocked for SaaS) |
-| **PVGIS (Photovoltaic Geographical Information System)** | European Commission Joint Research Centre (JRC) | [re.jrc.ec.europa.eu/pvg_tools/en/](https://re.jrc.ec.europa.eu/pvg_tools/en/) | Solar radiation, typical meteorological year (TMY), PV power output simulations using SARAH, ERA5, and CMSAF satellite data across Europe | 2005–present; Hourly, monthly, TMY | REST API, CSV/JSON downloads; No auth | **European Commission Open Data Policy (Decision 2011/833/EU)** ([terms](https://re.jrc.ec.europa.eu/pvg_tools/en/)): *"The information provided by PVGIS is free and there are no restrictions on its use. We simply ask users to acknowledge the source as Photovoltaic Geographic Information System (PVGIS) of the European Commission Joint Research Centre."* | **Yes** | **No** | Solar Generation Profiles |
-| **Global Wind Atlas (GWA)** | DTU Wind Energy & World Bank Group | [globalwindatlas.info](https://globalwindatlas.info) | High-resolution GIS layers: mean wind speed, wind power density, capacity factor maps at 10m to 200m hub heights | Long-term climatology; 250m spatial resolution | GIS layer download (GeoTIFF), web viewer; No auth | **Creative Commons Attribution 4.0 International (CC BY 4.0)** ([terms](https://globalwindatlas.info)): *"The Works are provided under the Creative Commons Attribution 4.0 International license... free to share and adapt for any purpose, including commercial applications, provided proper credit is given."* | **Yes** | **No** | Wind Resource Modelling |
-| **Global Solar Atlas (GSA)** | Solargis & World Bank Group | [globalsolaratlas.info](https://globalsolaratlas.info) | High-resolution GIS layers: GHI, DNI, DHI, photovoltaic power potential (PVOUT) | Long-term climatology; ~1 km spatial resolution | GIS layer download (GeoTIFF), web viewer; No auth | **Creative Commons Attribution 4.0 International (CC BY 4.0)** ([terms](https://globalsolaratlas.info/support/terms-of-use)): *"Data obtained from the Global Solar Atlas... licensed under CC BY 4.0... You are free to copy, redistribute and adapt for any purpose, including commercially."* | **Yes** | **No** | Solar Resource Modelling |
-| **NREL NSRDB (National Solar Radiation Database)** | National Renewable Energy Laboratory (NREL) | [nsrdb.nrel.gov](https://nsrdb.nrel.gov) (API: `developer.nrel.gov`) | Solar irradiance (GHI, DNI, DHI) and surface meteorology; Meteosat Prime Meridian covers Europe/UK/Ireland | 2017–2019 + TMY for Meteosat; 4 km, 15-min to hourly | NREL Developer API, AWS Open Data Registry (`s3://nrel-pds-nsrdb/`); Free API key | **Creative Commons Attribution 4.0 International (CC BY 4.0)** / **CC BY 3.0 US** ([terms](https://nsrdb.nrel.gov)): *"NSRDB data is open data available for commercial and non-commercial use with appropriate citation."* | **Yes** | **No** | Solar Irradiance |
-| **European Central Bank (ECB) Reference Rates** | European Central Bank | [data.ecb.europa.eu](https://data.ecb.europa.eu) (API: `data-api.ecb.europa.eu`) | Daily Euro foreign exchange reference rates (EUR/GBP and others) | 1999–present; Daily business days (published ~16:00 CET) | SDMX REST API, XML, CSV bulk; No auth | **ESCB Statistics Re-use Policy / ECB Copyright** ([policy](https://www.ecb.europa.eu)): *"The statistics provided by the European System of Central Banks (ESCB) are free of charge as a public good... may be used for commercial and non-commercial purposes... Citation required: Source: European Central Bank"* | **Yes** | **No** | FX Rates (EUR/GBP, D-38) |
-| **Bank of England Daily Spot Rates** | Bank of England | [bankofengland.co.uk/boeapps/database/](https://www.bankofengland.co.uk/boeapps/database/) | Daily spot exchange rates against GBP (series `XUDLSER` for EUR/GBP), observed ~16:00 London time | Multi-decade historical series; Daily business days | Web database export, CSV; No auth | **UK Open Government Licence v3.0 (OGL v3.0)** ([terms](https://www.bankofengland.co.uk)): *"Information from the Bank of England Database is available under the Open Government Licence v3.0... you are free to exploit the Information commercially and non-commercially... Attribution: Contains Bank of England data"* | **Yes** | **No** | FX Rates (EUR/GBP, D-38) |
+### EirGrid/SONI licence scope and Irish transmission admission gate
 
----
+The [group licence](https://www.smartgriddashboard.com/all/open-data-license/) expressly permits
+“exploit the Information commercially and non-commercially” and requires the attribution
+“Supported by EirGrid Group Data”. It excludes rights the provider is not authorised to license
+and refers to information made available under the licence. Its reference to SEMO/SEMOpx is
+important, but does not justify disregarding a file's conflicting notice.
 
-## Detailed Category Analysis
+The TYTFS 2024 PDF says “All rights reserved.” Its second page prohibits reproduction/transmission
+without written permission from EirGrid and SONI. Its statutory-obligations table cites
+**section 38 of the Electricity Regulation Act 1999 for Ireland and condition 33 for Northern
+Ireland**, not the previously asserted Irish condition 33 / NI condition 36.
 
-### 1. All-Island Ireland (EirGrid, SONI, SEMO, SEMOpx, ESB, NIE)
+**Position for D-30/D-32:** the publication restriction is confirmed; blanket open licensing of the
+underlying transmission model is not. Request written confirmation identifying the exact model,
+workbook, allowed extraction, commercial derivative use and redistribution. This is not a finding
+that copyright necessarily prohibits every reuse of an individual fact. Public planning filings
+are **not automatically permissively licensed substitutes** either. Record provenance and rights
+before constructing a commercial model from them. A complete node/branch model, zero-sequence
+coverage and transformer saturation/tap data sufficient for implementation remain **UNVERIFIED**;
+tables in a report are not a validated machine-readable network model.
 
-#### Transmission Network Data (TYTFS & GCS)
-- **TYTFS Data Composition:** EirGrid and SONI publish the All-Island Ten Year Transmission Forecast Statement annually. It includes complete network single-line diagrams, substation busbars (400 kV, 275 kV, 220 kV, 110 kV), circuit parameters (positive and zero sequence resistance $R$, reactance $X$, susceptance $B$, and summer/winter MVA ratings), and transformer saturation/tap parameters.
-- **Licensing Constraint:** Both TYTFS and GCS are published as statutory planning documents under TSO licence conditions (Condition 33 in Ireland, Condition 36 in Northern Ireland). They include explicit restrictive copyright notices asserting all rights reserved.
-- **Compliance Recommendation (D-30):** Raw extraction of the TYTFS database into a distributed commercial product presents a database copyright risk. For the MVP network model (D-32), the topology should be verified by cross-referencing public statutory connection registers, DNO connection nodes, and published single-line schematics. For commercial distribution, a formal written data reuse agreement should be requested from EirGrid Group (`info@eirgrid.com`).
+## Interconnectors and European transparency data
 
-#### Operational & Market Data (Smart Grid Dashboard & SEMO)
-- **Smart Grid Dashboard:** The dashboard publishes continuous 15-minute operational feeds covering all-island demand, actual wind generation, wind forecasts, system frequency, fuel breakdown, and net interconnector flows (Moyle, EWIC, Greenlink). The governing licence is the **EirGrid Group Open Data Licence**, which directly authorizes commercial exploitation provided the source is acknowledged with the phrase `"Supported by EirGrid Group Data"`.
-- **SEMO Balancing vs SEMOpx Day-Ahead:**
-  - SEMO balancing market data (system imbalance settlement prices, generator dynamic parameters, physical notifications) is published under standard SEMO transparency rules.
-  - SEMOpx day-ahead and intraday market clearing prices are subject to EPEX SPOT commercial terms. Public D+1 transparency reports are delayed and carry website copyright disclaimers. Real-time consumption or commercial redistribution requires signing a **Data Service Entity (DSE)** interface agreement and paying an annual subscription tariff (~€3,500/year plus technical user fees).
+| Source and official evidence | Contents / access | Licence and commercial position |
+|---|---|---|
+| **ENTSO-E listed open data** — [official legal/support page](https://transparencyplatform.zendesk.com/api/v2/help_center/en-us/articles/40921911218961.json), [free-reuse list, 18 October 2023](https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729) | Listed load forecasts, capacities, scheduled exchanges and physical flows, subject to the exact articles/provider exceptions. See the [current distribution-channel guide](https://transparencyplatform.zendesk.com/hc/en-us/articles/17260622859412-Transparency-Platform-Help-page). | **CC BY 4.0 for listed, non-excluded data**, not every field/provider. Exclusions include IFA/Nemo Link data, specified BritNed/Ukraine items and Moldova/Turkey data. Account/API arrangements are separate from reuse permission. |
+| **ENTSO-E non-listed/excluded data** — [Terms of Use](https://transparencyplatform.zendesk.com/hc/article_attachments/40921869376401) | Day-ahead prices under **article 12.1.d are absent from the free-reuse list**; distinguish them from listed imbalance/balancing prices. | **UNVERIFIED** until the primary owner's rights are checked. Absence from the list is not proof that every owner prohibits all commercial analysis or that a paid vendor agreement is always the only possible permission. |
+| **Elexon Insights / BMRS** — [portal](https://bmrs.elexon.co.uk/), [licence](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/), [OpenAPI](https://data.elexon.co.uk/swagger/v1/swagger.json) | The documented `/generation/outturn/interconnectors` supplies historic **half-hourly** flows; `/reference/interconnectors/all` supplies identifiers. Both were tested under the documented API base. | Commercial reuse is permitted for covered BMRS data, excluding unlicensed third-party rights. Do not conflate half-hourly outturn, instantaneous fuel-type observations and commercial schedules or promise all three at five-minute resolution. |
+| **JAO** — [actual Terms of Use](https://www.jao.eu/terms-conditions) | Auction/platform data; legitimate use includes research and the user's own internal operational, analysis and decision-making purposes. | Internal use is not categorically non-commercial. External commercial exploitation/redistribution beyond permitted uses needs clearance. This is **not** an unrestricted open-data licence. |
+| **Direct operator portals** — e.g. [BritNed](https://www.britned.com/), [ElecLink](https://www.eleclink.co.uk/), [Mutual Energy](https://www.mutual-energy.com/), [Greenlink operations](https://greenlink.ie/operations/) | Operator publications and availability/REMIT links. Greenlink expressly links to Elexon for operational information. | Reuse is **UNVERIFIED per dataset/operator**. A duty to publish does not confer an open licence; an operator website's copyright does not dictate independently licensed Elexon data rights either. |
 
-#### Distribution Networks (ESB Networks & NIE Networks)
-- **NIE Networks (Northern Ireland):** Completely open. NIE Networks operates an Open Data Portal on OpenDataSoft (`nienetworks.opendatasoft.com`) providing GIS shapefiles, GeoJSON, and tabular data for Grid Supply Points, 33/11 kV primary substations, overhead lines, and underground cables under **CC BY 4.0** and **OGL v3.0**. Commercial use is permitted without fee.
-- **ESB Networks (Republic of Ireland):** Mixed. Select datasets (substation locations, public charging) are released on `data.gov.ie` under **CC BY 4.0**. However, full distribution circuit topologies, feeder impedances, and network capacity heatmaps on `esbnetworks.ie` are protected by strict corporate copyright prohibiting commercial reuse without explicit written consent. In Phase 2, representative synthetic feeders (D-37) must be utilized where primary feeder models cannot be licensed.
+### Confirmed Elexon identifier mapping
 
----
+The [live reference endpoint](https://data.elexon.co.uk/bmrs/api/v1/reference/interconnectors/all)
+returned these ten records. A historic query for 2026-11-11, settlement period 1, also succeeded.
+This verifies the interface/mapping, not the completeness of every historic series.
 
-### 2. Weather & Renewables Datasets
+| Link | Identifier |
+|---|---|
+| IFA | `INTFR` |
+| IFA2 | `INTIFA2` |
+| ElecLink | `INTELEC` |
+| BritNed | `INTNED` |
+| Nemo Link | `INTNEM` |
+| North Sea Link | `INTNSL` |
+| Viking Link | `INTVKL` |
+| Moyle | `INTIRL` |
+| East–West / EWIC | `INTEW` |
+| Greenlink | `INTGRNL` |
 
-#### ERA5 and ERA5-Land Reanalysis (Copernicus CDS)
-- **Coverage & Fidelity:** ERA5 provides global hourly reanalysis at 0.25° (~31 km) resolution from 1940 to present. ERA5-Land downscales atmospheric parameters over land to 0.1° (~9 km) from 1950 to present.
-- **Parameters Available:** 10-metre wind speed and direction (`u10`, `v10`), 100-metre wind speed (`u100`, `v100`), 2-metre air temperature (`t2m`), surface solar radiation downwards (`ssrd`), surface thermal radiation downwards (`strd`), surface pressure (`sp`), and total precipitation (`tp`).
-- **Commercial Licensing Terms:** The **Licence to Use Copernicus Products** states:
-  > *"The Licensor grants the Licensee a free of charge, worldwide, non-exclusive, royalty-free and perpetual licence to use the Copernicus Products for any lawful purpose, which includes commercial and non-commercial exploitation, in particular to reproduce, distribute, communicate to the public, adapt, modify and translate, and combine with other datasets or information."*
-- **Compliance Requirement:** User-facing applications and reports must include the notice: `"Contains modified Copernicus Climate Change Service information [Year]"`.
+The previous `INTMOY`/`INTGRN` identifiers were wrong; `INTIRL` was incorrectly assigned to EWIC.
+Elexon's required attribution is “Contains BMRS data © Elexon Limited copyright and database right [year].”
+Preserve the licence link where possible and the licence's conditions on sublicensing/attribution.
+The operator's [Greenlink FAQ](https://www.greenlink.ie/faqs/) gives **500 MW nominal** and
+operation in early 2025; its [summary](https://www.greenlink.ie/summary/) says completion in
+February 2025. These replace the unsourced 504 MW / 2024–2025 statement. Other originally listed
+nameplate capacities/exact commissioning dates are **UNVERIFIED** in this review and are not
+adopted as model inputs. Available transfer capability is not nameplate capacity and can vary
+by direction and interval.
 
-#### Met Office Open Data vs CEDA Archive
-- **Met Office DataHub:** Provides operational forecasts and recent observations via API under terms permitting commercial application development. However, high-volume automated ingestion requires a paid subscription tier under the UK Re-Use of Public Sector Information Regulations 2015.
-- **MIDAS Open:** Published by CEDA under **UK Open Government Licence v3.0 (OGL v3.0)**. Contains hourly weather observations from hundreds of UK mainland and Northern Ireland weather stations. Freely usable in commercial products.
-- **CEDA Full MIDAS Archive:** Strictly prohibited for commercial SaaS. The licence is non-commercial academic research only.
+## Weather and renewable-resource data
 
-#### Renewables.ninja (Blocked) vs In-House Conversion
-- **The Renewables.ninja Restriction:** Renewables.ninja is widely used in academic energy studies, but its data and API are explicitly governed by **CC BY-NC 4.0**. Section 2(a)(1) forbids commercial use. Using Renewables.ninja API feeds inside a commercial SaaS would violate D-17 and D-30.
-- **Permissive Architecture Solution:** Do not call Renewables.ninja. Instead, build an in-house wind and solar conversion module in Rust (or offline Python pipeline) that takes ERA5/ERA5-Land and CAMS solar radiation data and applies open, published physical power curves and solar PV cell temperature equations (e.g. open-source equations used in `atlite`, which is licensed under MIT).
+| Source and official evidence | Coverage / access | Licence and commercial position |
+|---|---|---|
+| **ERA5** — [dataset](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels), [metadata](https://cds.climate.copernicus.eu/api/catalogue/v1/collections/reanalysis-era5-single-levels) | Hourly, 1940–present; global reanalysis. CDS offers a 0.25° regular grid; approximately 31 km is the native atmospheric resolution, not the exact spacing of that grid. | Current catalogue: **CC BY 4.0**. Commercial use is permitted with applicable attribution/change notices. Follow the selected dataset's citation and [current CDS licence](https://cds.climate.copernicus.eu/licences/cc-by). |
+| **ERA5-Land** — [dataset](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land), [metadata](https://cds.climate.copernicus.eu/api/catalogue/v1/collections/reanalysis-era5-land) | Hourly, 1950–present; approximately 9 km native resolution, delivered on a 0.1° grid. | Current catalogue: **CC BY 4.0**. Do not assume ERA5's 100 m wind fields are present in ERA5-Land or accumulated radiation/precipitation has instantaneous-flux units. Check variable and accumulation conventions before conversion. |
+| **Met Office DataHub** — [portal](https://datahub.metoffice.gov.uk/) | Product-specific forecast/observation APIs. | Selected-product commercial rights, quotas, subscription requirements and price are **UNVERIFIED**. A landing page does not verify a free or paid commercial contract. |
+| **MIDAS Open** — [correct CEDA collection](https://catalogue.ceda.ac.uk/uuid/dbd451271eb04662beade68da43546e1/), [example dataset/licence](https://catalogue.ceda.ac.uk/uuid/ec54d5e5288a4ebb8c7ad2a1ef6aec42/) | UK land-surface observations; collection coverage from 1853, varying by variable/version. Updated annually in delayed mode. CEDA registration is required for the checked dataset. | **UK OGL v3.0**; commercially usable with attribution/citation. Check station ownership/geographic coverage in the chosen release rather than assuming all NI stations are included. |
+| **Full MIDAS archive** — see the distinction in the [Open collection record](https://catalogue.ceda.ac.uk/uuid/dbd451271eb04662beade68da43546e1/) | The fuller archive is described as available for academic use; it is not the Open subset. | **Not cleared under MIDAS Open's OGL.** Commercial access needs separate permission; this is not a claim that no separately licensed commercial route can exist. |
+| **Met Éireann / MÉRA** — [licensing](https://www.met.ie/about-us/specialised-services/open-data), [MÉRA description](https://www.met.ie/climate/available-data/mera) | Most datasets are CC BY 4.0; MÉRA is a 2.5 km reanalysis for **1981–August 2019**. Station counts/coverage depend on the dataset. | Commercial reuse of CC BY datasets is permitted with the publisher's attribution statements, disclaimer and modification notice. Some live forecasts have a **custom licence**; exact live-API/weather-warning display conditions are **UNVERIFIED**. |
+| **Renewables.ninja** — [publisher licensing](https://www.renewables.ninja/about) | Simulated wind/solar series; coverage depends on product/weather source. | **CC BY-NC 4.0**, confirmed by the publisher. Commercial use requires separate permission; no blanket 1980–present availability is established here. |
+| **PVGIS** — [JRC manual](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/getting-started-pvgis/pvgis-user-manual_en), [service](https://re.jrc.ec.europa.eu/pvg_tools/en/) | PV estimates, radiation and TMY; source periods vary by database/release. | The manual expressly allows unrestricted use of **results**. The invented long quotation and uniform 2005–present period are removed. Separately downloading upstream source datasets still needs their own terms. |
+| **Global Wind Atlas** — [portal](https://globalwindatlas.info/), [World Bank metadata](https://energydata.info/api/3/action/package_show?id=global-wind-atlas) | Long-term wind-resource layers, not a chronological weather backtest. | Metadata identifies **CC BY 4.0**. Attribute the product; separately check basemap/input rights. Exact current layer resolutions/heights are **UNVERIFIED** in this audit. |
+| **Global Solar Atlas** — [portal](https://globalsolaratlas.info/), [World Bank PVOUT metadata](https://energydata.info/api/3/action/package_show?id=world-photovoltaic-power-potential-pvout-gis-data-global-solar-atlas) | Long-term solar-resource / PV-potential layers. | The checked PVOUT dataset identifies **CC BY 4.0**. Do not extrapolate to every third-party layer or quote portal-wide terms not recovered. Exact resolutions remain **UNVERIFIED**. |
+| **NSRDB** — [current API documentation](https://developer.nlr.gov/docs/solar/nsrdb/), [Meteosat product](https://developer.nlr.gov/docs/solar/nsrdb/nsrdb-msg-v1-0-0-download/), [developer terms](https://developer.nlr.gov/terms/) | Current publisher: **National Laboratory of the Rockies**, formerly NREL. The Meteosat product describes 2017–2019, 4 km, 15-minute data; product-specific API access applies. | Developer terms permit use for any purpose, with non-endorsement, warranty and indemnity conditions. **Not verified as the claimed CC BY 4.0 / CC BY 3.0 US combination.** Check third-party/input terms and the selected product; a TMY extension was not established. |
 
----
+### Copernicus wording and conversion alternatives
 
-### 3. Interconnectors & Cross-Border Data
+The [legacy Licence to Use Copernicus Products, revision 12](https://cds.climate.copernicus.eu/licences/licence-to-use-copernicus-products)
+does not contain the former document's purported verbatim commercial-use sentence. Clause 4.2
+instead grants access for “any purpose in so far as it is lawful”. That supports commercial use,
+but current ERA5/ERA5-Land catalogue entries identify **CC BY 4.0**. Do not replace their current
+citation obligations with the old modified-Copernicus notice alone.
 
-#### Complete GB Interconnector Coverage via Elexon BMRS
-GB has 10 operational or commissioning high-voltage DC/AC interconnectors:
-1. **IFA:** 2,000 MW (GB ↔ France), COD 1986
-2. **IFA2:** 1,000 MW (GB ↔ France), COD 2021
-3. **ElecLink:** 1,000 MW (GB ↔ France via Channel Tunnel), COD 2022
-4. **BritNed:** 1,000 MW (GB ↔ Netherlands), COD 2011
-5. **Nemo Link:** 1,000 MW (GB ↔ Belgium), COD 2019
-6. **NSL (North Sea Link):** 1,400 MW (GB ↔ Norway), COD 2021
-7. **Viking Link:** 1,400 MW (GB ↔ Denmark), COD 2023
-8. **Moyle:** 500 MW (GB/Scotland ↔ Northern Ireland), COD 2002
-9. **EWIC:** 500 MW (GB/Wales ↔ Republic of Ireland), COD 2012
-10. **Greenlink:** 504 MW (GB/Wales ↔ Republic of Ireland), COD 2024/2025
+Computing renewable profiles from appropriately licensed weather inputs avoids Renewables.ninja's
+non-commercial data licence. This is an option, not a new architecture decision. Conversion
+software, power curves, CAMS products and other inputs need separate provenance/licence checks;
+the prior blanket claim that all suggested alternatives are cleared is **UNVERIFIED**.
 
-- **Primary Source:** **Elexon Insights Solution (BMRS)** collects and publishes metered physical flow and scheduled commercial transfers for every single one of these links at 5-minute and half-hourly resolution.
-- **Licence Terms:** Elexon BMRS Open Data Licence explicitly permits commercial use.
-- **Attribution Statement:** `"Contains BMRS data © Elexon Limited copyright and database right [Year]"`.
+## Exchange rates: EUR/GBP (D-38)
 
-#### Capacity Allocations (JAO vs ENTSO-E)
-- **JAO:** The Joint Allocation Office conducts long-term, daily, and intraday explicit capacity auctions across European borders. JAO platform data terms restrict public data to academic/internal use. Commercial redistribution requires a commercial licence.
-- **ENTSO-E Transparency Platform:** Net Transfer Capacity (NTC), Offered Transfer Capacity, physical flow, and commercial schedules for interconnectors are mirrored on ENTSO-E TP under **CC BY 4.0** on the *List of Data Available for Free Re-Use*, offering a clean open alternative for historical capacity availability.
+| Source and official evidence | Access / interpretation | Licence and commercial position |
+|---|---|---|
+| **ECB reference rates** — [rates/timing](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html), [reuse conditions](https://www.ecb.europa.eu/services/disclaimer/html/index.en.html) | Normally updated around 16:00 CET on working days except TARGET closing days; quoted against EUR. Use dated observations/explicit units, not an unspecified spot-price proxy. | Reuse is permitted subject to accuracy/source acknowledgement. For information incorporated into sold documents/subscriptions, users must be told it is available free from the ECB. The source-credit-only summary omitted this condition. |
+| **Bank of England database** — [database](https://www.bankofengland.co.uk/boeapps/database/), [actual legal terms](https://www.bankofengland.co.uk/legal) | Daily series include `XUDLSER`. Preserve the official description/units and check conversion direction before mixing it with ECB rates. | Database reproduction generally falls under **OGL v3.0**, **but selected third-party exchange-rate series are excluded**. The exact chosen series' clearance is **UNVERIFIED** until its notes/ownership are checked; blanket open-FX clearance is withdrawn. |
 
----
+## Verification
 
-### 4. Exchange Rates (EUR/GBP)
+**Date: 2026-11-12.** Every substantive claim in the original 26 catalogue rows, summaries,
+category analyses and source list was reviewed. Repeated unsupported claims were removed rather
+than treated as independently verified facts. Publisher pages, metadata, actual OpenAPI responses
+and the TYTFS/GCS/ENTSO-E PDFs were inspected. Access limitations are not interpreted as licence bans.
 
-Per decision **D-38**, the simulator computes dispatch and clearing in native currencies (GBP in Great Britain, EUR in the Single Electricity Market) and uses daily exchange rates for cross-border flows.
-- **European Central Bank (ECB):** Publishes the official Euro foreign exchange reference rates daily at approximately 16:00 CET. Distributed under the ESCB statistics reuse policy (free for commercial and non-commercial use with citation). Automated ingestion via SDMX REST API.
-- **Bank of England (BoE):** Publishes daily spot exchange rates (series `XUDLSER`) under the UK Open Government Licence v3.0. Indicative spot rates derived from London interbank market observations. Freely usable in commercial products with citation.
+### Changes made
 
----
+1. Replaced nonexistent EirGrid, licence, SEMO, SEMOpx, Met Éireann and Elexon paths with actual
+   publisher pages. Corrected the MIDAS UUID, which returned **no records despite HTTP 200**,
+   and the nonexistent Greenlink host. The old NREL hosts failed; current NLR evidence is linked.
+2. Confirmed TYTFS/GCS restrictions against the PDFs, corrected TYTFS statutory references and
+   separated publication rights from **UNVERIFIED** workbook/model reuse rights.
+3. Removed fabricated SEMO copyright wording and unsupported SEMOpx DSE/fee assertions; the
+   group open-data licence expressly names SEMO/SEMOpx, subject to its scope and exclusions.
+4. Added ENTSO-E's **IFA/Nemo Link and other exclusions**. Confirmed that day-ahead prices are
+   not on the list without inventing a blanket commercial-use prohibition for every owner.
+5. Corrected BMRS identifiers, EWIC/Moyle mapping and universal five-minute flow/schedule claims.
+   Tested reference/half-hourly-flow APIs. Corrected Greenlink's nominal-capacity/timing description;
+   other unconfirmed capacities and commissioning dates are flagged rather than adopted.
+6. Changed ERA5/ERA5-Land to **current CC BY 4.0**, removed the fabricated legacy quotation and
+   separated native resolution, delivered grid spacing and variable availability.
+7. Confirmed Renewables.ninja's restriction, MIDAS Open's OGL/account requirement, Met Éireann's
+   mixed licensing, PVGIS results use and checked atlas licences; narrowed unverified coverage claims.
+8. Withdrew the unsupported ESB open-catalogue and NSRDB CC claims; qualified NIE coverage and
+   basemap rights. Corrected NSRDB publisher/host and narrowed product coverage.
+9. Added ECB's sold-document disclosure and the Bank of England's FX exclusion. Removed invented
+   combined quotations and universal access/coverage assertions throughout.
 
-## Sources Checked
+### Outstanding admission checks
 
-All official sources accessed and verified on **2026-11-12**:
-1. EirGrid Smart Grid Dashboard: `https://www.smartgriddashboard.com`
-2. EirGrid Group Open Data Licence: `https://www.smartgriddashboard.com/open-data-licence`
-3. EirGrid System Data Downloads: `https://www.eirgrid.ie/grid/system-data`
-4. EirGrid Ten Year Transmission Forecast Statement: `https://www.eirgrid.ie/grid/transmission-system-forecasts`
-5. EirGrid Generation Capacity Statement: `https://www.eirgrid.ie/grid/generation-capacity-statement`
-6. Single Electricity Market Operator (SEMO): `https://www.sem-o.com` and `https://www.sem-o.com/disclaimer-terms-of-use/`
-7. SEMOpx Market Rules & Data Publication Guide: `https://www.semopx.com/rules-and-education/market-rules/data-publication-guide/`
-8. ESB Networks Official Portal & Disclaimers: `https://www.esbnetworks.ie`
-9. Ireland National Open Data Portal (ESB Networks catalogue): `https://data.gov.ie/organization/esb-networks`
-10. NIE Networks Open Data Portal: `https://nienetworks.opendatasoft.com`
-11. ENTSO-E Transparency Platform & Legal Terms: `https://transparency.entsoe.eu`
-12. ENTSO-E List of Data Available for Free Re-Use (CC BY 4.0): `https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html`
-13. Elexon Insights Solution (BMRS) & BMRS Open Data Licence: `https://data.elexon.co.uk` and `https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/bmrs-open-data-licence/`
-14. Joint Allocation Office (JAO) Platform Terms & Conditions: `https://www.jao.eu`
-15. National Grid Interconnectors: `https://www.nationalgrid.com/national-grid-ventures/interconnectors-connecting-cleaner-future`
-16. BritNed Terms & Empire API: `https://www.britned.com`
-17. Copernicus Climate Data Store (ECMWF) Licence to Use Copernicus Products: `https://cds.climate.copernicus.eu`
-18. UK Met Office Weather DataHub Terms of Use: `https://datahub.metoffice.gov.uk`
-19. CEDA Archive Met Office MIDAS Open (OGL v3.0): `https://catalogue.ceda.ac.uk/uuid/dbd451271eb04662beade68da1591372`
-20. Met Éireann Open Data Portal & Licensing Terms: `https://www.met.ie/open-data`
-21. Renewables.ninja Terms of Use & Licensing: `https://www.renewables.ninja`
-22. European Commission JRC PVGIS Usage Conditions: `https://re.jrc.ec.europa.eu/pvg_tools/en/`
-23. Global Wind Atlas Terms of Use: `https://globalwindatlas.info`
-24. Global Solar Atlas Terms of Use: `https://globalsolaratlas.info/support/terms-of-use`
-25. NREL NSRDB Open Data Catalog: `https://nsrdb.nrel.gov`
-26. European Central Bank ESCB Statistics Reuse Policy: `https://data.ecb.europa.eu`
-27. Bank of England Database Terms & Open Government Licence: `https://www.bankofengland.co.uk/boeapps/database/`
+- **UNVERIFIED:** commercially permissive, complete all-island transmission parameters; conflicting
+  group-licence/publication notices need documented provider clarification.
+- **UNVERIFIED:** SEMO/SEMOpx report/feed rights, any commercial contract/tariff and current
+  market-time-unit coverage; infer neither a DSE requirement nor unrestricted reuse.
+- **UNVERIFIED:** the claimed ESB collection/full feeders, untested dashboard API/archive coverage,
+  direct-operator rights and any field/resolution expressly flagged in the tables.
+- **UNVERIFIED:** DataHub product rights, Met Éireann custom live-forecast conditions, exact BoE
+  FX-series ownership and separately suggested renewable-conversion tools/inputs.
+- IFA, Nemo Link, NSL, Viking Link and National Grid pages returned **403** during the original
+  URL pass. That is an access observation, not evidence of their data licences.
+
+**Verdict: merge after fixes made**, as a qualified research catalogue. This does **not** clear
+the outstanding sources for commercial ingestion or resolve the D-31/D-32 network-data gate.

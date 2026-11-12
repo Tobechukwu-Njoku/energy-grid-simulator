@@ -1,205 +1,273 @@
 # Software Dependency Licences & Hardware Platform Compatibility
 
-_Last updated: 2026-11-12. Access date for all sources: 2026-11-12._
+_Reviewed: 2026-11-12. Versions are stable releases observed on that date, not dependency pins._
 
-## Summary
+## Scope and conclusions
 
-This evaluation audits third-party software dependencies, mathematical solvers, frontend visualisation libraries, and compute hardware architectures against the architectural and business constraints of the GB + Ireland electricity grid and market simulator:
-- **D-17:** Future commercial SaaS product (multi-tenant, closed-source cloud deployment).
-- **D-20:** Rust is the primary language wherever code is needed.
-- **D-42:** Lab hardware baseline: GTX 1080 Ti (Pascal), Quadro RTX 4000 (Turing), with planned consolidation to RTX 5060 Ti 16 GB (Blackwell).
+This supports **D-17** (commercial SaaS), **D-20** (Rust), **D-42** (hardware) and the **D-3
+PostgreSQL 18 + Redis baseline**. It does not accept an ADR, replace the owner's Redis decision
+or certify an unbuilt application's complete dependency graph.
 
-### What is Permitted for a Closed-Source Commercial SaaS
-1. **Rust Core Ecosystem:** Every single selected Rust crate (`highs`, `clarabel`, `faer`, `good_lp`, `nalgebra-sparse`, `sqlx`, `axum`, `tonic`, `polars`, `datafusion`, `arrow`) and the underlying HiGHS C++ solver is licensed under either **MIT** or **Apache-2.0** (or dual MIT/Apache-2.0). All allow unconditional inclusion in closed-source commercial SaaS binaries and cloud services without copyleft risk.
-2. **In-Memory Caching & State:** **Valkey 9.1.3** is licensed under **BSD-3-Clause** (under Linux Foundation governance) and provides a completely clean, drop-in replacement for Redis with zero SaaS restrictions or license uncertainty.
-3. **Database Architecture:**
-   - **PostgreSQL 18** is licensed under the permissive **PostgreSQL Licence** (SPDX: `PostgreSQL`).
-   - **PostGIS 3.7.0** is licensed under **GPL-2.0-or-later**. Because our architecture is a server-side SaaS (D-17) accessed over network APIs, running PostGIS inside the backend database server does not trigger GPL distribution obligations.
-   - **TimescaleDB 2.31.0** is split between Apache-2.0 (core hypertables) and Timescale License (TSL). TSL explicitly authorizes free commercial use to power proprietary SaaS applications, provided the software is not resold as a managed Database-as-a-Service (DBaaS) to third parties.
-4. **Solvers (Open & Weak Copyleft):**
-   - **HiGHS v1.16.0** is fully permissive under **MIT**.
-   - **Clarabel 0.11.1** is fully permissive under **Apache-2.0**.
-   - **Ipopt 3.14.20** is licensed under **EPL-2.0** (weak file-level copyleft). Network SaaS execution does not trigger redistribution.
-   - **SuiteSparse KLU v7.14.1** is licensed under **LGPL-2.1+**. Network SaaS execution does not trigger dynamic linking or relinking requirements.
-   - **NVIDIA cuDSS v1.0.0** is licensed under the **NVIDIA Math Libraries SLA**, allowing royalty-free deployment and dynamic library runtime distribution.
-5. **Frontend Geospatial Visualisation:** Both **MapLibre GL JS 6.18.0** (**BSD-3-Clause**) and **deck.gl 9.4.1** (**MIT**) are completely permissive for commercial SaaS web clients.
+- All **11 named Rust crate versions and SPDX expressions were confirmed on crates.io**.
+  Direct-package licences are permissive; optional/native/transitive dependencies still need review.
+- **TimescaleDB is now 2.32.0**, not 2.31.0. PostgreSQL 18 support really began in 2.23.0.
+  Apache-2.0 and Timescale-licensed portions are distinct, not a free choice for every feature.
+- **Redis 8.10.3** offers RSALv2, SSPLv1 or AGPLv3. It is **not categorically forbidden in a
+  proprietary application SaaS**. Licence choice, boundaries and modifications matter.
+  **Valkey 9.1.3** has a BSD-3-Clause core and avoids Redis's service/copyleft conditions, but
+  changing the baseline needs an owner decision and compatibility validation.
+- PostGIS's GPL does not itself require publishing a separate SaaS application merely because
+  the database is accessed over a network. Distribution is a separate assessment.
+- cuOpt's open **solver implementation**, not just interfaces, is Apache-2.0. A paid enterprise
+  subscription is not a blanket prerequisite for self-hosting that code.
+- Current Gurobi terms include a **qualified value-added hosting exception**. Neither a universal
+  SaaS ban nor mandatory ISV-plus-WLS deployment is supported by those terms.
+- CUDA 13 drops **offline compilation targets below capability 7.5**. Previously compiled Pascal
+  applications do not necessarily stop running.
+- The **RTX 5060 Ti FP64:FP32 arithmetic-throughput ratio is 1:64**, supported by NVIDIA's
+  documentation. It does **not** prove that a CPU is faster for a particular sparse solve.
 
-### What is Blocked or Requires Commercial Clearance / Caution
-1. **Redis 8 Licensing Traps:** Redis Ltd moved from BSD-3-Clause to a dual RSALv2 / SSPLv1 model in March 2024, and subsequently introduced AGPLv3 in Redis 8. 
-   - **AGPLv3** enforces strong network copyleft: any modifications served over a network must be open-sourced under AGPLv3.
-   - **RSALv2 / SSPLv1** are source-available and non-OSI compliant, restricting managed services.
-   - **Recommendation:** Do not use Redis 8. Standardize on **Valkey 9** (BSD-3-Clause) across all infrastructure.
-2. **Commercial MIP Solvers (Gurobi & FICO Xpress):** Standard named-user or single-machine commercial licenses strictly prohibit SaaS hosting, multi-tenant access, and embedding. Running Gurobi in cloud containers requires an **ISV / OEM Agreement** with **Web License Service (WLS)** token pools. FICO Xpress Community Edition has an unviable 5,000-variable ceiling, and production SaaS requires an OEM distribution license.
-3. **Ipopt Linear Solver Hidden Dependencies:** The core Ipopt code is EPL-2.0, but using proprietary linear solvers such as **HSL (MA27/MA57)** requires expensive commercial licenses from STFC/UKRI. Production SaaS builds of Ipopt should be compiled against open solvers: **MUMPS** (CeCILL-C) or **SPRAL** (BSD-3-Clause).
-4. **CUDA 13 Architecture Drop (Pascal GTX 1080 Ti):** CUDA 13 officially **drops support for the Pascal architecture** (Compute Capability 6.0/6.1). The lab's GTX 1080 Ti 11 GB cannot be targeted by CUDA 13. The Quadro RTX 4000 (Turing, CC 7.5) is the absolute minimum supported GPU architecture in CUDA 13.
-5. **RTX 5060 Ti FP64 Throughput Ratio (1:64):** Consumer Blackwell GPUs (including the planned RTX 5060 Ti 16 GB) have a severely restricted double-precision throughput ratio of **1:64** relative to single-precision (FP32). Numerically sensitive AC optimal power flow (ACOPF) algorithms requiring FP64 sparse Cholesky/LU factorizations will execute faster on the multi-core AMD Ryzen 9 5900X CPU (AVX2) than on the GPU. GPU acceleration on RTX 5060 Ti must be reserved for FP32/mixed-precision algorithms (e.g. PDHG for LP, batch Monte Carlo, spatial rendering).
+**UNVERIFIED** identifies an outstanding check, not permission to ship. This is an engineering
+inventory; actual use must satisfy the applicable licence/contract.
 
----
+## Databases and cache
 
-## Dependency Master Catalogue
+| Component | Stable version observed | Licence | Commercial application-SaaS position and evidence |
+|---|---|---|---|
+| **PostgreSQL** | **18.7** in the selected 18 major line | `PostgreSQL` | Permissive. [Version policy](https://www.postgresql.org/support/versioning/) lists 18.7, released 2026-11-12; not `18.0 (minor 18.7)`. [Licence](https://www.postgresql.org/about/licence/). |
+| **PostGIS** | **3.7.0** | `GPL-2.0-or-later` | Suitable for server-side SaaS; comply with GPL if covered software is conveyed. [Release](https://postgis.net/2026/10/PostGIS-3.7.0/), [COPYING](https://raw.githubusercontent.com/postgis/postgis/3.7.0/COPYING), [source notice](https://raw.githubusercontent.com/postgis/postgis/3.7.0/liblwgeom/lwgeom_geos.c). |
+| **TimescaleDB** | **2.32.0**, published 2026-11-12; changelog dated 2026-11-11 | Apache-2.0 portions plus **Timescale License (TSL)** portions; not a licence choice for all code | Qualifying value-added application SaaS is permitted; managed DBaaS/interface exposure is restricted. [Release](https://github.com/timescale/timescaledb/releases/tag/2.32.0), [boundary](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/LICENSE), [TSL](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/tsl/LICENSE-TIMESCALE). |
+| **Redis** | **8.10.3** | Choice of **RSALv2 / SSPLv1 / AGPLv3** | Conditional, not prohibited merely because the application is commercial. [Release](https://github.com/redis/redis/releases/tag/8.10.3), [licence](https://raw.githubusercontent.com/redis/redis/8.10.3/LICENSE.txt), [official guide](https://redis.io/legal/licenses/). |
+| **Valkey** | **9.1.3**; maintenance tags **8.1.11 / 8.0.12** also confirmed | Core `BSD-3-Clause`; bundled-code notices also apply | Permissive commercial service use. [Stable release](https://github.com/valkey-io/valkey/releases/tag/9.1.3), [COPYING](https://raw.githubusercontent.com/valkey-io/valkey/9.1.3/COPYING), [releases](https://github.com/valkey-io/valkey/releases). **9.2.0-rc2 is a prerelease**, not the stable recommendation. |
 
-| Category | Dependency / Library | Official Version (as of 2026-11-12) | Official Licence & SPDX ID | Usable in Closed Commercial SaaS? | Notable Licensing Details & Operational Constraints |
-|---|---|---|---|---|---|
-| **Database** | **PostgreSQL** | `18.0` (minor 18.7) | PostgreSQL Licence (`PostgreSQL`) | **Yes** | Permissive open-source license. Native async I/O subsystem (AIO), native `uuidv7()`, virtual generated columns, and OAuth 2.0 authentication. |
-| **Database** | **PostGIS** | `3.7.0` | GNU General Public License v2.0 or later (`GPL-2.0-or-later`) | **Yes** (Server-side SaaS only) | GPL-2.0 is triggered by binary distribution to third parties, not by network access over an API. Safe for closed-source SaaS hosted on backend cloud infrastructure. Client desktop binaries must not link PostGIS. |
-| **Database** | **TimescaleDB** | `2.31.0` | Dual: Apache-2.0 (`Apache-2.0`) & Timescale License (`TSL`) | **Yes** (Application SaaS only) | Fully supports PostgreSQL 18 since v2.23. TSL explicitly permits free commercial SaaS use where TimescaleDB powers an application. Prohibits offering TimescaleDB as a managed DBaaS. Continuous aggregates, columnar compression, and data retention policies require TSL (`SHOW timescaledb.license` = `timescale`). |
-| **In-Memory** | **Redis 8** | `8.0.x` / `8.2.x` | Tri-license: `RSALv2` / `SSPLv1` / `AGPLv3` | **Caution / Not Recommended** | Redis Ltd abandoned BSD-3-Clause. AGPLv3 imposes strong network copyleft if modified. RSALv2 and SSPLv1 are source-available. |
-| **In-Memory** | **Valkey** | `9.1.3` (also 8.1.11, 8.0.12) | 3-Clause BSD License (`BSD-3-Clause`) | **Yes** (Recommended) | Official Linux Foundation fork of Redis. Clean BSD-3-Clause open-source governance. Complete drop-in wire compatibility with Redis 7/8 protocols. |
-| **Rust Crates** | **highs** | `2.4.0` | `MIT` | **Yes** | Safe Rust bindings to HiGHS linear programming solver. Safe for proprietary SaaS. |
-| **C++ Solver** | **HiGHS** (solver engine) | `v1.16.0` | `MIT` | **Yes** | High-performance C++ solver for LP, MILP, and QP developed at University of Edinburgh (ERGO). Permissive commercial re-use without royalties. |
-| **Rust Crates** | **clarabel** | `0.11.1` | `Apache-2.0` | **Yes** | Pure Rust interior-point conic optimization solver (LP, QP, SOCP, exponential cones). Permissive commercial re-use. |
-| **Rust Crates** | **faer** | `0.24.4` | `MIT` | **Yes** | Pure Rust high-performance dense and sparse linear algebra library (Cholesky, LU, QR, SVD, EVD). Permissive commercial re-use. |
-| **Rust Crates** | **good_lp** | `1.15.3` | `MIT` | **Yes** | Mixed Integer Linear Programming modeling abstraction in Rust supporting backends: HiGHS, Clarabel, CBC, GLPK, SCIP, Cplex. |
-| **Rust Crates** | **nalgebra-sparse** | `0.12.0` | `Apache-2.0` | **Yes** | CSR, CSC, and COO sparse matrix formats and arithmetic extending the `nalgebra` ecosystem. |
-| **Rust Crates** | **sqlx** | `0.9.0` | `MIT OR Apache-2.0` | **Yes** | Async, pure-Rust SQL toolkit with compile-time checked queries for PostgreSQL. Dual permissive license. |
-| **Rust Crates** | **axum** | `0.8.9` | `MIT` | **Yes** | Ergonomic, modular async web application framework built on Tokio, Tower, and Hyper. Permissive commercial re-use. |
-| **Rust Crates** | **tonic** | `0.14.9` | `MIT` | **Yes** | Production gRPC client and server library over HTTP/2 and Tower. Permissive commercial re-use. |
-| **Rust Crates** | **polars** | `0.55.2` | `MIT` | **Yes** | Blazingly fast multi-threaded DataFrame library utilizing Arrow in-memory format and SIMD vectorization. Permissive commercial re-use. |
-| **Rust Crates** | **datafusion** | `55.2.0` | `Apache-2.0` | **Yes** | In-memory distributed SQL query engine and analytical dataframe framework based on Apache Arrow. Permissive commercial re-use. |
-| **Rust Crates** | **arrow** (arrow-rs) | `60.1.0` | `Apache-2.0` | **Yes** | Official Rust implementation of the Apache Arrow columnar memory model and computational kernels. Permissive commercial re-use. |
-| **Solvers / Libs** | **Ipopt** | `3.14.20` | Eclipse Public License 2.0 (`EPL-2.0`) | **Yes** (Server-side SaaS only) | Interior Point Optimizer for large-scale non-linear optimization. Weak file-level copyleft; network execution in SaaS does not trigger source distribution. Underlying linear solvers must be checked: MUMPS (CeCILL-C) or SPRAL (BSD) are permissible; HSL (MA27/MA57) requires commercial licensing. |
-| **Solvers / Libs** | **SuiteSparse KLU** | `v7.14.1` (KLU component) | GNU Lesser General Public License v2.1+ (`LGPL-2.1+`) | **Yes** (Server-side SaaS only) | Sparse direct LU solver optimized for circuit and power network matrices. LGPL-2.1 does not trigger over network execution in SaaS. If client binaries are distributed, dynamic linking (`libklu.so`) is required. Dual commercial licensing available from authors. |
-| **Solvers / Libs** | **NVIDIA cuDSS** | `v1.0.0` (GA) | NVIDIA Math Libraries SDK SLA | **Yes** (On NVIDIA hardware) | Direct sparse linear solver for NVIDIA GPUs. Proprietary royalty-free license for application development and deployment on NVIDIA hardware. Dynamic runtime libraries (`libcudss.so`) may be redistributed. Bundles AMD/COLAMD (BSD) and METIS (Apache-2.0). |
-| **Solvers / Libs** | **NVIDIA cuOpt** | `26.10` (container `26.10.0`) | Dual: `Apache-2.0` (repo) / NVIDIA AI Enterprise (NVAIE) SLA | **Yes** (Open repo Apache-2.0; NVAIE fee for enterprise) | Open-source Python/C++ interfaces on GitHub are Apache 2.0. Production microservices (NIM) and enterprise container images require NVIDIA AI Enterprise subscription per GPU. |
-| **Solvers / Libs** | **Gurobi** | `14.0` (`gurobipy` 14.0.0; maintenance 13.0.3) | Proprietary Commercial EULA | **Restricted** (Requires ISV / WLS agreement) | Standard commercial licenses forbid SaaS hosting or embedding. SaaS deployment requires an ISV/OEM partnership and Web License Service (WLS) token pools connecting via outbound HTTPS (`token.gurobi.com`). |
-| **Solvers / Libs** | **FICO Xpress** | `10.0` | Proprietary Commercial EULA | **Restricted** (Requires OEM agreement) | Commercial MIP/NLP solver suite. Free Community Edition has a hard ceiling of 5,000 variables and constraints. Commercial SaaS embedding requires an OEM partner agreement with FICO. |
-| **Visualisation** | **MapLibre GL JS** | `6.18.0` | 3-Clause BSD License (`BSD-3-Clause`) | **Yes** | Permissive open-source fork of Mapbox GL JS v1. No telemetry, no token fees, full commercial SaaS compatibility. |
-| **Visualisation** | **deck.gl** | `9.4.1` | `MIT` | **Yes** | High-performance WebGL2/WebGPU spatial data visualization suite under Linux Foundation / UCF. Permissive commercial re-use. |
+### TimescaleDB: PG18, feature boundary and SaaS
 
----
+The [changelog](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/CHANGELOG.md)
+records full PostgreSQL 18 support in **2.23.0 (2025-10-29)**. Release 2.32.0 is the current
+source checked here; its [build-version guard](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/CMakeLists.txt) accepts PG18. The [compatibility docs](https://docs.tigerdata.com/self-hosted/latest/upgrades/upgrade-pg/)
+also identify PG18-compatible releases. A particular Docker tag, Linux package or extension
+binary remains **UNVERIFIED** until checked; do not infer `2.31.0-pg18` artifact availability.
 
-## Detailed Component Analysis
+| Feature | Licence boundary verified from release-pinned source |
+|---|---|
+| Core hypertables / ordinary chunk operations | Apache-2.0: [hypertables](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/src/hypertable.c), [chunks](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/src/chunk.c). Manual chunk dropping is not automated retention policy. |
+| Basic `time_bucket()` | Apache-2.0: [implementation](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/src/time_bucket.c). |
+| Continuous aggregates | TSL: [materialization](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/tsl/src/continuous_aggs/materialize.c). |
+| Native compression / columnstore implementation | TSL: [compression API](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/tsl/src/compression/api.c). No guaranteed compression percentage/speedup is inferred. |
+| Automated retention policies | TSL: [retention API](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/tsl/src/bgw_policy/retention_api.c). |
+| Toolkit hyperfunctions | A **separate extension/repository** with its own [licence](https://raw.githubusercontent.com/timescale/timescaledb-toolkit/main/LICENSE). Do not treat all hyperfunctions as bundled core or assume identical terms for every function. |
+| Tiering / cloud-product features | Availability and terms in a selected self-hosted/community build are **UNVERIFIED**. Blanket community availability is not established. |
 
-### 1. Database & In-Memory Storage
+The [TSL](https://raw.githubusercontent.com/timescale/timescaledb/2.32.0/tsl/LICENSE-TIMESCALE)
+has separate internal-use and **Value Added Products or Services** grants. Section 2.1(a)'s
+internal-use grant excludes exposing DDL/DML interfaces to outsiders, including through wrappers.
+The value-added grant in 2.1(b), with definition 3.10, permits qualifying application services:
+they must add substantial non-database value, not primarily offer database storage/operations,
+and prohibit customers from changing database schemas/structural objects, technically or
+contractually. Customer-notice, distribution and other conditions also apply. The vendor's
+[explanation](https://www.tigerdata.com/legal/licenses) distinguishes application use from hosted
+DBaaS. **Our energy SaaS is not DBaaS**, as specified for this review, but must meet these
+conditions. TSL does **not** give a blanket right to offer managed Timescale databases;
+“the sole restriction is resale” was inadequate.
 
-#### PostgreSQL 18 & TimescaleDB Compatibility
-- **PostgreSQL 18 Release Status:** Released September 25, 2025; active support runs to November 2030. Key additions include the asynchronous I/O subsystem (AIO), native `uuidv7()` functions, and virtual generated columns.
-- **TimescaleDB PG18 Support:** TimescaleDB officially introduced PostgreSQL 18 support in the **TimescaleDB 2.23** release series. The latest version (**2.31.0**) fully supports PostgreSQL 18 on Linux (Debian, Ubuntu, RHEL/EL9) and official Docker containers (`timescale/timescaledb:2.31.0-pg18`).
-- **Timescale License (TSL) vs Apache 2.0 Feature Breakdown:**
-  - **Apache 2.0 Core Features:** Basic hypertables, automatic table chunking, standard time-series SQL manipulation, chunk boundary indexing, basic `time_bucket()` functionality.
-  - **Timescale License (TSL) Community Features:**
-    1. *Native Columnar Compression:* Typically yields 90%+ disk compression and accelerates analytical time-range queries.
-    2. *Continuous Aggregates:* Real-time, materialized, self-invalidating rollups for high-resolution operational data.
-    3. *Data Retention Policies:* Automatic deletion and chunk dropping based on age.
-    4. *Downsampling & Data Tiering:* Automated movement between storage tiers.
-    5. *Hyperfunctions:* Statistical percentiles, time-weighted averages, financial candlestick aggregations, and state transition counters.
-- **SaaS Permissibility:** Under the Timescale License, running TimescaleDB community features to power a commercial SaaS application (such as an energy market simulation platform) is **completely free and legally permitted**. The sole restriction is that the licensee cannot offer TimescaleDB itself as a managed Database-as-a-Service (DBaaS) to third parties.
+### Redis versus Valkey for commercial SaaS
 
-#### PostGIS 3.7.0 & GPLv2 Boundary
-- PostGIS 3.7.0 is licensed under **GPL-2.0-or-later**.
-- In an application where PostGIS is installed as a PostgreSQL extension on a hosted backend server, end users interact only over HTTP/REST, gRPC, or WebSocket network connections. Under copyright law and the Free Software Foundation's interpretation, **GPLv2 does not consider network access to constitute "distribution"**. Therefore, copyleft is not triggered, and closed-source proprietary code in the SaaS backend does not need to be published.
-- *Warning:* If client-side desktop software or on-premises binaries embedding PostGIS are ever distributed to customers, full GPL source code disclosure would be triggered. For D-17 (cloud SaaS), this constraint is satisfied.
+Redis 7.2 and earlier BSD licensing, Redis 7.4's RSAL/SSPL change and Redis 8's added AGPL option
+are separate version-specific facts. Do not apply today's licence retroactively to every older
+release. For Redis 8, document **one applicable licence path**:
 
-#### Redis 8 Pivot vs Valkey 9
-- In March 2024, Redis Ltd abandoned the BSD-3-Clause license for future releases (starting with 7.4 and Redis 8), adopting a dual RSALv2 / SSPLv1 model, and subsequently adding AGPLv3 in Redis 8.
-  - **RSALv2:** Non-OSI compliant source-available license. Permitted for internal application caching, but prohibited if any managed cache service is offered.
-  - **AGPLv3:** OSI-compliant copyleft, but Section 13 mandates that anyone running a modified version over a network must provide complete source code to all network users.
-- **Resolution:** Migrate completely to **Valkey 9.1.3**. Valkey was created by the original Redis core maintainers under the Linux Foundation and remains permanently licensed under the permissive **3-Clause BSD License (`BSD-3-Clause`)**. It is 100% wire-compatible with Redis clients (e.g. `redis-rs` in Rust).
+- **AGPLv3:** a separately running Redis does not automatically relicense an independently
+  communicating application. Conveying covered software entails distribution obligations;
+  [section 13](https://www.gnu.org/licenses/agpl-3.0.html) additionally requires a source offer to
+  remote users interacting with a modified covered program. Assess modifications, combined
+  works and service users; “every SaaS must publish everything” is incorrect.
+- **RSALv2:** [limitations](https://redis.io/legal/rsalv2-agreement/) restrict offering Redis
+  functionality to third parties as a service/in distributed form, including products whose value
+  primarily derives from Redis or accomplishes its primary purpose. This is broader than selling
+  something labelled DBaaS. A private simulator cache is not automatically such a service;
+  assess the actual boundary.
+- **SSPLv1:** service-source conditions can apply when offering the program's functionality as a
+  service. It is not a permissive substitute for assessing architecture; Redis's release licence
+  and official guide link the governing text.
+- **Valkey:** the BSD-3-Clause core has no equivalent AGPL network-source or Redis service-use
+  condition. Preserve notices and audit bundled code/modules. Protocol ancestry does **not**
+  prove compatibility with all Redis 8 commands, modules and features.
 
----
+**Position:** Valkey is the simpler permissive alternative; Redis 8 remains possible for
+commercial application SaaS under an appropriate, complied-with licence. This does **not** adopt
+Valkey or override **D-3**. Resolve the Redis assessment or obtain an owner-approved replacement
+decision before implementation.
 
-### 2. Rust Ecosystem Crates
+### PostGIS and copyleft boundaries
 
-All audited Rust crates were queried directly against the official `crates.io` registry on 2026-11-12:
+PostGIS's GPL is not AGPL: running the database on our servers and returning API results does
+not trigger a network-source requirement. The [GPL FAQ](https://www.gnu.org/licenses/gpl-faq.html)
+distinguishes internal use, distribution and separate-program communication. Distributing
+PostGIS, modifications or combined GPL-covered software entails separate obligations. A frontend
+querying a backend is not linking PostGIS into a distributed proprietary binary. Neither “GPL
+is forbidden for SaaS” nor “server use makes all distributions safe” is accurate.
 
-```
-highs            2.4.0   MIT
-clarabel         0.11.1  Apache-2.0
-faer             0.24.4  MIT
-good_lp          1.15.3  MIT
-nalgebra-sparse  0.12.0  Apache-2.0
-sqlx             0.9.0   MIT OR Apache-2.0
-axum             0.8.9   MIT
-tonic            0.14.9  MIT
-polars           0.55.2  MIT
-datafusion       55.2.0  Apache-2.0
-arrow            60.1.0  Apache-2.0
-```
+## Rust crates: registry-verified versions and licences
 
-- **Compliance Assessment:** Every crate in the simulation pipeline is covered by either **MIT** or **Apache-2.0**. Both licenses are permissive, grant explicit patent licenses (Apache-2.0), allow commercial exploitation in proprietary closed-source SaaS products, and require only simple copyright attribution in compiled binary notices or documentation.
+Each version's `license`, publication timestamp and yanked/prerelease status was checked against
+crates.io. **All 11 original pairs were correct**; the blanket licence conclusions were overstated.
 
----
+| Crate | Latest stable observed | SPDX expression | Official version metadata |
+|---|---|---|---|
+| `highs` | `2.4.0` | `MIT` | [crates.io](https://crates.io/api/v1/crates/highs/2.4.0) |
+| `clarabel` | `0.11.1` | `Apache-2.0` | [crates.io](https://crates.io/api/v1/crates/clarabel/0.11.1) |
+| `faer` | `0.24.4` | `MIT` | [crates.io](https://crates.io/api/v1/crates/faer/0.24.4) |
+| `good_lp` | `1.15.3` | `MIT` | [crates.io](https://crates.io/api/v1/crates/good_lp/1.15.3) |
+| `nalgebra-sparse` | `0.12.0` | `Apache-2.0` | [crates.io](https://crates.io/api/v1/crates/nalgebra-sparse/0.12.0) |
+| `sqlx` | `0.9.0` | `MIT OR Apache-2.0` | [crates.io](https://crates.io/api/v1/crates/sqlx/0.9.0) |
+| `axum` | `0.8.9` | `MIT` | [crates.io](https://crates.io/api/v1/crates/axum/0.8.9) |
+| `tonic` | `0.14.9` | `MIT` | [crates.io](https://crates.io/api/v1/crates/tonic/0.14.9) |
+| `polars` | `0.55.2` | `MIT` | [crates.io](https://crates.io/api/v1/crates/polars/0.55.2) |
+| `datafusion` | `55.2.0` | `Apache-2.0` | [crates.io](https://crates.io/api/v1/crates/datafusion/55.2.0) |
+| `arrow` | `60.1.0` | `Apache-2.0` | [crates.io](https://crates.io/api/v1/crates/arrow/60.1.0) |
 
-### 3. Optimization Solvers & Linear Algebra
+MIT/Apache-2.0 permit proprietary use subject to conditions, including notices. Apache-2.0 also
+contains an express patent grant and modified-file/NOTICE conditions. This is **not a `cargo-deny`
+result**: optional `good_lp` backends, native bindings and the eventual feature-selected transitive
+graph can introduce other licences. No production engine lockfile/build configuration exists yet.
 
-#### Open & Permissive Solvers
-- **HiGHS (v1.16.0):** Developed at the University of Edinburgh. Full C++ source code is licensed under the **MIT License**. Handles linear programming (dual and primal simplex, interior point), mixed-integer programming (branch-and-cut), and quadratic programming. Can be statically or dynamically linked into commercial proprietary software without royalties or code disclosure.
-- **Clarabel (0.11.1):** Developed at the University of Oxford. Written in pure Rust and licensed under **Apache-2.0**. Solves conic optimization problems (LP, QP, SOCP, exponential and power cones) using an interior-point method with homogeneous self-dual embedding. Permissive for SaaS.
+## Solvers, sparse libraries and frontend dependencies
 
-#### Weak Copyleft Solvers: Ipopt & SuiteSparse KLU
-- **Ipopt (3.14.20):** Licensed under the **Eclipse Public License 2.0 (EPL-2.0)**. EPL-2.0 is a weak copyleft license applying at the file level. Modifying Ipopt files requires sharing those specific modifications if distributed. Running Ipopt inside a closed-source SaaS backend triggers no source sharing requirements.
-  - *Linear Solver Trap:* Ipopt itself does not solve linear systems; it relies on sparse symmetric linear solvers. The standard free solver is **MUMPS** (CeCILL-C, LGPL-like) or **SPRAL** (BSD-3-Clause). Academic linear solvers like **HSL (MA27, MA57, MA86)** are proprietary and strictly forbid commercial SaaS use without purchasing an expensive commercial license from STFC/UKRI.
-- **SuiteSparse KLU (v7.14.1):** Authored by Prof. Tim Davis. KLU is specifically designed for circuit simulation and power network matrices (bordered block diagonal / unsymmetric sparse systems). Licensed under **LGPL-2.1+**. In a server-side SaaS application, LGPL copyleft does not trigger across network boundaries. If on-premises client binaries are distributed, dynamic linking (`libklu.so`) must be used so that end users can relink the library.
+| Component | Stable version observed | Licence / commercial position | Official evidence |
+|---|---|---|---|
+| **HiGHS C++** | **1.16.0** | `MIT`; commercial use with notices. Not the Rust binding's version. | [Release](https://github.com/ERGO-Code/HiGHS/releases/tag/v1.16.0), [licence](https://raw.githubusercontent.com/ERGO-Code/HiGHS/v1.16.0/LICENSE.txt). |
+| **Ipopt** | **3.14.20** | `EPL-2.0`; server execution is not distribution. Conveyed covered code/modifications and native dependencies need compliance. | [Release](https://github.com/coin-or/Ipopt/releases/tag/releases/3.14.20), [licence](https://raw.githubusercontent.com/coin-or/Ipopt/releases/3.14.20/LICENSE). |
+| **SuiteSparse / KLU** | SuiteSparse **7.14.1**, **KLU 2.3.6** | KLU `LGPL-2.1-or-later` (`LGPL-2.1+` in source). Network SaaS use is not relinkable application distribution. | [Component versions](https://github.com/DrTimothyAldenDavis/SuiteSparse/releases/tag/v7.14.1), [KLU licence](https://raw.githubusercontent.com/DrTimothyAldenDavis/SuiteSparse/v7.14.1/KLU/Doc/License.txt). |
+| **NVIDIA cuDSS** | **1.0.0** | Proprietary **License Agreement for NVIDIA Math Libraries Software Development Kits**. Conditional SDK use/application-bundled distribution, not open source or unrestricted redistribution. | [Release notes](https://docs.nvidia.com/cuda/cudss/latest/release_notes.html), [agreement](https://docs.nvidia.com/cuda/cudss/latest/license.html). |
+| **NVIDIA cuOpt** | **26.10.01**, released 2026-11-12 | Open solver `Apache-2.0`; self-hosting this code does not require enterprise support. Selected NIM/NGC artifacts/contracts need separate terms. | [Release](https://github.com/NVIDIA/cuopt/releases/tag/v26.10.01), [licence](https://raw.githubusercontent.com/NVIDIA/cuopt/v26.10.01/LICENSE), [published licence](https://docs.nvidia.com/cuopt/user-guide/latest/license.html). |
+| **Gurobi / gurobipy** | **14.0 / 14.0.0** | Proprietary; production rights/order scope govern. Qualified hosting exception; no universal ISV/WLS requirement. | [Release notes](https://docs.gurobi.com/projects/optimizer/en/current/reference/releasenotes.html), [vendor metadata](https://pypi.org/pypi/gurobipy/json), [legal centre](https://www.gurobi.com/company/legal/overview). |
+| **FICO Xpress** | **10.0.0** vendor package | Proprietary; standard shrinkwrap restricts third-party/service-bureau use. Obtain written hosting/embedding rights. | [Package](https://pypi.org/project/xpress/10.0.0/), [metadata](https://pypi.org/pypi/xpress/10.0.0/json), [shrinkwrap page](https://www.fico.com/en/shrinkwrap-license-agreement-fico-xpress-optimization-suite-on-premises). The actual licence in the versioned wheel was inspected. |
+| **MapLibre GL JS** | **6.18.0** | `BSD-3-Clause`; notices apply to browser distribution too. | [Release](https://github.com/maplibre/maplibre-gl-js/releases/tag/v6.18.0), [npm metadata](https://registry.npmjs.org/maplibre-gl/6.18.0). |
+| **deck.gl** | **9.4.1** | `MIT`; preserve notices for browser-distributed code. | [npm metadata](https://registry.npmjs.org/deck.gl/9.4.1), [publisher repository](https://github.com/visgl/deck.gl). npm's stable tag is 9.4.1; GitHub maintenance release 9.3.12 does not disprove it. |
 
-#### NVIDIA GPU Acceleration Libraries
-- **NVIDIA cuDSS (v1.0.0):** NVIDIA's direct sparse linear solver running on Tensor Cores and CUDA cores. General Availability v1.0.0 was released under the **License Agreement for NVIDIA Math Libraries Software Development Kits**. The license grants a royalty-free right to use, link, and run cuDSS on NVIDIA GPU architectures. Closed-source commercial SaaS backends may deploy cuDSS on cloud or lab GPU hardware without license fees. Unmodified dynamic runtime libraries (`libcudss.so`) may be redistributed.
-- **NVIDIA cuOpt (26.10):** Route optimization and LP/MILP heuristics engine. The Python/C++ interfaces on GitHub are open-source under **Apache-2.0**. However, the high-throughput containerized microservices and NIM endpoints distributed via NVIDIA NGC are commercial products covered by the **NVIDIA AI Enterprise (NVAIE)** license, requiring paid subscription licenses per GPU for enterprise production deployment.
+### Linking, optional solvers and SDKs
 
-#### Commercial Solvers: Gurobi & FICO Xpress
-- **Gurobi (14.0):** The industry standard for commercial MILP and non-convex quadratic programming. 
-  - *SaaS Restriction:* Standard Gurobi licenses (Named-User, Single-Machine) explicitly prohibit multi-tenant hosting, service bureaus, and SaaS embedding.
-  - *SaaS Architecture:* Running Gurobi in a containerized SaaS backend requires negotiating an **ISV / OEM Agreement** with Gurobi and deploying the **Web License Service (WLS)**. Under WLS, container pods authenticate against Gurobi's cloud license servers (`token.gurobi.com`) using cryptographic JSON Web Tokens (`WLSACCESSID`, `WLSSECRET`, `LICENSEID`) from a contracted concurrency token pool.
-- **FICO Xpress (10.0):** Commercial solver suite with GPU-accelerated MIP heuristics and PDHG.
-  - *Community License Limits:* The free Community Edition distributed via pip/conda restricts problem sizes to 5,000 variables and 5,000 constraints. A national GB + Ireland transmission model exceeds this within a single time slice.
-  - *SaaS Architecture:* Requires a negotiated commercial OEM/ISV server license.
+- **KLU:** 7.14.1 was the suite version, **not KLU's**. Dynamic linking is one distribution
+  compliance route, not a universal LGPL requirement; compliant static distribution can provide
+  relinking materials. Audit each SuiteSparse component separately.
+- **Ipopt's linear solver:** [MUMPS licensing](https://mumps-solver.org/index.php?page=dwnld)
+  identifies CeCILL-C with component exceptions; [SPRAL](https://raw.githubusercontent.com/ralna/spral/master/LICENCE)
+  is BSD-3-Clause. Optional ordering/BLAS libraries need review. [HSL licensing](https://www.hsl.rl.ac.uk/licensing.html)
+  distinguishes main-library academic/commercial and archive personal-use/incorporation terms.
+  The claim that every HSL package forbids any commercial use without an expensive purchase was
+  too broad; package/version and hosting matter.
+- **cuDSS:** distribution requires material additional application functionality and application-only
+  access to bundled distributable portions. Preserve notices and assess critical-application,
+  export and prerelease conditions. Unmodified `libcudss.so` is not an unconditional standalone
+  redistribution right; blanket royalty-free rights were not established by the inspected grant.
+- **cuOpt:** Apache-2.0 covers more than wrappers. The mandatory-per-GPU NVAIE-fee claim is
+  withdrawn. Selected NIM images, enterprise packages and support terms remain **UNVERIFIED**.
 
----
+### Gurobi and Xpress: hosting permission versus deployment
 
-### 4. Hardware Platform Compatibility & CUDA 13
+The [current Gurobi EULA, version 14.0](https://cdn.bfldr.com/KUZMZM51/as/5zgkx5ng7whk9gm8j8j8xgx3/gurobi-end-user-license-agreement)
+section 3(v) excepts hosting inside a customer-developed application with significant additional
+functionality that does not let users formulate/solve arbitrary optimization models. Order,
+licence scope and controlling agreements still apply. Our simulator's eventual fit is **UNVERIFIED**
+until its boundary/contract are assessed. Do not automatically require ISV terms or assume this
+exception covers a general-purpose hosted solver API.
 
-#### CUDA 13 Architecture Deprecation
-NVIDIA officially drew the support cutoff line at the **Turing** architecture in CUDA 13:
+The [Product Licensing Policy](https://cdn.bfldr.com/KUZMZM51/as/99cj7jn9fhvtbh4ff45m8n7r/gurobi-product-licensing-policy)
+section 2.6 lists multiple container arrangements: WLS, clients of appropriate licence/compute
+servers, and Instant Cloud. **WLS is a technology, not synonymous with ISV rights**. Its
+[setup guide](https://support.gurobi.com/hc/en-us/articles/13232844297489-How-do-I-set-up-a-Web-License-Service-WLS-license)
+describes container/non-container licences; token pools are not the sole SaaS architecture.
 
-| Architecture | Compute Capability | Flag | CUDA 13 Support Status | Lab Hardware Impact |
-|---|---|---|---|---|
-| **Maxwell** | 5.0, 5.2 | `sm_50`, `sm_52` | **DROPPED** | N/A |
-| **Pascal** | 6.0, 6.1 | `sm_60`, `sm_61` | **DROPPED** | **GTX 1080 Ti 11 GB (Pascal, `sm_61`) CANNOT run or build on CUDA 13.** Must retain CUDA 12.x or retire. |
-| **Volta** | 7.0 | `sm_70` | **DROPPED** | N/A |
-| **Turing** | 7.5 | `sm_75` | **SUPPORTED** (Minimum Baseline) | **Quadro RTX 4000 8 GB (`sm_75`) is supported as the minimum architecture.** |
-| **Ampere** | 8.0, 8.6 | `sm_80`, `sm_86` | **SUPPORTED** | Fully supported |
-| **Ada Lovelace** | 8.9 | `sm_89` | **SUPPORTED** | Fully supported |
-| **Blackwell** | 10.0, 12.0 | `sm_100`, `sm_120` | **SUPPORTED** | **RTX 5060 Ti 16 GB (Blackwell, `sm_120`) has full primary support in CUDA 13.** |
+The **Xpress 10.0.0 wheel's `dist-info/licenses/LICENSE.txt`** defines Internal Use and restricts
+third-party benefit/access and service-bureau use (sections 1, 2.1 and 2.4); community use is also
+internal (2.1.3). Appropriate signed terms can change those rights; exact OEM/ISV terms/prices
+are **UNVERIFIED**. The public FICO page was script-only, so the versioned vendor package supplied
+primary legal evidence. The asserted **5,000 variables and 5,000 constraints** is **UNVERIFIED**,
+not an established pair of independent ceilings; the inspected agreement does not substantiate
+it. Confirm size limits, GPU features and entitlements for the selected product regardless of fit.
 
-#### Hardware Consolidation Recommendation (D-42)
-- The GTX 1080 Ti (Pascal) is incompatible with the CUDA 13 toolchain.
-- The Quadro RTX 4000 (Turing) remains functional on CUDA 13 as the minimum baseline.
-- Consolidating the lab workstation to the single **RTX 5060 Ti 16 GB (Blackwell)** aligns with CUDA 13, provides 16 GB of unified high-speed VRAM for batch dispatch jobs, and eliminates legacy driver conflicts.
+## CUDA 13 and lab hardware
 
-#### RTX 5060 Ti Double-Precision (FP64) Throughput & Simulation Implications
-- **FP64:FP32 Hardware Ratio:** In all consumer GeForce Blackwell GPUs (GB20x silicon, including RTX 5090, 5080, and 5060 Ti), the double-precision (FP64) compute throughput is hardware-limited to **1 : 64** (~1.56%) of single-precision (FP32) performance.
-  - Each Blackwell Streaming Multiprocessor (SM) contains **2 FP64 cores** for every **128 FP32 cores**.
-  - NVIDIA includes these minimal FP64 cores solely for numerical correctness and API compatibility, not high-performance double-precision computing.
-- **Power System Numerical Implications:**
-  - Standard AC power flow (Newton-Raphson) and AC Optimal Power Flow (ACOPF) algorithms require solving ill-conditioned non-linear equations where double-precision (FP64) is essential to prevent divergence or ill-conditioned matrix factorization errors.
-  - Attempting to solve FP64 sparse linear systems (e.g. KLU or Cholesky factorizations) on the RTX 5060 Ti will yield severely degraded performance (~0.5–1.0 TFLOPS FP64) compared to AVX2/AVX-512 execution on the AMD Ryzen 9 5900X CPU.
-  - **Optimal Workload Partitioning:**
-    1. **CPU (Ryzen 9 5900X):** Primary execution engine for ACOPF, Newton-Raphson power flow, KLU/HiGHS sparse linear algebra, and strict FP64 matrix operations.
-    2. **GPU (RTX 5060 Ti 16 GB):** Utilised for highly parallel, single-precision (FP32) or mixed-precision workloads:
-       - First-order LP algorithms (e.g. cuOpt / PDHG - Primal-Dual Hybrid Gradient).
-       - Massive Monte Carlo contingency simulations (N-1 screening where DC power flow approximation is evaluated in FP32).
-       - Time-series weather and solar geospatial raster processing.
-       - MapLibre / deck.gl client-side map rendering.
+NVIDIA's [support explanation](https://developer.nvidia.com/blog/navigating-gpu-architecture-support-a-guide-for-nvidia-cuda-developers/)
+states CUDA 13 removes **offline compilation** below **7.5**: Maxwell, Pascal and Volta. CUDA
+12.9 is the last toolkit generation for those targets. Applications compiled with older supported
+toolkits can still run on compatible drivers. Driver lifetime, compilation and library targets differ.
 
----
+| Lab GPU | Architecture / capability | Consequence |
+|---|---|---|
+| GTX 1080 Ti | Pascal, `sm_61` | Not targetable by CUDA 13's compiler. Retain appropriate older toolkit/application/driver support if used; “cannot run any CUDA application” is incorrect. |
+| Quadro RTX 4000 | Turing, `sm_75` | Meets the CUDA 13 compiler floor, not a guarantee for every library/package. |
+| RTX 5060 Ti | Consumer Blackwell, `sm_120` | Listed as **12.0** in NVIDIA's [GPU table](https://developer.nvidia.com/cuda-gpus), not data-centre Blackwell `sm_100`. Check library/driver/platform requirements. |
 
-## Sources Checked
+[cuDSS support](https://docs.nvidia.com/cuda/cudss/latest/index.html) is conditional on the matching
+toolkit; [cuOpt requirements](https://docs.nvidia.com/cuopt/user-guide/latest/system-requirements.html)
+also depend on package/toolkit. One CUDA version does not establish universal library support.
+The planned 16 GB is dedicated GPU memory, not CPU-shared physical RAM; CUDA Unified Memory
+does not make this a unified-RAM machine. Guaranteed driver-conflict elimination is not established.
 
-All official sources accessed and verified on **2026-11-12**:
-1. PostgreSQL Global Development Group Versioning & Release Policy: `https://www.postgresql.org/support/versioning/` and `https://www.postgresql.org/docs/18/`
-2. PostGIS Official Portal & Release Notes: `https://postgis.net`
-3. TimescaleDB GitHub Releases & Compatibility Matrix: `https://github.com/timescale/timescaledb/releases`
-4. Timescale Licensing & Terms (TSL vs Apache-2.0): `https://www.timescale.com/legal/licenses`
-5. Redis Licensing Notice & Redis 8 Repository: `https://redis.io/legal/licenses/`
-6. Valkey Official Repository & Releases: `https://github.com/valkey-io/valkey/releases`
-7. Crates.io Official API (Version & License verification): `https://crates.io/api/v1/crates/` for crates `highs`, `clarabel`, `faer`, `good_lp`, `nalgebra-sparse`, `sqlx`, `axum`, `tonic`, `polars`, `datafusion`, `arrow`
-8. HiGHS Solver Official GitHub Repository: `https://github.com/ERGO-Code/HiGHS`
-9. Ipopt Official GitHub Repository: `https://github.com/coin-or/Ipopt`
-10. SuiteSparse & KLU Official Repository: `https://github.com/DrTimothyAldenDavis/SuiteSparse`
-11. NVIDIA cuDSS Documentation & SLA: `https://developer.nvidia.com/cudss`
-12. NVIDIA cuOpt Documentation & License Terms: `https://developer.nvidia.com/cuopt-embedded` and `https://github.com/NVIDIA/cuopt`
-13. Gurobi Optimizer Reference Manual & WLS Licensing Guide: `https://www.gurobi.com/documentation/` and `https://www.gurobi.com/solutions/licensing/`
-14. FICO Xpress Optimization Documentation: `https://www.fico.com/en/products/fico-xpress-optimization`
-15. MapLibre GL JS (npm registry & GitHub): `https://registry.npmjs.org/maplibre-gl` and `https://github.com/maplibre/maplibre-gl-js`
-16. deck.gl (npm registry & GitHub): `https://registry.npmjs.org/deck.gl` and `https://github.com/visgl/deck.gl`
-17. NVIDIA CUDA 13 Release Notes & Compute Capability Support Guide: `https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/`
-18. NVIDIA Blackwell Architecture Technical Whitepaper (GeForce RTX 50-Series SM & FP64 Specifications): `https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/`
+### RTX 5060 Ti FP64:FP32 ratio
+
+This GPU is **compute capability 12.0**. The official
+[CUDA 12.9.1 Programming Guide, Table 7](https://docs.nvidia.com/cuda/archive/12.9.1/cuda-c-programming-guide/index.html#arithmetic-instructions-throughput-native-arithmetic-instructions)
+gives **128 FP32** versus **2 FP64** add/multiply/multiply-add results per SM clock for 12.0.
+**Derived ratio: 2 / 128 = 1 / 64 = 1.5625%** for these pipelines. The
+[RTX Blackwell whitepaper](https://images.nvidia.com/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf)
+also states 1/64 FP64-to-FP32 TFLOPs for GB202. That chip-specific statement alone does not
+specify every Blackwell GPU; the 5060 Ti conclusion additionally uses the capability table.
+Throughput entries are not, by themselves, physical core counts.
+
+**Performance is UNVERIFIED:** the 0.5–1.0 TFLOPS estimate and categorical “Ryzen 5900X is faster
+at FP64 sparse solves” had no measured evidence. Peak arithmetic throughput is not end-to-end
+sparse performance. Retain the CPU-primary baseline and evaluate GPU/mixed-precision paths with
+numerical validation/benchmarks, not the ratio alone. The unsupported AVX-512 comparison is also
+withdrawn.
+
+## Verification
+
+**Date: 2026-11-12.** All 25 original software rows and seven architecture rows, repeated versions,
+licence summaries, solver details and hardware assertions were reviewed against registries, releases, source
+licences, legal agreements and NVIDIA docs, including same-day PostgreSQL/TimescaleDB/cuOpt
+releases. Candidate versions are not silently adopted as stack decisions.
+
+### Changes made
+
+1. Updated **TimescaleDB 2.31.0 → 2.32.0**, **Redis 8.0/8.2 placeholders → 8.10.3** and
+   **cuOpt 26.10/container assumption → 26.10.01**. Corrected PostgreSQL's format and
+   **KLU 7.14.1 → KLU 2.3.6 within SuiteSparse 7.14.1**.
+2. Confirmed PostgreSQL **18.7**, PostGIS **3.7.0**, Valkey **9.1.3 / 8.1.11 / 8.0.12**, HiGHS
+   **1.16.0**, Ipopt **3.14.20**, cuDSS **1.0.0**, Gurobi **14.0 / gurobipy 14.0.0**, Xpress
+   **10.0.0**, MapLibre **6.18.0** and deck.gl **9.4.1**. FICO package metadata is verified;
+   separate release notes were not recovered; extra claimed GPU features remain **UNVERIFIED**.
+3. Confirmed **all 11 Rust pairs**; replaced unconditional/permissive-entire-graph language with
+   notice, feature-selection and transitive-audit conditions.
+4. Confirmed **PG18 since TimescaleDB 2.23.0** and release-pinned licence headers; distinguished
+   Apache core/manual operations, TSL policies/compression/aggregates, Toolkit and unverified cloud
+   features. Qualified the application-SaaS/DBaaS boundary and other TSL conditions.
+5. Replaced blanket Redis rejection/unilateral Valkey adoption with licence-specific analysis;
+   preserved **D-3** and removed the Redis 8 feature-compatibility guarantee.
+6. Corrected GPL/LGPL implications: network use is not distribution; dynamic linking is not the
+   only LGPL-compliance route.
+7. Corrected cuOpt's open-engine licensing/mandatory enterprise fee and cuDSS's conditional SDK
+   distribution instead of asserting unrestricted royalty-free redistribution.
+8. Inspected Gurobi's **hosting exception**/multiple container routes and Xpress's shrinkwrap.
+   Removed mandatory ISV/WLS claims, flagged unconfirmed Xpress limits/contracts, qualified HSL.
+9. Narrowed the Pascal drop to compilation/support; confirmed **1:64** and removed unmeasured
+   peak/CPU-speed, physical unified-memory and AVX-512 claims.
+10. Replaced the nonexistent cuOpt embedded URL/generic sources with specific evidence. Across
+    both files, **68 original URLs** were checked: 48 HTTP 200, 12 HTTP 404, one HTTP 400, five
+    HTTP 403 and two fetch failures. HTTP 200 did not prove a licence/dataset existed. All **134
+    distinct final source URLs** returned HTTP 200, including an official article-API replacement
+    for an ENTSO-E legal-page link blocked by access controls.
+
+### Remaining checks before implementation
+
+- **UNVERIFIED:** eventual lockfile, native/optional libraries, flags and transitive licences;
+  perform D-28 `cargo-deny` once an application exists.
+- **UNVERIFIED:** binary artifacts, individual Toolkit functions, cloud tiers and proprietary
+  packages not covered by the inspected terms.
+- **UNVERIFIED:** final Redis licence/architecture, Gurobi hosting-exception fit/order scope,
+  Xpress SaaS rights/size limits and negotiated prices.
+- **UNVERIFIED:** actual CPU/GPU performance and numerical suitability.
+
+**Verdict: merge after fixes made**, as qualified research, not procurement approval, a completed
+dependency audit or an accepted ADR.

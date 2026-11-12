@@ -29,6 +29,15 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Linux distro (Q-H-7)
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
+## PR #2 verification — 2026-11-12
+
+Ireland/weather/interconnector/FX and dependency catalogues were checked against official terms,
+planning/legal PDFs, registries and releases. Corrections and **UNVERIFIED** admission checks are
+in each catalogue's **Verification** section. TYTFS publication restrictions are confirmed;
+commercially cleared complete Irish transmission parameters remain unresolved for D-31/D-32.
+Redis remains the D-3 baseline; Valkey is an evaluated alternative, not a new decision.
+Documentation verdict: **merge after fixes made**. No application code or merge is authorised.
+
 ## Next steps (agents may do now)
 
 1. Data spike (D-31): permissively licensed GB + Ireland full transmission network + one weather
