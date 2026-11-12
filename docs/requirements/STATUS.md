@@ -29,6 +29,16 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Linux distro (Q-H-7)
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
+## GB source verification — 2026-11-12
+
+PR #1's GB catalogue was checked against official sources and corrected in
+`docs/research/data-sources-gb.md` (100 claim checks; 47 original URLs). Complete
+commercially reusable GB network feasibility remains **UNVERIFIED**: ETYS workbook
+rights, England/Wales 132 kV coverage and normal ratings/taps need D-31 evidence.
+The Crown Estate sample is view-only; do not import it or assume reference-model
+inputs inherit their code licence. The catalogue's Verification section records
+corrections and quarantined claims. Requirements remain unbaselined; no merge performed.
+
 ## Next steps (agents may do now)
 
 1. Data spike (D-31): permissively licensed GB + Ireland full transmission network + one weather
