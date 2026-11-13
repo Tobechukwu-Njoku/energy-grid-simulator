@@ -17,9 +17,11 @@
 
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::sync::OnceLock;
 
 use fancy_regex::{Regex, RegexBuilder};
 use unicode_normalization::UnicodeNormalization as _;
+use unicode_security::confusable_detection::skeleton;
 
 use crate::util::{Ctx, Finding, git, git_command, is_sha};
 
@@ -78,6 +80,13 @@ impl Patterns {
         candidates(line)
             .iter()
             .any(|candidate| self.matches_candidate(candidate))
+    }
+
+    /// Whether a commit identity (`Name <email>`) is an AI tool or model:
+    /// it is tested exactly as a co-author trailer naming it would be.
+    #[must_use]
+    pub fn matches_identity(&self, identity: &str) -> bool {
+        self.matches_line(&format!("Co-authored-by: {identity}"))
     }
 
     /// One-based numbers and text of the matching lines of `text`.
@@ -142,64 +151,59 @@ const fn is_combining(character: char) -> bool {
     )
 }
 
-/// Folds common Cyrillic, Greek and other Latin look-alikes to ASCII.
-const fn fold_confusable(character: char) -> char {
-    match character {
-        'а' | 'α' | 'ɑ' => 'a',
-        'А' | 'Α' | 'Ꭺ' => 'A',
-        'В' | 'Β' | 'Ᏼ' => 'B',
-        'ь' | 'Ь' => 'b',
-        'с' | 'ϲ' | 'ᴄ' => 'c',
-        'С' | 'Ϲ' | 'Ꮯ' => 'C',
-        'ԁ' => 'd',
-        'Ꭰ' => 'D',
-        'е' | 'ε' | 'ҽ' => 'e',
-        'Е' | 'Ε' | 'Ꭼ' => 'E',
-        'ɡ' => 'g',
-        'һ' => 'h',
-        'Н' | 'Η' | 'Ꮋ' => 'H',
-        'і' | 'ι' | 'ı' | 'ɩ' => 'i',
-        'І' | 'Ι' | 'Ӏ' => 'I',
-        'ј' | 'ϳ' => 'j',
-        'Ј' | 'Ꭻ' => 'J',
-        'κ' | 'к' => 'k',
-        'К' | 'Κ' | 'Ꮶ' => 'K',
-        'ӏ' | 'ⅼ' => 'l',
-        'Ꮮ' => 'L',
-        'М' | 'Μ' | 'Ꮇ' => 'M',
-        'ո' => 'n',
-        'Ν' => 'N',
-        'о' | 'ο' | 'օ' | 'σ' => 'o',
-        'О' | 'Ο' | 'Օ' => 'O',
-        'р' | 'ρ' => 'p',
-        'Р' | 'Ρ' | 'Ꮲ' => 'P',
-        'ԛ' => 'q',
-        'г' => 'r',
-        'ѕ' => 's',
-        'Ѕ' | 'Ꮪ' => 'S',
-        'т' | 'τ' => 't',
-        'Т' | 'Τ' | 'Ꭲ' => 'T',
-        'υ' | 'ս' => 'u',
-        'ν' | 'ѵ' => 'v',
-        'Ꮩ' => 'V',
-        'ԝ' | 'ѡ' => 'w',
-        'Ꮃ' => 'W',
-        'х' | 'χ' => 'x',
-        'Х' | 'Χ' => 'X',
-        'у' | 'γ' => 'y',
-        'Ү' | 'Υ' => 'Y',
-        'Ζ' | 'Ꮓ' => 'Z',
-        other => other,
+/// Folds one non-ASCII character to its ASCII look-alike using the Unicode
+/// confusables table (UTS #39 skeletons, ADV23-07, ADV23R-01/02). When the
+/// character itself has no ASCII prototype, its upper- and lower-case forms
+/// are tried, so case pairs such as Cyrillic `м`/`М` fold alike. `l_as` is
+/// the letter used for the shared `I`/`l`/`1` prototype.
+fn fold_char(character: char, l_as: char, out: &mut String) {
+    if character.is_ascii() {
+        out.push(character);
+        return;
+    }
+    let ascii = |text: &str| -> Option<String> {
+        let skeleton: String = skeleton(text).collect();
+        (!skeleton.is_empty() && skeleton.is_ascii()).then_some(skeleton)
+    };
+    let mut buffer = [0; 4];
+    let folded = ascii(character.encode_utf8(&mut buffer))
+        .or_else(|| ascii(&character.to_uppercase().collect::<String>()))
+        .or_else(|| ascii(&character.to_lowercase().collect::<String>()));
+    match folded {
+        Some(text) => out.extend(text.chars().map(|c| if c == 'l' { l_as } else { c })),
+        None => out.push(character),
     }
 }
 
-/// NFKC, invisible and combining-mark removal, confusable folding.
+/// Pictographs, emoji modifiers and joiners (`\p{So}`, `\p{Sk}`), which an
+/// attribution line may be decorated with (ADV23R-03).
+fn pictographs() -> &'static Regex {
+    static PICTOGRAPHS: OnceLock<Regex> = OnceLock::new();
+    PICTOGRAPHS.get_or_init(|| {
+        Regex::new(r"[\p{So}\p{Sk}\x{FE0F}\x{FE0E}\x{200D}\x{20E3}]").expect("pictograph class")
+    })
+}
+
+/// NFKC, invisible and combining-mark removal, then confusable folding.
 #[must_use]
 pub fn normalise(line: &str) -> String {
-    line.nfkc()
+    normalise_with(line, 'l')
+}
+
+fn normalise_with(line: &str, l_as: char) -> String {
+    let mut out = String::with_capacity(line.len());
+    for character in line
+        .nfkc()
         .filter(|character| !is_invisible(*character) && !is_combining(*character))
-        .map(fold_confusable)
-        .collect()
+    {
+        fold_char(character, l_as, &mut out);
+    }
+    out
+}
+
+/// Forms of a line with pictographs removed.
+fn depictograph(line: &str) -> String {
+    pictographs().replace_all(line, "").into_owned()
 }
 
 const PREFIXES: &[&str] = &[
@@ -308,27 +312,57 @@ fn quoted(line: &str) -> Vec<String> {
     found
 }
 
+/// Comment and cell markers after which a payload may start anywhere in a
+/// line, not only at its beginning (F3): `code(); // footer`.
+const TRAILING_MARKERS: &[&str] = &[
+    "//", "/*", "<!--", "#", "--", ";", "%", "{-", "(*", "\"\"\"", "'''", "|", "REM ", "rem ",
+];
+
+/// Every suffix of `line` that starts at a comment or cell marker after
+/// column one (column one is already covered by `strip_markup`).
+fn trailing_payloads(line: &str) -> BTreeSet<&str> {
+    let mut found = BTreeSet::new();
+    for marker in TRAILING_MARKERS {
+        for (start, _) in line.match_indices(marker) {
+            if start > 0 {
+                found.insert(&line[start..]);
+            }
+        }
+    }
+    found
+}
+
 /// Every form of a line that is tested against the patterns.
 #[must_use]
 pub fn candidates(line: &str) -> Vec<String> {
     let mut set = BTreeSet::new();
     set.insert(line.to_owned());
-    let base = normalise(line);
-    let unescaped = base.replace("\\n", " ").replace("\\t", " ");
-    for form in [base.clone(), unescaped] {
-        let delinked = delink(&form);
-        let untagged = untag(&delinked);
-        let plain: String = untagged
-            .chars()
-            .filter(|c| !matches!(c, '*' | '_' | '~' | '`'))
-            .collect();
-        for variant in [&form, &delinked, &untagged, &plain] {
-            set.insert(variant.clone());
-            set.insert(strip_markup(variant));
-        }
-        for segment in quoted(&form) {
-            set.insert(strip_markup(&segment));
-            set.insert(strip_markup(&untag(&delink(&segment))));
+    let mut bases = BTreeSet::new();
+    for l_as in ['l', 'i'] {
+        let base = normalise_with(line, l_as);
+        bases.insert(depictograph(&base));
+        bases.insert(base);
+    }
+    for base in bases {
+        let unescaped = base.replace("\\n", " ").replace("\\t", " ");
+        for form in [base, unescaped] {
+            let delinked = delink(&form);
+            let untagged = untag(&delinked);
+            let plain: String = untagged
+                .chars()
+                .filter(|c| !matches!(c, '*' | '_' | '~' | '`'))
+                .collect();
+            for variant in [&form, &delinked, &untagged, &plain] {
+                set.insert(variant.clone());
+                set.insert(strip_markup(variant));
+                for payload in trailing_payloads(variant) {
+                    set.insert(strip_markup(payload));
+                }
+            }
+            for segment in quoted(&form) {
+                set.insert(strip_markup(&segment));
+                set.insert(strip_markup(&untag(&delink(&segment))));
+            }
         }
     }
     set.into_iter().collect()
@@ -507,6 +541,15 @@ pub fn scan_range(ctx: &Ctx, range: &Range) -> Result<(Vec<Finding>, Summary), S
             .position(|pair| pair == b"\n\n")
             .map_or(&raw[..0], |index| &raw[index + 2..]);
         let short = &sha[..12];
+        let header = &raw[..raw.len() - message.len()];
+        for (role, identity) in identities(header) {
+            if patterns.matches_identity(&identity) {
+                findings.push(Finding::general(format!(
+                    "commit {short} {role} is an AI identity: {}",
+                    clip(&identity)
+                )));
+            }
+        }
         match std::str::from_utf8(message) {
             Ok(text) => {
                 for (line, content) in patterns.scan_text(text) {
@@ -594,6 +637,23 @@ pub fn scan_range(ctx: &Ctx, range: &Range) -> Result<(Vec<Finding>, Summary), S
         }
     }
     Ok((findings, summary))
+}
+
+/// `author` and `committer` identities (`Name <email>`) of a raw commit
+/// object header (ADV23R-05). Timestamps are dropped.
+#[must_use]
+pub fn identities(header: &[u8]) -> Vec<(&'static str, String)> {
+    let text = String::from_utf8_lossy(header);
+    let mut found = Vec::new();
+    for line in text.lines() {
+        for role in ["author", "committer"] {
+            if let Some(rest) = line.strip_prefix(role).and_then(|r| r.strip_prefix(' ')) {
+                let identity = rest.rfind('>').map_or(rest, |end| &rest[..=end]).to_owned();
+                found.push((role, identity));
+            }
+        }
+    }
+    found
 }
 
 fn clip(text: &str) -> String {
@@ -703,6 +763,157 @@ mod tests {
             j(&["Gener", "ated with Cl\u{0430}\u{200d}ude Code"]),
         ] {
             assert!(p.matches_line(&line), "missed: {line:?}");
+        }
+    }
+
+    // F3: a comment or cell after code on the same line.
+    #[test]
+    fn f3_trailing_comments_are_detected() {
+        let p = patterns();
+        let footer = footer();
+        let trailer = trailer();
+        for line in [
+            format!("pub const N: u8 = 0; // {footer}"),
+            format!("pub const N: u8 = 0;// {footer}"),
+            format!("let x = 1; /* {footer} */"),
+            format!("x = 1  # {footer}"),
+            format!("SELECT 1; -- {footer}"),
+            format!("<p>text</p> <!-- {footer} -->"),
+            format!("(setq x 1) ; {footer}"),
+            format!("| cell | {footer} |"),
+            format!("fn f() {{}} // {trailer}"),
+        ] {
+            assert!(p.matches_line(&line), "missed: {line}");
+        }
+        for line in [
+            "let url = \"https://example.com/generated/with\"; // ordinary",
+            "x = 1  # generated with care",
+            "| Generated with | the build script |",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    // ADV23R-01: Unicode minus and dash variants in trailer hyphens.
+    #[test]
+    fn adv23r_01_unicode_dashes_are_detected() {
+        let p = patterns();
+        for dash in [
+            '\u{2212}', '\u{2010}', '\u{2011}', '\u{2013}', '\u{2014}', '\u{2043}', '\u{fe58}',
+            '\u{fe63}', '\u{ff0d}', '\u{2796}', '\u{02d7}',
+        ] {
+            let line = j(&[
+                "Co",
+                "-Auth",
+                "ored",
+                "-By: Cla",
+                "ude <noreply@",
+                "anthropic.com>",
+            ])
+            .replace('-', &dash.to_string());
+            assert!(p.matches_line(&line), "missed U+{:04X}", u32::from(dash));
+        }
+    }
+
+    // ADV23R-02: confusables come from the Unicode (UTS #39) table, in both cases.
+    #[test]
+    fn adv23r_02_confusable_table_is_complete() {
+        let p = patterns();
+        for line in [
+            j(&["Gener", "ated with Ge\u{043c}ini"]),
+            j(&["Gener", "ated with GE\u{041c}INI"]),
+            j(&["Gener", "ated with Gem\u{0456}ni"]),
+            j(&["GENER", "ATED WITH GEM\u{0406}NI"]),
+            j(&["Gener", "ated with C\u{13de}aude"]),
+            j(&["Gener", "ated with \u{a4d6}emini"]),
+            j(&["Gener", "ated with Cla\u{057d}de"]),
+            j(&["Gener", "ated with Clau\u{0501}e"]),
+            j(&["Gener", "ated with Co\u{0440}ilot"]),
+        ] {
+            assert!(p.matches_line(&line), "missed: {line:?}");
+        }
+        assert!(normalise("\u{043c}").eq_ignore_ascii_case("m"));
+        assert!(!p.matches_line("Привет, мир: generated with care"));
+    }
+
+    // ADV23R-03: leading pictographs before footers and trailers.
+    #[test]
+    fn adv23r_03_pictograph_prefixes_are_detected() {
+        let p = patterns();
+        for prefix in [
+            "\u{2728}",
+            "\u{1f9e0}",
+            "\u{1f4bb}",
+            "\u{26a1}\u{fe0f}",
+            "\u{1f916}",
+        ] {
+            for body in [footer(), trailer()] {
+                let line = format!("{prefix} {body}");
+                assert!(p.matches_line(&line), "missed: {line}");
+            }
+        }
+        assert!(p.matches_line(&j(&["Gener", "ated with \u{2728} Cla", "ude Code"])));
+        assert!(!p.matches_line("\u{2728} New feature: faster parsing"));
+    }
+
+    // ADV23R-04: Copilot without an e-mail and spaced trailer keys.
+    #[test]
+    fn adv23r_04_copilot_and_spaced_trailers_are_detected() {
+        let p = patterns();
+        for line in [
+            j(&["Co-Auth", "ored-By: GitHub Cop", "ilot"]),
+            j(&["Co-auth", "ored-by: github-cop", "ilot"]),
+            j(&["Co-auth", "ored by: Cla", "ude <noreply@", "anthropic.com>"]),
+            j(&["Co auth", "ored by: Cla", "ude"]),
+            j(&["Auth", "ored by : Gem", "ini"]),
+            j(&["Signed off by: Cla", "ude"]),
+        ] {
+            assert!(p.matches_line(&line), "missed: {line}");
+        }
+        for line in [
+            "Co-authored by: Jane Doe <jane@example.org>",
+            "Photo by: Claude Monet",
+            "Reviewed by: Ada Lovelace",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    // ADV23R-05: author and committer identities of a commit object.
+    #[test]
+    fn adv23r_05_commit_identities_are_checked() {
+        let p = patterns();
+        let raw = j(&[
+            "tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\n",
+            "author Cla",
+            "ude Code <cla",
+            "ude@anthropic.com> 1700000000 +0000\n",
+            "committer Jane Doe <jane@example.org> 1700000000 +0000\n",
+        ]);
+        let found = identities(raw.as_bytes());
+        assert_eq!(found.len(), 2);
+        assert!(p.matches_identity(&found[0].1), "{found:?}");
+        assert!(!p.matches_identity(&found[1].1), "{found:?}");
+        for identity in [
+            j(&[
+                "Cop",
+                "ilot <198982749+Cop",
+                "ilot@users.noreply.github.com>",
+            ]),
+            j(&[
+                "gem",
+                "ini-code-assist[bot] <1+gem",
+                "ini[bot]@users.noreply.github.com>",
+            ]),
+            j(&["Agent <x@", "openai.com>"]),
+        ] {
+            assert!(p.matches_identity(&identity), "missed: {identity}");
+        }
+        for identity in [
+            "egs-bot <egs-bot@users.noreply.github.com>",
+            "Claude Shannon <cshannon@example.com>",
+        ] {
+            assert!(!p.matches_identity(identity), "false positive: {identity}");
         }
     }
 

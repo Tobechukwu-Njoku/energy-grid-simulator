@@ -190,3 +190,70 @@ fn adv23_17_exemptions_are_line_scoped() {
         "wildcard exemptions are rejected"
     );
 }
+
+// F3: attribution in a trailing comment after code is the only violation.
+#[test]
+fn f3_trailing_comment_is_rejected_end_to_end() {
+    for line in [
+        format!("pub const N: u8 = 0; // {}", footer()),
+        format!("pub const M: u8 = 0; /* {} */", footer()),
+    ] {
+        let (repo, policy, base) = setup();
+        repo.write("src/lib.rs", &format!("{line}\n"));
+        repo.commit("feat: constant");
+        let found = scan(&repo, &policy, &base, None);
+        assert_eq!(found.len(), 1, "{line}: {found:?}");
+        assert!(found[0].starts_with("src/lib.rs:1:"), "{found:?}");
+    }
+    let (repo, policy, base) = setup();
+    repo.write("run.sh", &format!("echo ok  # {}\n", footer()));
+    repo.commit("feat: script");
+    assert_eq!(scan(&repo, &policy, &base, None).len(), 1);
+}
+
+// ADV23R-05: an AI author or committer identity is rejected even when the
+// message and the diff are clean.
+#[test]
+fn adv23r_05_ai_commit_identity_is_rejected() {
+    let ai = common::j(&["Cla", "ude Code <cla", "ude@anthropic.com>"]);
+    let (repo, policy, base) = setup();
+    repo.write("src/lib.rs", "pub fn solve() {}\n");
+    repo.git(&["add", "-A"]);
+    repo.git(&["commit", "-q", "--author", &ai, "-m", "feat: solver stub"]);
+    let found = scan(&repo, &policy, &base, None);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].contains("author is an AI identity"), "{found:?}");
+
+    let (repo, policy, base) = setup();
+    repo.write("src/lib.rs", "pub fn solve() {}\n");
+    repo.git(&["add", "-A"]);
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["commit", "-q", "-m", "feat: solver stub"])
+        .env("GIT_COMMITTER_NAME", common::j(&["Gem", "ini"]))
+        .env("GIT_COMMITTER_EMAIL", "bot@example.org")
+        .output()
+        .expect("git");
+    assert!(output.status.success());
+    let found = scan(&repo, &policy, &base, None);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(
+        found[0].contains("committer is an AI identity"),
+        "{found:?}"
+    );
+
+    // The D-74 machine account is not an AI identity.
+    let (repo, policy, base) = setup();
+    repo.write("src/lib.rs", "pub fn solve() {}\n");
+    repo.git(&["add", "-A"]);
+    repo.git(&[
+        "commit",
+        "-q",
+        "--author",
+        "egs-bot <egs-bot@users.noreply.github.com>",
+        "-m",
+        "feat: solver stub",
+    ]);
+    assert!(scan(&repo, &policy, &base, None).is_empty());
+}
