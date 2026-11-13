@@ -38,12 +38,12 @@ verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7,
 
 | Item | State | Next action |
 |---|---|---|
-| PR #4: MVP requirements + ADR 0001/0003 | Reviewed (Claude PR #8, Gemini PR #6); needs revision | Author revision: all review findings, triage, D-51..D-62 |
-| PR #5: data spike (R-12 "Partially") | Reviewed (Claude PR #7, Gemini PR #9); needs revision | Author revision per Claude review + PR5 triage + D-56/D-57 |
-| PR #10: DNO 132 kV inventory | **Merged** 2026-11-13 after GPT verification (84 claims, 21% of determinate claims corrected, 8 UNVERIFIED) | Portal logins (UKPN, SPEN, NPg, ENWL) to close the gaps; commercial clearance in TODO-pre-commercial |
-| PR #12: Elexon 2024 data gathered (4.2 GB, 3,673 files, 12 datasets, D-62) | Done; file counts and sizes spot-checked by coordinator | GPT verification (record counts, coverage claims) |
-| PR #11: NESO/DNO/EirGrid/SEMO data (30 files) | **Merged** 2026-11-13 after GPT verification (hashes match; licences corrected) | Gap: 2024 Irish prices (have 2018–2020 only); owner logins for UKPN, SPEN, NPg, ENWL and an ENTSO-E token. Local-only T3 checkpoint ref `286d675` holds ETYS raw files: never push `refs/t3/*`, and exclude them from any public mirror |
-| History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #5 merge: rewrite AI trailers, scan, make public, enable branch protection |
+| PR #4: MVP requirements + ADR 0001/0003 | Round 3 revision pushed (`52fda46`); reviews #13, #15 merged | Claude re-check of round 3; then owner approves accuracy thresholds/defaults; merge |
+| PR #17: topology ADRs 0002/0004/0005/0006 | Round 2 revision pushed (`d99ceab`); reviews #19, #20 merged | Claude re-check; then 4 owner questions (Valkey, reconstruction label, no uploaded market code before P4, forecast priority); merge |
+| PR #5 data spike | **Merged** (`0a14265`) | none |
+| PRs #10, #11, #12, #18 data | **Merged** (verified by GPT; known source gaps in each COVERAGE.md) | none |
+| History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #17 merge |
+| Owner inputs | Open | Copernicus account (ERA5), ENTSO-E token, UKPN/SPEN/NPg portal logins, target-system specs (D-65) |
 
 Rules in force: GPT for non-code (D-51), Claude reviews GPT docs (D-54), Gemini adversarial reviews (D-53)
 and significant data gathering (D-62), no AI attribution (D-52), research-phase data use (D-56).
