@@ -1,0 +1,55 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99.1"
+publish = false
+repository = "https://github.com/Tobechukwu-Njoku/energy-grid-simulator"
+
+[workspace.dependencies]
+# Internal crates.
+egs-domain = { path = "crates/domain" }
+egs-scenario = { path = "crates/scenario" }
+egs-ingest = { path = "crates/ingest" }
+egs-network = { path = "crates/network" }
+egs-market = { path = "crates/market" }
+egs-optimisation = { path = "crates/optimisation" }
+egs-solver-highs = { path = "crates/solver-highs" }
+egs-solver-gurobi = { path = "crates/solver-gurobi" }
+egs-solver-xpress = { path = "crates/solver-xpress" }
+egs-solver-cuopt = { path = "crates/solver-cuopt" }
+egs-commitment = { path = "crates/commitment" }
+egs-redispatch = { path = "crates/redispatch" }
+egs-pricing = { path = "crates/pricing" }
+egs-engine = { path = "crates/engine" }
+egs-api = { path = "crates/api" }
+egs-sdk = { path = "crates/sdk" }
+
+# Third-party crates. Every addition is checked by cargo-deny (deny.toml).
+uuid = { version = "1", default-features = false, features = ["std"] }
+
+[workspace.lints.rust]
+# ADR 0001: no unsafe code outside individually reviewed solver-* adapters. Those
+# adapters may allow it item by item; ci/policy_checks.py rejects any other allow.
+unsafe_code = "deny"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+float_cmp = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+
+[profile.release]
+debug = "line-tables-only"

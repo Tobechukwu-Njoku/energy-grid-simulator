@@ -1,0 +1,6 @@
+# Pinned, reviewed toolchain (ADR 0001). Changing it is a toolchain change: it needs
+# the macOS build job and independent review. Also serves as the MSRV.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

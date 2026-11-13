@@ -1,0 +1,4 @@
+//! Run orchestration, worker lifecycle and rolling, persisted state
+//! (ADR 0001, ADR 0005).
+//!
+//! Skeleton crate (M0). Job dispatch and the rolling pipeline arrive in M2/M3.
