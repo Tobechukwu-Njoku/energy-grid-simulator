@@ -1,13 +1,18 @@
-# Trusted gate graph and workflow policy (ADR 0001, NFR-12). CI reads this file
-# from the base branch, so a pull request cannot weaken the rules judging it.
-# Changing it needs the policy owner's review (.github/CODEOWNERS, policy-approval).
+# Trusted gate graph and workflow policy (ADR 0001, NFR-12). The trusted gates read
+# this file from main, so a pull request cannot weaken the rules judging it.
+# Changing it needs the policy owner's approval (.github/CODEOWNERS, policy-approval).
 
-allowed_triggers = ["pull_request", "pull_request_review", "push"]
+allowed_triggers = ["pull_request", "push"]
 # The only `${{ }}` expressions allowed inside `run:` scripts. Everything else,
-# including any github.event.* value, reaches a script through `env:`.
-run_expressions = ["env.*", "runner.temp", "runner.os"]
+# including any github.event.* value AND any env.* value (an env value may itself
+# hold event data, F5), reaches a script as a shell variable: `env: {T: ...}` then
+# "$T" in the script.
+run_expressions = ["runner.temp", "runner.os"]
 runner_labels = ["ubuntu-24.04", "macos-15"]
 
+# Pull-request gates. They build and test PR code with a read-only token and no
+# secrets. Their workflow files are protected paths: any change needs the owner's
+# exact-head approval, checked by the trusted policy-approval gate below (F1).
 [[workflow]]
 file = ".github/workflows/ci.yml"
 jobs = [
@@ -21,6 +26,10 @@ jobs = [
 ]
 aggregator = "merge-gates"
 
+# Trusted gates: run from main via pull_request_target, read the PR head only as
+# Git data and never check out, build or run PR code (F1, ADV23R-08).
 [[workflow]]
-file = ".github/workflows/review-gates.yml"
+file = ".github/workflows/trusted-gates.yml"
 jobs = ["independent-review", "policy-approval"]
+triggers = ["pull_request_target"]
+trusted = true

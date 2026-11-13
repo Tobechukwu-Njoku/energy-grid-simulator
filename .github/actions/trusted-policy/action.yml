@@ -1,33 +1,21 @@
 name: trusted policy
 description: >
-  Check out the base revision as the trusted policy tree (R1, ADR 0001) and install
-  its pinned toolchain. Policy checks, deny.toml and check configuration are read
-  from this tree, never from the pull request. Needs a full-history checkout.
+  Check out the current tip of main as the trusted policy tree (R1, F1, ADV23R-08)
+  and install its pinned toolchain. Fails closed when main has no xtask policy,
+  except for the exact bootstrap seed SHA attested on main (load.sh). Policy
+  checks, deny.toml and check configuration are read from this tree, never from
+  the pull request. This action is itself a protected path: a pull request that
+  changes it needs the owner's exact-head approval (trusted policy-approval gate).
 outputs:
   dir:
     description: Path of the trusted policy tree.
     value: ${{ steps.load.outputs.dir }}
+  main:
+    description: The main commit the policy was read from.
+    value: ${{ steps.load.outputs.main }}
 runs:
   using: composite
   steps:
     - id: load
       shell: bash
-      run: |
-        set -euo pipefail
-        base="$(jq -r '.pull_request.base.sha // .before // empty' "$GITHUB_EVENT_PATH")"
-        if [ -n "$base" ] && ! printf '%s\n' "$base" | grep -Eqx '[0-9a-f]{40}'; then
-          echo "::error::trusted policy: the base is not a full commit SHA"
-          exit 1
-        fi
-        if [ "$base" = "0000000000000000000000000000000000000000" ]; then base=""; fi
-        trusted="$RUNNER_TEMP/trusted-policy"
-        rm -rf "$trusted"
-        if [ -n "$base" ] && git cat-file -e "$base:xtask/Cargo.toml" 2>/dev/null; then
-          git worktree add --detach --quiet "$trusted" "$base"
-          echo "trusted policy: base $base"
-        else
-          echo "::warning::bootstrap: the base has no xtask policy yet; this revision's seed is used and is reviewed independently"
-          git worktree add --detach --quiet "$trusted" HEAD
-        fi
-        (cd "$trusted" && rustup toolchain install && rustc --version)
-        echo "dir=$trusted" >> "$GITHUB_OUTPUT"
+      run: bash "$GITHUB_ACTION_PATH/load.sh"

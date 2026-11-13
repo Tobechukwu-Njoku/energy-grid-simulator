@@ -31,6 +31,10 @@ struct Graph {
     file: String,
     jobs: Vec<String>,
     aggregator: Option<String>,
+    /// Triggers allowed for this workflow instead of the global list.
+    triggers: Option<Vec<String>>,
+    /// Runs from `main` via `pull_request_target` and never runs PR code.
+    trusted: bool,
 }
 
 impl Policy {
@@ -68,6 +72,11 @@ impl Policy {
                         .get("aggregator")
                         .and_then(toml_edit::Item::as_str)
                         .map(str::to_owned),
+                    triggers: table.get("triggers").map(string_array),
+                    trusted: table
+                        .get("trusted")
+                        .and_then(toml_edit::Item::as_bool)
+                        .unwrap_or(false),
                 });
             }
         }
@@ -77,6 +86,21 @@ impl Policy {
             runners: string_array(&document["runner_labels"]),
             graphs,
         })
+    }
+}
+
+impl Policy {
+    /// Trusted (`pull_request_target`) workflow files and their gate jobs.
+    #[must_use]
+    pub fn trusted_gates(&self) -> (Vec<String>, Vec<String>) {
+        let trusted: Vec<&Graph> = self.graphs.iter().filter(|graph| graph.trusted).collect();
+        (
+            trusted.iter().map(|graph| graph.file.clone()).collect(),
+            trusted
+                .iter()
+                .flat_map(|graph| graph.jobs.iter().cloned())
+                .collect(),
+        )
     }
 }
 
@@ -225,8 +249,21 @@ pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
             Vec::new()
         }
     };
-    for trigger in triggers {
-        if !policy.triggers.contains(&trigger) {
+    let graph = policy.graphs.iter().find(|graph| graph.file == path);
+    let allowed = graph
+        .and_then(|graph| graph.triggers.as_ref())
+        .unwrap_or(&policy.triggers);
+    let trusted = graph.is_some_and(|graph| graph.trusted);
+    for trigger in &triggers {
+        if trigger == "pull_request_target" && !trusted {
+            findings.push(Finding::at(
+                path,
+                None,
+                "`pull_request_target` is allowed only in a trusted-gates workflow listed in the trusted gate graph",
+            ));
+            continue;
+        }
+        if !allowed.contains(trigger) {
             findings.push(Finding::at(
                 path,
                 None,
@@ -255,6 +292,9 @@ pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
     }
     for (job_name, job) in &job_entries {
         check_job(path, job_name, job, policy, &mut findings);
+        if triggers.iter().any(|t| t == "pull_request_target") {
+            check_trusted_job(path, job_name, job, &mut findings);
+        }
     }
 
     for value in &all {
@@ -284,6 +324,58 @@ pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
 
     check_graph(path, &job_entries, policy, &mut findings);
     findings
+}
+
+/// Extra rules for a `pull_request_target` job, which runs with the base
+/// branch's context: it must never check out, build or run pull-request code
+/// (F1). Checkout takes no `ref` or `repository`, no local action is used
+/// (it would be read from the PR checkout in other workflows) and no cache is
+/// written.
+fn check_trusted_job(path: &str, name: &str, job: &Yaml, findings: &mut Vec<Finding>) {
+    let scope = format!("job `{name}` (pull_request_target)");
+    if get(job, "uses").is_some() {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!("{scope}: reusable workflows are not allowed"),
+        ));
+    }
+    let steps = get(job, "steps")
+        .and_then(Yaml::as_vec)
+        .cloned()
+        .unwrap_or_default();
+    for (index, step) in steps.iter().enumerate() {
+        let action = get(step, "uses").map(scalar).unwrap_or_default();
+        if action.starts_with("./")
+            || action.contains("/cache@")
+            || action.starts_with("actions/cache")
+        {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!(
+                    "{scope} step {}: `{action}` is not allowed in a trusted job",
+                    index + 1
+                ),
+            ));
+        }
+        if action.starts_with("actions/checkout@")
+            && let Some(with) = get(step, "with")
+        {
+            for key in ["ref", "repository"] {
+                if get(with, key).is_some() {
+                    findings.push(Finding::at(
+                        path,
+                        None,
+                        format!(
+                            "{scope} step {}: checkout `{key}` is not allowed; the PR head is fetched only as data",
+                            index + 1
+                        ),
+                    ));
+                }
+            }
+        }
+    }
 }
 
 fn has_alias(yaml: &Yaml) -> bool {
@@ -586,12 +678,17 @@ mod tests {
 
     const POLICY: &str = r#"
 allowed_triggers = ["pull_request", "push"]
-run_expressions = ["env.*", "runner.temp"]
+run_expressions = ["runner.temp"]
 runner_labels = ["ubuntu-*", "macos-*"]
 [[workflow]]
 file = "w.yml"
 jobs = ["a", "b"]
 aggregator = "gate"
+[[workflow]]
+file = "t.yml"
+jobs = ["review"]
+triggers = ["pull_request_target"]
+trusted = true
 "#;
 
     const GOOD: &str = r#"
@@ -606,7 +703,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false}
-      - run: echo "$HOME ${{ env.X }}"
+      - run: echo "$HOME ${{ runner.temp }}"
   b:
     runs-on: macos-15
     steps:
@@ -689,11 +786,11 @@ jobs:
             "github.head_ref",
             "\n github.event.pull_request.title\n",
         ] {
-            let text = GOOD.replace("${{ env.X }}", &format!("${{{{{expression}}}}}"));
+            let text = GOOD.replace("${{ runner.temp }}", &format!("${{{{{expression}}}}}"));
             assert_eq!(run(&text).len(), 1, "{expression}");
         }
         let block = GOOD.replace(
-            "      - run: echo \"$HOME ${{ env.X }}\"",
+            "      - run: echo \"$HOME ${{ runner.temp }}\"",
             "      - run: |\n          echo start\n          echo ${{\n            github.event.pull_request.body }}",
         );
         assert_eq!(run(&block).len(), 1);
@@ -701,7 +798,7 @@ jobs:
 
     #[test]
     fn secrets_python_and_rustflags_are_rejected() {
-        let secret = GOOD.replace("${{ env.X }}", "").replace(
+        let secret = GOOD.replace("${{ runner.temp }}", "").replace(
             "run: cargo xtask docs",
             "run: cargo xtask docs\n        env: {T: \"${{ secrets.LICENCE }}\"}",
         );
@@ -739,5 +836,88 @@ jobs:
         assert_eq!(run(&soft).len(), 1);
         let not_always = GOOD.replace("    if: always()\n", "");
         assert_eq!(run(&not_always).len(), 1);
+    }
+    // F5: an env value interpolated into a script is as unsafe as the event
+    // value it holds; only the shell variable form passes.
+    #[test]
+    fn f5_env_expression_in_run_is_rejected() {
+        let job = "env:\n      TITLE: ${{ github.event.pull_request.title }}\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n        with: {persist-credentials: false}\n";
+        let unsafe_form = GOOD.replace(
+            "steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n        with: {persist-credentials: false}\n",
+            job,
+        ).replace("echo \"$HOME ${{ runner.temp }}\"", "echo \"${{ env.TITLE }}\"");
+        let found = run(&unsafe_form);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].message.contains("env.TITLE"));
+        let safe = unsafe_form.replace("echo \"${{ env.TITLE }}\"", "echo \"$TITLE\"");
+        assert_eq!(run(&safe), Vec::new());
+        let real = Policy::parse(
+            &std::fs::read_to_string(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/gates.toml"),
+            )
+            .expect("gates"),
+        )
+        .expect("policy");
+        assert!(!real.expressions.iter().any(|e| e.starts_with("env")));
+    }
+
+    const TRUSTED: &str = r#"
+on:
+  pull_request_target:
+    types: [opened]
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false, fetch-depth: 0}
+      - run: cargo run -p xtask -- review --main refs/remotes/origin/main
+"#;
+
+    fn run_as(path: &str, text: &str) -> Vec<Finding> {
+        check_workflow(path, text, &Policy::parse(POLICY).expect("policy"))
+    }
+
+    // F1: pull_request_target only in the listed trusted workflow, and a
+    // trusted job never checks out the PR head, uses local actions or caches.
+    #[test]
+    fn f1_trusted_workflow_rules() {
+        assert_eq!(run_as("t.yml", TRUSTED), Vec::new());
+        assert_eq!(
+            run_as("w2.yml", TRUSTED).len(),
+            1,
+            "unlisted pull_request_target"
+        );
+        for (from, to) in [
+            (
+                "with: {persist-credentials: false, fetch-depth: 0}",
+                "with: {persist-credentials: false, ref: \"${{ github.event.pull_request.head.sha }}\"}",
+            ),
+            (
+                "with: {persist-credentials: false, fetch-depth: 0}",
+                "with: {persist-credentials: false, repository: someone/fork}",
+            ),
+            (
+                "      - run: cargo",
+                "      - uses: ./.github/actions/trusted-policy\n      - run: cargo",
+            ),
+            (
+                "      - run: cargo",
+                "      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809\n      - run: cargo",
+            ),
+        ] {
+            let text = TRUSTED.replace(from, to);
+            assert!(!run_as("t.yml", &text).is_empty(), "accepted: {to}");
+        }
+        // The trusted graph: the gate job cannot be dropped or made conditional.
+        let dropped = TRUSTED.replace("  review:", "  other:");
+        assert!(!run_as("t.yml", &dropped).is_empty());
+        let conditional = TRUSTED.replace("  review:\n", "  review:\n    if: false\n");
+        assert!(!run_as("t.yml", &conditional).is_empty());
+        let (files, jobs) = Policy::parse(POLICY).expect("policy").trusted_gates();
+        assert_eq!(files, ["t.yml"]);
+        assert_eq!(jobs, ["review"]);
     }
 }

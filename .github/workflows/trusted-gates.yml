@@ -1,0 +1,86 @@
+# Trusted gates (ADR 0001, NFR-3.AC3/AC5, D-74; F1 and ADV23R-08 of the PR #23 reviews).
+# pull_request_target runs THIS FILE AS IT IS ON MAIN, so a pull request cannot
+# replace these jobs. Each job builds and runs main's xtask in a checkout of main.
+# The pull-request head is fetched only as Git objects and read as data; no step
+# checks out, builds or runs pull-request code. Read-only token, no secrets, no
+# caches. After the owner approves a head, re-run this workflow's run.
+name: trusted-gates
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trusted-gates-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  independent-review:
+    name: independent-review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Fetch current main and the pull-request head (data only)
+        env:
+          NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$NUMBER" | grep -Eqx '[0-9]+'
+          printf '%s\n' "$HEAD_SHA" | grep -Eqx '[0-9a-f]{40}'
+          git fetch --no-tags --quiet origin "+refs/heads/main:refs/remotes/origin/main" "+refs/pull/$NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA"
+          git checkout --quiet --detach refs/remotes/origin/main
+          if ! test -f xtask/Cargo.toml; then
+            echo "::error::main has no xtask policy; the trusted gates fail closed"
+            exit 1
+          fi
+      - name: Install main's pinned toolchain
+        run: rustup toolchain install && rustc --version
+      - name: Review evidence on main covers this head
+        run: cargo run --locked --quiet -p xtask -- review --main refs/remotes/origin/main
+
+  policy-approval:
+    name: policy-approval
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Fetch current main and the pull-request head (data only)
+        env:
+          NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$NUMBER" | grep -Eqx '[0-9]+'
+          printf '%s\n' "$HEAD_SHA" | grep -Eqx '[0-9a-f]{40}'
+          git fetch --no-tags --quiet origin "+refs/heads/main:refs/remotes/origin/main" "+refs/pull/$NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA"
+          git checkout --quiet --detach refs/remotes/origin/main
+          if ! test -f xtask/Cargo.toml; then
+            echo "::error::main has no xtask policy; the trusted gates fail closed"
+            exit 1
+          fi
+      - name: Install main's pinned toolchain
+        run: rustup toolchain install && rustc --version
+      - name: Owner approval of protected-path changes on the exact head (D-74)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cargo run --locked --quiet -p xtask -- approval --main refs/remotes/origin/main

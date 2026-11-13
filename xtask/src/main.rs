@@ -20,9 +20,11 @@ commands:
   docs           Markdown links and requirement traceability
   attribution    AI-attribution scan (D-52) of a range:
                    --base REV --head REV [--title T] [--body-file F]
-                 or, in GitHub Actions, the range and metadata of the event
-  review         independent-review evidence gate: --evidence REV (from the event)
-  approval       protected-path owner approval gate (from the event)
+                 or, in GitHub Actions, the range and metadata of the event;
+                 --base-ref REV replaces the event base (CI: current main)
+  review         independent-review evidence gate: --main REV (current main,
+                 also the evidence tree); head from the pull-request event
+  approval       protected-path owner approval gate: --main REV; event fields
   all            policy, provenance and docs
 ";
 
@@ -116,7 +118,11 @@ fn run_attribution(args: &Args) -> Result<bool, String> {
             body,
         }
     } else if let Some((name, value)) = event()? {
-        attribution::Range::from_event(&name, &value)?
+        let mut range = attribution::Range::from_event(&name, &value)?;
+        if let Some(base) = option(args, "--base-ref") {
+            range.base = Some(base.to_owned());
+        }
+        range
     } else {
         return Err("attribution: pass --head (and --base) outside GitHub Actions".to_owned());
     };
@@ -137,7 +143,14 @@ fn run_attribution(args: &Args) -> Result<bool, String> {
 
 fn pull_request_event() -> Result<serde_json::Value, String> {
     match event()? {
-        Some((name, value)) if name == "pull_request" || name == "pull_request_review" => Ok(value),
+        Some((name, value))
+            if matches!(
+                name.as_str(),
+                "pull_request" | "pull_request_target" | "pull_request_review"
+            ) =>
+        {
+            Ok(value)
+        }
         Some((name, _)) => Err(format!("unsupported event {name}")),
         None => Err("needs a GitHub pull_request event".to_owned()),
     }
@@ -153,22 +166,22 @@ fn run(args: &Args) -> Result<bool, String> {
         "docs" => run_docs(&args.ctx),
         "attribution" => run_attribution(args),
         "review" => {
-            let evidence = option(args, "--evidence").ok_or("review: --evidence REV required")?;
+            let main = option(args, "--main").ok_or("review: --main REV required")?;
             let value = pull_request_event()?;
-            let pull = &value["pull_request"];
-            let findings = review_gates::independent_review(
-                &args.ctx.repo,
-                evidence,
-                pull["base"]["sha"].as_str().unwrap_or_default(),
-                pull["head"]["sha"].as_str().unwrap_or_default(),
-            )?;
+            let head = value["pull_request"]["head"]["sha"]
+                .as_str()
+                .unwrap_or_default();
+            let findings = review_gates::independent_review(&args.ctx, main, head)?;
             Ok(report("independent-review", &findings))
         }
         "approval" => {
+            let main = option(args, "--main").ok_or("approval: --main REV required")?;
             let value = pull_request_event()?;
+            let pull = review_gates::PullRequest::from_event(&value)?;
+            let (files, jobs) = workflows::Policy::load(&args.ctx)?.trusted_gates();
             Ok(report(
                 "policy-approval",
-                &review_gates::policy_approval(&args.ctx, &value)?,
+                &review_gates::policy_approval(&args.ctx, main, &pull, &files, &jobs)?,
             ))
         }
         "all" => {

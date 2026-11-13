@@ -1,7 +1,10 @@
 # M0 merge gates on GitHub-hosted runners (ADR 0001 bootstrap profile, NFR-3).
 # Security rules: docs/security/ci-runner-policy.md, enforced by `cargo xtask policy`.
-# Policy checks, deny.toml and check configuration come from the base revision
-# (.github/actions/trusted-policy), never from the pull request (R1).
+# Policy checks, deny.toml and check configuration come from the current tip of
+# main (.github/actions/trusted-policy), never from the pull request (R1, F1).
+# This file is defined by the pull request when it runs; it is a protected path,
+# so the trusted policy-approval gate (trusted-gates.yml, run from main) fails
+# unless the owner approves the exact head of any change to it.
 # Never add pull_request_target, workflow_run, self-hosted runners or secrets here.
 name: ci
 
@@ -77,7 +80,7 @@ jobs:
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
           tool: cargo-deny@${{ env.CARGO_DENY_VERSION }}
-      - name: cargo deny (policy from the base revision)
+      - name: cargo deny (policy from current main)
         env:
           TRUSTED: ${{ steps.trusted.outputs.dir }}
         run: cargo deny --config "$TRUSTED/deny.toml" --locked check
@@ -93,12 +96,15 @@ jobs:
           fetch-depth: 0
       - id: trusted
         uses: ./.github/actions/trusted-policy
-      - name: Scan commits, title, body and added lines
+      - name: Scan commits, identities, title, body and added lines
         env:
           TRUSTED: ${{ steps.trusted.outputs.dir }}
+          MAIN: ${{ steps.trusted.outputs.main }}
         run: |
           cd "$TRUSTED"
-          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" attribution
+          base=()
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then base=(--base-ref "$MAIN"); fi
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" attribution "${base[@]}"
 
   docs:
     name: documentation gates
@@ -172,6 +178,6 @@ jobs:
           echo "N/A: benchmark-regression: B1 profile starts at M1 on the D-65 target runner"
           echo "N/A: mutation: no commitment/redispatch/network/pricing/optimisation model logic yet"
           echo "N/A: gpu-validation: no enabled GPU adapter (cuOpt is a capability stub)"
-          echo "SEPARATE: independent-review and policy-approval are required checks in review-gates.yml"
+          echo "SEPARATE: independent-review and policy-approval are required checks in trusted-gates.yml (run from main)"
           failed="$(printf '%s' "$NEEDS" | jq '[.[] | select(.result != "success")] | length')"
           test "$failed" -eq 0
