@@ -7,7 +7,7 @@ catalog = "semo-2024-market-prices"
 calendar_year = 2024
 total_datasets = 2
 total_bytes = 43625133
-verified_at = "2026-11-13T13:05:00Z"
+verified_at = "2026-11-13T13:20:16Z"
 storage_root = "/home/njotob/energy-data/raw/semo/2024"
 
 [[datasets]]
@@ -21,12 +21,16 @@ bytes = 4459701
 sha256 = "16d0c54d1cebca28babec80bdd06af23668e84ce471cb2615f4f134ac0bbd1ac"
 licence_name = "Dataset-specific open-commercial licence not established"
 licence_status = "research-only"
-description = "SEMO Balancing Market historical imbalance settlement prices (30MIN settlement period) and 5MIN operational dispatch interval prices, volumes, and price flags covering 30 Sep 2020 through 31 Dec 2024."
-licence_evidence_url = "https://www.sem-o.com/market-data/general-publications"
+description = "SEMO Balancing Market historical imbalance settlement prices (30MIN settlement period) and 5MIN operational dispatch interval prices, volumes, and price flags archive spanning 30 Sep 2020 through 31 Dec 2024; in the 2024 selection, 30MIN ends at 31 Dec 23:00 and 5MIN ends at 30 Nov 23:55."
+licence_evidence_url = "https://www.sem-o.com/publications/general-publications"
 licence_terms_url = "https://www.sem-o.com/disclaimer"
 licence_verified_on = "2026-11-13"
-licence_text = "This website contains general information about The Single Electricity Market Operator. The materials and information contained on and in this website are provided for general information purposes only and are subject to change from time to time without notice. You should not act or refrain from acting on the basis of any material contained on or in this website without seeking appropriate professional advice. All materials and information are provided 'AS IS' and without warranties express, implied or otherwise howsoever arising. EirGrid plc and SONI Limited shall not be liable for inaccuracies, errors, omissions or misleading information contained in this website."
-licence_notes = "The EirGrid Group Open Data Licence exists at https://www.smartgriddashboard.com/all/open-data-license/ and names SEMO/SEMOpx, but express coverage of this exact file was not established. Retain D-56 research-only pending clarification; website disclaimer reserves rights and disclaims warranties."
+licence_text = "This website contains general information about The Single Electricity Market Operator. The materials and information contained on and in this website are provided for general information purposes only and are subject to change from time to time without notice. You should not act or refrain from acting on the basis of any material contained on or in this website without seeking appropriate professional advice. All materials and information are provided \"AS IS\" and without warranties express, implied or otherwise howsoever arising. EirGrid plc and SONI Limited shall not be liable for inaccuracies, errors, omissions or misleading information contained in this website."
+open_data_terms_url = "https://www.smartgriddashboard.com/all/open-data-license/"
+open_data_scope_excerpt = "Use of copyright and database right material expressly made available under this licence (the ‘Information’) indicates your acceptance of the terms and conditions below as varied from time to time."
+open_data_commercial_excerpt = "exploit the Information commercially and non-commercially for example, by combining it with other Information, or by including it in your own product or application."
+open_data_attribution_excerpt = "Acknowledge EirGrid Group as the source of the Information by including the following attribution statement ‘Supported by EirGrid Group Data’"
+licence_notes = "The EirGrid Group Open Data Licence exists at https://www.smartgriddashboard.com/all/open-data-license/ and names SEMO/SEMOpx, but express coverage of this exact file was not established. Retain D-56 research-only pending clarification; website disclaimer disclaims warranties but is not a reuse licence or an express reservation of rights."
 
 [[datasets]]
 category = "semopx"
@@ -43,5 +47,9 @@ description = "SEMOpx Ex-Ante Market historical prices and traded volumes for Da
 licence_evidence_url = "https://www.semopx.com/market-data/document-library"
 licence_terms_url = "https://www.semopx.com/disclaimer"
 licence_verified_on = "2026-11-13"
-licence_text = "This website contains general information about day-ahead auction and intraday markets in the Single Electricity Market (SEM) as operated by SEMOpx. The materials and information contained on and in this website are provided for general information purposes only and are subject to change from time to time without notice. You should not act or refrain from acting on the basis of any material contained on or in this website without seeking appropriate professional advice. All materials and information are provided 'AS IS' and without warranties express, implied or otherwise howsoever arising. EirGrid plc and SONI Limited shall not be liable for inaccuracies, errors, omissions or misleading information contained in this website."
-licence_notes = "The EirGrid Group Open Data Licence exists at https://www.smartgriddashboard.com/all/open-data-license/ and names SEMO/SEMOpx, but express coverage of this exact file was not established. Retain D-56 research-only pending clarification; website disclaimer reserves rights and disclaims warranties."
+licence_text = "This website contains general information about day-ahead auction and intraday markets in the Single Electricity Market (SEM) as operated by SEMOpx. The materials and information contained on and in this website are provided for general information purposes only and are subject to change from time to time without notice. You should not act or refrain from acting on the basis of any material contained on or in this website without seeking appropriate professional advice. All materials and information are provided \"AS IS\" and without warranties express, implied or otherwise howsoever arising. EirGrid plc and SONI Limited shall not be liable for inaccuracies, errors, omissions or misleading information contained in this website."
+open_data_terms_url = "https://www.smartgriddashboard.com/all/open-data-license/"
+open_data_scope_excerpt = "Use of copyright and database right material expressly made available under this licence (the ‘Information’) indicates your acceptance of the terms and conditions below as varied from time to time."
+open_data_commercial_excerpt = "exploit the Information commercially and non-commercially for example, by combining it with other Information, or by including it in your own product or application."
+open_data_attribution_excerpt = "Acknowledge EirGrid Group as the source of the Information by including the following attribution statement ‘Supported by EirGrid Group Data’"
+licence_notes = "The EirGrid Group Open Data Licence exists at https://www.smartgriddashboard.com/all/open-data-license/ and names SEMO/SEMOpx, but express coverage of this exact file was not established. Retain D-56 research-only pending clarification; website disclaimer disclaims warranties but is not a reuse licence or an express reservation of rights."

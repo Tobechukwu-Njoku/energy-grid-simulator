@@ -11,12 +11,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import sys
 import time
 import tomllib
 import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -135,9 +133,9 @@ def main() -> int:
     )
 
     repository_root = SCRIPT_DIR.parents[2]
-    if storage_root.is_relative_to(repository_root):
+    if any((parent / ".git").exists() for parent in (storage_root, *storage_root.parents)):
         print(
-            f"ERROR: Target directory {storage_root} must be strictly outside the git repository {repository_root} (D-56).",
+            f"ERROR: Target directory {storage_root} must be strictly outside every git checkout (including {repository_root}) (D-56).",
             file=sys.stderr,
         )
         return 1
@@ -158,7 +156,8 @@ def main() -> int:
             print(f"       Licence: {entry['licence_status']} ({entry['licence_name']})")
         return 0
 
-    storage_root.mkdir(parents=True, exist_ok=True)
+    if not args.verify_only:
+        storage_root.mkdir(parents=True, exist_ok=True)
     total_bytes = 0
 
     print("\n--- Processing Datasets ---")
