@@ -1,254 +1,225 @@
-# ADR 0001 — Repository layout and enforced CI gates
+# ADR 0001 — Repository layout and staged CI gates
 
-- **Status:** Proposed
-- **Date:** 2026-11-12
-- **Linked decisions:** D-3, D-4, D-8, D-16, D-17, D-19, D-20, D-22, D-28, D-29, D-31, D-43, D-48, D-49, D-51, D-52, D-53.
-- **Related requirements:** FR-4, FR-13–FR-19; NFR-1–NFR-4, NFR-7, NFR-8, NFR-10, NFR-12 in `../../requirements/04-requirements.md`.
+- **Status:** Proposed; bootstrap policy is specified, not deployed by this ADR.
+- **Date:** 2026-11-13
+- **Linked decisions:** D-3, D-8, D-16, D-17, D-19, D-20, D-22, D-28, D-29, D-31, D-43, D-48, D-51–D-54, D-56, D-58, D-61, D-62.
+- **Related requirements:** FR-4, FR-13–FR-19; NFR-1–NFR-4, NFR-7–NFR-12.
 
-## Context
+## Context and authority
 
-This is a documentation-only requirements repository. Application code is prohibited
-until the coordinator's baseline gate opens; D-31 permits only the data spike. This
-ADR proposes future layout and enforcement, not workspace scaffolding or workflows
-in this PR. Neither this Proposed ADR nor a green documentation check changes STATUS.
+Requirements are not baselined. Only the D-31 data spike and the explicitly requested
+versioned commit-message policy hook are executable additions permitted in this
+revision; no workspace, engine, solver experiment or application CI is scaffolded.
+A green documentation check or this Proposed ADR cannot open the code gate.
 
-D-20 calls for Rust production modelling/backend/SDK/CLI and a TypeScript frontend;
-offline Python/Julia reference tools remain permitted. D-28 requires formatting,
-lint, tests, licence/advisory checks, reference agreement, no benchmark regression
-and independent review. D-43 requires merge-gate evidence from CI, with a self-hosted
-GPU runner; a successful SSH experiment is not a substitute. D-49/team.md strengthens
-independence to **cross-provider** review. The owned Linux CPU and Mac development
-paths must remain usable without CUDA or commercial solver licences.
+D-28 quality gates remain mandatory when applicable. They must not require a GPU
+implementation, numerical fixtures or a benchmark baseline before any exist. D-58
+chooses a public repository after open PRs merge, attribution history is cleaned and
+all branches/history pass restricted-data/secret scans. Until that transition and
+verified required-check protection, merge discipline is NOT enforced branch protection.
+This revision neither flips visibility nor rewrites shared history.
 
-During drafting, main gained D-51–D-53. Apply the refined verification roles, prohibit
-attribution/watermark metadata under D-52 and require D-53's additional adversarial
-review with verified triage. The coordinator reports that branch protection is not
-available on the current private-repository plan; rule-based discipline today is
-not equivalent to the technical enforcement proposed below.
+ASSUMPTION (Q-N-11, alias OI-11): Use a staged, exact-head gate manifest to prevent
+accidental omissions by cooperative contributors sharing one account. It cannot prove
+provider identity, prevent a malicious owner-token holder bypassing policy or establish
+scientific validity from review independence alone. No external attestor/App is needed.
 
-## Decision (proposed)
+## Proposed workspace after the baseline gate
 
-### Cargo workspace and frontend boundaries
+Use edition 2024, a pinned reviewed MSRV/toolchain in rust-toolchain.toml, committed
+Cargo.lock, shared workspace.dependencies and workspace.lints. Deny unsafe_code except
+in individually reviewed solver-* adapters. CPU defaults never enable CUDA/licensed SDKs.
 
-Use one repository and one root Cargo workspace with a committed `Cargo.lock`, pinned
-Rust toolchain and explicit default CPU features. Proposed directories, created only
-after code is allowed:
+| Path | Responsibility |
+|---|---|
+| crates/domain, crates/scenario | IDs/units/contracts and canonical versioned TOML identity |
+| crates/ingest | Sourced/dated inputs, lineage, licence tags and calendar/GSP alignment |
+| crates/network | Topology, DC equations, sparse factors, screened flowgates/PTDF/LODF |
+| crates/market | Date-effective GB/I-SEM rules, products, proxies and losses/FX policy |
+| crates/optimisation | Sparse model IR and solver trait (ADR 0003), no market rules |
+| crates/solver-highs | Default CPU native adapter and isolated worker support |
+| crates/solver-gurobi, crates/solver-xpress, crates/solver-cuopt | Optional adapters; contracts/stubs without SDK linkage by default |
+| crates/commitment, crates/redispatch, crates/pricing | Separate staged UC, network actions and national pricing |
+| crates/engine | Orchestration, worker lifecycle and rolling/persisted states, not every model |
+| crates/api, crates/sdk, crates/cli | Shared scenario/result semantics and interface composition |
+| apps/web, schemas | TypeScript dashboard and versioned shared schemas |
+| tests/cases, tests/reference, tests/acceptance | Hashed cases, uv-locked offline reference environment, API/UI/backtest tests |
+| benchmarks, ci, .github/workflows | Frozen workloads, trusted classifiers/evidence and future workflow entry points |
+| .githooks | Versioned local attribution policy and commit-msg hook |
+| spikes | D-31 throwaway data work, never a production dependency |
 
-```text
-Cargo.toml                       workspace and shared dependency policies
-Cargo.lock / rust-toolchain.toml reproducible Rust build inputs
-deny.toml                        reviewed Rust licence/advisory configuration
-crates/
-  domain/                        identifiers, units, result/status contracts
-  scenario/                      TOML schema, validation, canonical hashing
-  optimisation/                  linear-model contract and solver trait (ADR 0003)
-  solver-highs/                  default CPU adapter
-  solver-gurobi/                 optional licensed adapter
-  solver-xpress/                 optional licensed adapter
-  solver-cuopt/                  optional GPU adapter
-  engine/                        UC, redispatch, pricing, rolling orchestration
-  api/                           Rust service and application composition
-  sdk/                           Rust client API
-  cli/                           Rust command-line application
-apps/web/                        TypeScript UI; own package/lock/config files
-schemas/                        shared versioned scenario/API schema artifacts
-tests/
-  cases/                         small licensed, hashed mathematical fixtures
-  reference/                     pinned offline PyPSA/optional Julia environment
-  acceptance/                    API/UI and historical validation specifications
-benchmarks/                      fixture manifests and benchmark definitions
-ci/                             trusted gate specifications and evidence schemas
-.github/workflows/               CI entry points, added after baseline acceptance
-docs/                           decisions, requirements, ADRs and validation reports
-spikes/                         D-31 throwaway data exploration, not runtime code
-```
+Reuse mature solvers, cargo-nextest, cargo-deny, cargo-mutants and native build caches;
+do not implement a new optimisation framework. Native libraries are permitted under
+D-16; no Python/Julia runtime model dependency. PostgreSQL 18 and Redis remain the
+baseline; service roles/TimescaleDB adoption are not decided here (ADR 0004 deferred).
+Software/service terms and dataset permissions are reviewed separately.
 
-The `optimisation` contract depends only on domain/numerical value types, not a
-concrete backend. Adapters depend on that contract; the engine consumes it;
-application composition selects adapters. No engine-to-frontend or production-to-
-offline-validator dependency is permitted. UI and CLI use the same versioned scenario
-schema/API; fixture round trips detect schema drift. Do not generate an SDK with a
-second scenario semantics implementation.
+## Bootstrap profiles and transitions
 
-Default workspace membership/feature selection builds the CPU path. Optional adapter
-packages have explicit capability-specific CI jobs, so `--all-features` is not a
-synonym for a meaningful build when SDKs/devices are absent. Native FFI unsafe code
-is confined to reviewed adapters. Optional adapter packages expose contracts without
-native linking by default; named features enable their real SDK implementations.
-Thus `--workspace` CPU tests do not accidentally require commercial SDKs. Native
-numerical libraries do not violate D-20;
-Python/Julia runtime modelling would. JavaScript package management and exact crate
-versions are selected/pinned during implementation, not implied owner decisions here.
+ASSUMPTION (Q-N-11): A trusted policy from the base branch determines applicable gates
+from changed paths, repository state and declared installed capabilities. Authors cannot
+select a cheaper profile with a label, missing files or a changed classifier in their PR.
+A classifier/policy change is independently reviewed and tested against old and new rules.
+Every gate emits pass/fail or explicit N/A with reason and evidence; missing is not N/A.
 
-Keep PostgreSQL 18 and Redis as D-3 requires, but **do not settle their storage/job
-roles here**. ADR 0002 owns the data model after the spike; ADR 0004 owns storage.
-Bulk market/network/weather data stay outside Git except licensed small fixtures
-and immutable manifests. A manifest points to authorised artifacts and preserves
-hashes; it does not make restricted data redistributable.
-
-### GitHub Actions gate graph
-
-Each PR targets protected `main`. The eventual workflow evaluates the current PR head
-and merge candidate; all evidence binds the tested SHA, input/model hashes and workflow
-revision. `merge_group` runs the equivalent graph if a merge queue is enabled.
-
-| Required gate | Work and evidence | Execution |
+| Profile | Applicable quality evidence | Explicit non-applicability / transition |
 |---|---|---|
-| `rust-format` | `cargo fmt --all --check` | Hosted Linux |
-| `rust-lint` | `cargo clippy --workspace --all-targets -- -D warnings` for default CPU, plus explicit supported feature jobs | Hosted Linux; capability jobs as needed |
-| `cpu-tests` | Locked workspace tests, small solver/domain cases and CPU-only build/run | Hosted Linux + macOS |
-| `web-contract-tests` | Locked TypeScript install, type/lint/build/tests and shared-schema round trips | Hosted Linux |
-| `licence-advisory` | `cargo deny check`; separate reviewed native, frontend, service/container and data inventories | Hosted Linux + trusted evidence verification |
-| `numerical-reference` | Independent residuals and exact cases, pinned PyPSA comparison on identical inputs with stated tolerances | CPU CI; offline validator environment separate from production |
-| `gpu-validation` | GPU build/conformance/numerical parity on a supported installed device; logs actual driver/toolkit/VRAM | Isolated self-hosted Linux NVIDIA runner (D-43) |
-| `benchmark-regression` | Paired protected-main/candidate performance cases on stable D-48 hardware, including the applicable GPU case | Serial self-hosted performance runner |
-| `cross-provider-review` | Trusted current-head attestation of author/reviewer providers and review evidence | Independently credentialled check issuer |
-| `adversarial-review-triage` | D-53 adversarial findings and independently verified accept/reject dispositions for substantive changes; cannot substitute for approval | Protected evidence verifier |
-| `attribution-policy` | D-52 check of source/file headers, commits and PR metadata; process/review documents follow their explicit exception | Hosted Linux + protected metadata check |
-| `merge-gates` | Verifies every required gate's conclusion, SHA and artifact identity; missing/cancelled/inconclusive is failure | Protected aggregator |
+| B0 — current documentation/data spike | Traceability and Markdown/local-link checks; spike tests if present; D-52, secrets/data/provenance, current-head independent review and adversarial triage | Rust/TS fmt/lint/build/reference/bench/GPU are N/A only while their implementation targets do not exist. A spike change runs its own applicable checks. |
+| B1 — CPU implementation (M0 onward, after baseline) | fmt, clippy, nextest, licence/advisory closure, numerical reference, mutation scope, CPU benchmark, Linux CPU and applicable macOS build, plus all B0 policy gates | A new component must seed applicable tests/reference evidence in its first implementation PR. No blanket first-code exemption. GPU N/A without an enabled/touched GPU adapter. |
+| B2 — optional native/GPU feature | All B1 gates plus changed-adapter conformance, actual-device numerical/benchmark evidence and licence/device checks | Missing REQUIRED supported device/runner blocks the feature PR; CPU-only P1 is not blocked by an absent optional adapter. |
 
-Use `cargo test --workspace --locked` for the default CPU workspace and a separately
-enumerated feature/adapter matrix. Do not require unavailable commercial licences to
-pass standard CI. When an optional adapter is changed, its capability tests require
-real licensed/runtime evidence or remain blocking; a successful stub build is not
-solver conformance. A vendor-independent trait mock tests the contract only.
+First B0 activation: coordinator pins the exact candidate SHA and checks the checklist
+manually with recorded commands/results plus independent and adversarial dispositions.
+That narrowly permits a reviewed policy/workflow seed when no workflow yet exists; it
+does not label unrun CI green. Later workflow activation uses the trusted baseline policy.
+The first B1 benchmark run has an explicit reviewed 'seed: no prior implementation'
+disposition, stores measurements against the exact merged SHA, then activates comparisons
+for every subsequent relevant PR. Seeding requires an independently reviewed frozen
+workload, not a claim that a missing baseline is a comparison pass. New workload seeds
+and existing baseline resets are separate PRs from changes measured against them.
+No bootstrap exception waives the requirements-code gate or D-28 independent review.
 
-Numerical gates use FR-13/NFR-2 semantics. A DC fixture is compared to an identical DC
-reference, not an AC pglib objective; future AC gates can add appropriate cases. A
-per-PR representative numerical/benchmark suite supplies D-28 evidence. Full-year
-historical accuracy and NFR-5 throughput are release acceptance jobs and may run
-scheduled/as needed; they do **not** replace the per-PR gates. Changes invalidating
-the full-year baseline require new acceptance evidence before release.
+## Gate graph and quality criteria
 
-Do not use path filters that make required check contexts disappear. A trusted change
-classifier can emit explicit non-applicability evidence only under an accepted policy
-when the capability is provably unaffected; the aggregator still runs. During the
-documentation-only bootstrap, record that Cargo/application tests do not yet exist;
-do not manufacture passing solver/benchmark results. **OI-11 must settle that bootstrap
-policy before autonomous merges depend on it.** This PR merely opens the design for
-review and does not assert these gates are already configured or satisfied.
+Use pull_request opened/synchronize/reopened/edited/ready_for_review events and a
+fresh base/head check immediately before merge. Title/body edits invalidate metadata
+policy evidence even if code SHA is unchanged. Policy/review-only rechecks can be light;
+never reuse numerical evidence for a different code/tree/input/runner identity.
+One merge-gates aggregator runs with always() and fails if any REQUIRED gate is not
+successful; a protected classifier's explicit N/A is different from a skipped job.
 
-### Enforcing D-28 rather than documenting it
+| Gate | Evidence / failure condition |
+|---|---|
+| format/lint/build | cargo fmt --all --check; cargo clippy --workspace --all-targets -- -D warnings; pinned TypeScript formatter/linter when present; explicit CPU/optional-feature matrix |
+| tests | cargo nextest run for workspace CPU targets, API/CLI contracts, UI E2E/accessibility and domain negative cases; failures or missing targets block |
+| licence/advisory | cargo deny check plus native solver, service/container, npm and offline-reference inventories; unreviewed licence/advisory exceptions block |
+| numerical-reference | Identical-input independent fixtures with NFR-2 tolerances; exact tests use matched solver feasibility and relative MIP gap ≤1e-6 plus tighter absolute certificates; no fabricated BM reference |
+| benchmark-regression | NFR-4 paired serial-runner protocol, full model/solver/hardware identity; proposed >5% wall or >10% RSS significant-regression floor; report trends below floors and unresolved above-floor uncertainty as blocking |
+| reference-integrity/mutation | External fixture ownership, provenance and mutation policy below |
+| provenance/secrets/data | Research-only raw/derived restricted data never committed; ODbL/share-alike excluded; manifests tagged open-commercial/research-only and publication preconditions scanned before D-58 visibility change |
+| attribution-policy | PR-range messages, metadata and added-line checks below; no silent rewriting by CI |
+| independent-review | Current-head role-compatible independent evidence plus adversarial findings and verified triage |
+| gpu-validation | Actual installed supported device for relevant implemented feature, otherwise protected-classifier N/A |
 
-Configure repository rulesets/branch protection to require PRs, all required contexts,
-current-head approval/evidence and no force pushes/deletion. Configure expected check
-sources where supported. Restrict the bypass list; the routine agent merger is not
-an administrator/bypass actor. Dismiss stale approvals after new code and rerun the
-gate graph after an update to the merge candidate. Workflow/policy changes require
-independent review of the enforcement itself, and cannot authorise themselves using
-new unreviewed classifier/attestor code.
+Protect main with a single required merge-gates check and strict up-to-date branch
+requirement after D-58 preconditions permit it. Use required status evidence, NOT
+GitHub approving-review counts: a shared owner identity cannot approve its own PR.
+No merge queue or merge_group path is assumed. Before protection is available, the
+coordinator's exact-head check/merge procedure is documented discipline only. A future
+versioned ci/merge.sh must re-query head/base and gates immediately before merging;
+it is not implemented or claimed unbypassable in this documentation revision.
+D-53 push frequency is a working rule, not a CI-verifiable fact.
 
-If multiple models share one human GitHub identity, a PR review username alone cannot
-prove provider independence. A separately trusted GitHub App or equivalent protected
-attestor issues `cross-provider-review` with:
+## Review evidence and protection against trivial tests
 
-- author provider/model and reviewed head SHA;
-- reviewer provider/model and independent review record;
-- a verified provider inequality and review outcome;
-- protected issuer identity, timestamp and artifact digest.
+Review evidence lives in a review report or structured PR comment with artifact-kind,
+author-role/provider, reviewer-role/provider, reviewed-head-sha, verdict, finding
+IDs/dispositions and evidence source. Role/provider names are confined to process/review
+records (D-52); the role matrix is defined by docs/process/team.md, D-51, D-54 and D-62.
+Check both differing providers AND compatible author/reviewer roles. Data gathering
+requires verified output; adversarial review alone never supplies independent approval.
+D-53 triage by the designated verifier/coordinator is required in addition to review.
 
-PR comments, labels and an author's own workflow output cannot mint this attestation.
-The attestor must verify the evidence against orchestrator/provider records, not
-accept free-text model names. Assistant output is verified by the designated verifier
-under D-51. D-53 adversarial review is a separate non-approving input whose findings
-must be triaged; it cannot authorise a merge. D-51's code-only role allocation and
-team.md's retained cross-provider approval rule need OI-11 clarification for
-specification-authored PRs. A failed check is not overridden by a review.
+Shared-identity evidence is attestation, not cryptographic proof. Review reports bind
+the exact code/doc head they reviewed. A later committed evidence-only change may refer
+to that ancestor only if a base-policy validator proves the entire intervening diff is
+review-evidence metadata and unchanged reviewed-tree hashes. For the simplest path,
+use a structured PR comment on the final SHA. Any substantive edit invalidates approval.
+A same-PR reviewer-authored approval file cannot prove its own independence.
 
-Push each meaningful documentation/implementation step in small commits (D-53).
-Do not add generated-by footers, attribution trailers or badges to source, commits
-or PR metadata (D-52). Review/process evidence may record provider identities where
-the decision explicitly permits it; do not turn that evidence into attribution in
-file headers or release artifacts.
+Reference fixtures in tests/cases and tests/reference have source, licence, checksum,
+expected-result derivation and originating PR. An author's change to expected outputs
+requires a separate reviewed fixture PR OR explicit independent reviewer sign-off
+explaining the changed oracle; routine approval is insufficient. Tests with no nontrivial
+failure assertions do not satisfy reference agreement. Deliberately perturb a cost,
+constraint, unit conversion, loss and rolling state to prove the oracle detects them.
+ASSUMPTION (Q-N-11): Run cargo-mutants on changed commitment/redispatch/network/pricing/
+optimisation logic; zero unexplained surviving or timed-out non-equivalent mutants.
+Equivalent mutants require individually recorded reviewer justification; expand nightly
+scope instead of hiding changed-core survivors in a percentage budget.
 
-### Benchmark and GPU runner policy
+## Attribution policy and versioned local hook (D-52 / D-61)
 
-Use the **owned Ryzen 5900X / 128 GB** for performance acceptance. Record actual OS,
-BIOS/power profile, cores/threads, available RAM, solver/thread settings and concurrent
-services. Serialise benchmark jobs; do not run a second solver concurrently. Compare
-protected-main and candidate on the same device and dataset; preserve raw repetitions,
-model sizes, optimality quality, RSS and wall-clock stages. Baseline artifacts come
-from protected main, not files freely rewritten by the PR. A faster but less accurate
-solve cannot pass a no-regression gate. NFR-4's unresolved statistical policy remains
-blocking, not an implicit 5% slowdown allowance.
+Enable the committed hook explicitly in each clone (worktrees share common config):
 
-SSH is for development and benchmark diagnosis; required artifacts are reproduced by
-CI. The GPU runner advertises its actual device and supports only verified combinations.
-The GTX 1080 Ti cannot be assumed to run cuOpt; a planned RTX 5060 Ti is not installed
-capacity. The build matrix distinguishes CPU-only, supported GPU and unavailable
-capabilities. Unavailable required GPU evidence is a blocking result, not a skip.
+    git config core.hooksPath .githooks
 
-Treat PR code as untrusted even in this private repository. Authorise the exact SHA
-through a trusted review/dispatch boundary before allowing GPU-host execution. Use
-a disposable isolated runner VM with device passthrough, or an equivalently isolated
-reimaged worker; merely marking a runner registration ephemeral does not clean its
-host. Do not execute untrusted PR content with `pull_request_target` secrets, mount
-host Docker sockets, expose SSH credentials, or share writable caches with protected
-jobs. Keep commercial licence material scoped to authorised jobs and out of logs.
-If isolation cannot be supplied on the owner workstation, block the GPU gate and
-resolve provisioning; do not silently weaken D-43.
+.githooks/commit-msg reads the shared .githooks/attribution-patterns.regex using Perl
+(bootstrap prerequisite), removes matching whole lines, trims trailing blank lines
+and preserves human coauthor trailers and the rest of the message. Its patterns cover
+model/vendor coauthor trailers, generation/assistance banners and the robot pictograph.
+A hook error fails the commit without silently overwriting the message; ordinary Git
+empty-message rules still apply. --no-verify is not a CI waiver. A clean clone can test
+the hook on a temporary message before committing; hook conformance includes mixed-case
+banners, human trailers, Unicode, empty/all-attribution messages and file paths with spaces.
 
-### Enforcement acceptance tests
+The future attribution-policy CI check uses the SAME committed regex list, Unicode
+handling and fixtures, but REJECTS matches rather than deleting them. It scans:
 
-Before enabling autonomous merge, demonstrate with deliberately failing PRs that:
+1. Every commit message in base..head, including merge commits. Process-file exemptions
+   never exempt commit messages, PR titles or agent-written body text.
+2. The current PR title/body, on edited as well as synchronize events. D-61 exempts only
+   the exact bot-managed summary block with verified bot edit provenance; do not disable
+   or remove that integration. Spoofed markers or an unknown editor do not gain an
+   exemption; human/agent-written surrounding text remains checked.
+3. Added text lines across the diff, including release notes, code comments and headers.
+   Process-policy explanations in AGENTS.md, docs/process/**, requirements questionnaire/
+   decisions/reviews and these governance ADR sections may name the policy/roles;
+   exemptions are narrowly path/section-scoped by trusted policy, not all docs/**.
+   Pattern literals in the hook/regex and test fixtures are syntax/test data, not an
+   authorship claim; only those literals are exempt, never their surrounding banners.
 
-1. Every D-28 gate can independently stop merge, including absent/inconclusive GPU
-   and benchmark jobs and stale approvals/checks after a push.
-2. Same-provider or self-asserted review fails; a protected different-provider
-   attestation for the exact head passes; forged/reused evidence fails.
-3. A PR modifying CI, the classifier or benchmark baselines cannot approve itself.
-4. A non-authorised PR cannot start GPU-host code or read licence/attestor/SSH secrets.
-5. CPU tests pass without CUDA on Linux and macOS; unsupported GPU features fail
-   explicitly instead of reporting a CPU fallback as GPU validation.
+The check rejects attribution, not code that merely lacks attribution. Scientific
+correctness comes from independent references, mutation and review, not watermark lint.
+Existing unclean branch history is reported, not rewritten by the hook or hidden by
+scanning only the tip. Coordinator-owned D-58 cleanup is still required before publicity.
 
-## Alternatives considered
+## Runner security, throughput and spend
 
-- **Multiple repos / independent release trains:** increase schema/version coordination
-  before the engine is validated; defer until a demonstrated ownership/deployment need.
-- **Python orchestration around Rust kernels:** conflicts with D-20 for production
-  modelling; keep Python/Julia only in isolated validation environments.
-- **GPU required by all crates / all-features CI:** prevents CPU-only Mac/Linux builds
-  and conflates device availability with correctness. Use explicit features and jobs.
-- **Hosted CI only or SSH-only acceptance:** the former lacks the D-43 owned GPU path;
-  the latter fails the CI-only merge-gate decision.
-- **GitHub approval or PR label as the only model review check:** does not prove provider
-  independence when models share credentials; use a trusted current-SHA attestation.
-- **Skip expensive gates when runners are busy:** contradicts D-28. Queue or fail closed;
-  a narrower approved representative suite is different from silently skipping a gate.
+ASSUMPTION (Q-N-7/Q-N-11/Q-N-12): Linux heavy CPU/reference/benchmark jobs use the D-48
+5900X as a dedicated unprivileged account with ephemeral rootless per-job containers.
+No Docker socket, SSH keys, provider credentials or solver licence secrets are mounted.
+The runner token is inaccessible to job containers; network and filesystem access are
+restricted. Untrusted fork PRs never execute on this runner. Do not use
+pull_request_target to run PR code. A trusted exact-SHA dispatch is required before
+self-hosted execution; without safe runner isolation the applicable job blocks.
+Rootless containers reduce accidental exposure; they do not defend against a malicious
+host admin, compromised kernel or the shared owner identity.
 
-## Consequences
+Separate GPU jobs require supported actual hardware and tested isolation/toolkit first;
+no disposable GPU-passthrough VM is a prerequisite for CPU P1. No cuOpt implementation
+is scheduled in P1. No licence/device availability is inferred from a planned purchase.
+Negative tests cover unauthorised/stale SHAs, fork access, credential reads, missing
+required runner, untrusted policy edits and spoofed review/summary metadata.
 
-- Rust/domain/solver boundaries stay testable without a frontend or CUDA installation.
-- A single repository makes cross-language schema and numerical changes atomic.
-- Self-hosted CI and trusted review attribution are genuine provisioning/security work,
-  not free consequences of adding YAML. Long GPU/performance queues may limit throughput.
-- Exact CI enforcement depends on the private repository's GitHub plan and permissions;
-  current STATUS reports no branch protection. Upgrade or approve a technically
-  equivalent mechanism before claiming enforced autonomous merging.
-- Full-year validation is expensive, but representative per-PR cases cannot be used to
-  claim full-network historical accuracy or throughput before acceptance measurements.
-- This ADR does not create a storage schema, choose result formats, accept data sources
-  or resolve market rules; those decisions remain with their requirements/ADRs.
+Use sccache and native HiGHS build caches keyed by toolchain/platform/source/flags.
+Never use writable untrusted caches in privileged jobs. Run macOS CPU builds on main
+pushes/scheduled runs, and require them before merge for native/build/toolchain/FFI
+changes; schedule a full CPU portability check for releases. Numerical-core changes
+require Linux reference evidence; cached results must match tree and input hashes.
+Run slow mutation suites on self-hosted compute, and serialize paired benchmarks.
+No specific hosted-minute allowance is assumed; verify current billing/visibility
+before activating hosted matrices. Report utilization and stop unapproved paid usage,
+not quality checks. Resource cost does not justify a lower-fidelity model (D-2).
 
-## Open items for the owner
+## Acceptance and limitations
 
-- **ASSUMPTION (OI-11):** use protected current-head gates and an independently credentialled
-  review attestor. Resolve the current plan limitation, attestor authority, docs-only
-  bootstrap, D-51 versus cross-provider review roles, D-53 triage and benchmark/noise
-  protocol; there is no automatic D-28 waiver.
-- **ASSUMPTION (OI-7):** the actual GPU/toolkit combination can be made available in
-  isolated self-hosted CI; confirm hardware, driver/distro and licensing entitlements.
-- **ASSUMPTION (OI-8):** unknown licence/advisory dispositions block until explicitly
-  reviewed; approve the allow-lists for native/frontend/services as well as Rust/data.
-- **ASSUMPTION (OI-12):** PR code needs trusted exact-SHA runner authorisation and P1
-  remains privately operated until an application access policy is accepted.
+Before accepting this ADR: approve/adopt Q-N-11 assumptions, validate B0 applicability,
+exercise hook/CI pattern parity, seed benchmark/review policy without circular gating,
+and record the remaining enforcement deployment steps. After baseline, demonstrate
+that failing/stale/missing applicable gates prevent the merge procedure, a doc-only
+PR reports honest N/A, a CPU change cannot skip numerical tests, and only a relevant
+GPU feature change needs the device gate. No current workflow or protected-main
+configuration is claimed by this ADR. Real publication and STATUS updates remain the
+coordinator's responsibilities, not edits made by this revision.
 
-These refer to the detailed OI register in `../../requirements/04-requirements.md`;
-the coordinator records owner answers, not this ADR.
+## Primary references
 
-## Primary references (checked 2026-11-12)
+- GitHub branch protection: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
+- GitHub event and workflow syntax: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+- GitHub self-hosted security: https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+- Cargo workspace policy: https://doc.rust-lang.org/cargo/reference/workspaces.html
+- Git hooks and core.hooksPath: https://git-scm.com/docs/githooks
 
-- [GitHub rulesets, required checks and private-repository plan availability](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets).
-- [GitHub Actions security hardening and self-hosted runner risks](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions).
-- [cuOpt supported hardware/software](https://docs.nvidia.com/cuopt/user-guide/latest/system-requirements.html).
-- [Cargo workspace reference](https://doc.rust-lang.org/cargo/reference/workspaces.html).
+References identify implementation specifications, not evidence that those controls
+are deployed in this repository. Verify pinned tooling and plan capabilities at activation.

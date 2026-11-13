@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+
+message_file=${1:?commit message path required}
+hook_directory=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+temporary_file=$(mktemp "${message_file}.strip.XXXXXX")
+trap 'rm -f -- "$temporary_file"' EXIT HUP INT TERM
+
+perl -CSDA - "$hook_directory/attribution-patterns.regex" "$message_file" > "$temporary_file" <<'PERL'
+use strict;
+use warnings;
+
+my ($pattern_path, $message_path) = @ARGV;
+open my $pattern_file, '<:encoding(UTF-8)', $pattern_path or die "$pattern_path: $!\n";
+my @patterns = map { chomp; qr/$_/i } <$pattern_file>;
+close $pattern_file or die "$pattern_path: $!\n";
+open my $message_file, '<:encoding(UTF-8)', $message_path or die "$message_path: $!\n";
+my @retained;
+while (my $line = <$message_file>) {
+    push @retained, $line unless grep { $line =~ $_ } @patterns;
+}
+close $message_file or die "$message_path: $!\n";
+pop @retained while @retained && $retained[-1] =~ /^\s*$/;
+print @retained or die "cannot write filtered message: $!\n";
+PERL
+
+cat -- "$temporary_file" > "$message_file"

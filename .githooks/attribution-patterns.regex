@@ -1,0 +1,3 @@
+^\s*co-authored-by:\s*.*(?:claude|anthropic|gpt|openai|codex|gemini|google\.com|copilot|cursor|grok|noreply\@(?:anthropic|openai))
+\b(?:generated|written|authored|assisted|powered)\s+(?:with|by|using)\s+\[?(?:claude|anthropic|gpt|openai|codex|gemini|chatgpt|copilot|cursor|grok)\b
+\x{1F916}
