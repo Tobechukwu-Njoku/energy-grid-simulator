@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-11-13
-- **Decision sources:** D-11, D-15–D-21, D-25–D-26, D-28, D-35, D-38, D-40–D-41, D-44, D-55, D-57, D-59.
+- **Decision sources:** D-11, D-15–D-22, D-25–D-26, D-28, D-35, D-38, D-40–D-41, D-44, D-55, D-57, D-59.
 - **Related draft requirements:** PR #4 FR-1, FR-4–FR-11, FR-12–FR-13, FR-18, FR-21; NFR-1–NFR-2, NFR-8–NFR-11.
 - **Companions:** [data model](0002-network-and-scenario-data-model.md), [execution](0005-execution-topology.md), [topology/source snapshot](../topology.md).
 
@@ -19,8 +19,10 @@ must not require rewriting physical assets, storage state or solver adapters.
 ADRs 0001/0003 already place dated rules in market, equations in network, solver IR
 in optimisation, and UC/redispatch/pricing in distinct modules.
 
-ASSUMPTION (Q-O-5): All plug-in contracts, composition and qualification policies
-below are proposed engineering defaults in the [companion questionnaire](../owner-questionnaire.md).
+Contracts/composition below are proposed engineering defaults under D-22.
+ASSUMPTION: (Q-O-5, answers Q-J-2 for market code) no customer-uploaded market code
+before P4; customers use typed parameters. The
+[companion questionnaire](../owner-questionnaire.md) records this product choice.
 Market parameter values and historical effective dates require sourced evidence;
 this ADR invents none. PR #4's Q-N-1/Q-N-2 pricing/proxy defaults remain proposals.
 No application code, early zonal implementation or relaxation of D-15 is authorised.
@@ -31,7 +33,9 @@ Start with **trusted, compiled-in Rust market modules** behind a versioned domai
 interface and registry. “Plug-in” means independently selectable/qualifiable rule
 implementation, not arbitrary dynamic native library loading. A new module requires
 a reviewed build/release. End users change typed versioned parameters in TOML;
-they cannot upload code or arbitrary solver expressions into a shared runtime.
+they cannot upload code or arbitrary solver expressions into a shared runtime
+before P4. P4 must explicitly decide isolation/extension policy before any such
+capability; compiled trusted modules remain the default until then.
 
 | Contract surface | Inputs / output and restrictions |
 |---|---|
@@ -46,7 +50,7 @@ The engine fixes stage order, rolling boundaries, cancellation and result accept
 Market modules express economic policies through narrow typed builder interfaces;
 network owns electrical equations/loss balances/security checks, optimisation owns
 the immutable sparse IR, solver adapters own native sessions. A module cannot open
-Redis/PostgreSQL, fetch unpinned data, mutate global topology, invoke a solver or
+Valkey/Redis or PostgreSQL, fetch unpinned data, mutate global topology, invoke a solver or
 publish results itself. Inject immutable data, clock/cut and seeded randomness
 explicitly; no ambient wall clock/network reads in rule evaluation.
 
@@ -78,10 +82,30 @@ and exported metadata disclose proxy fidelity; a module's supported-feature list
 cannot advertise the D-15 end state prematurely. Maintain the backlog toward that
 end state without silently reclassifying required future features as exclusions.
 
-Use ADR 0003's pre-pass → national UC → fixed-commitment network redispatch → national
-fixed-UC pricing pipeline for P1. Commitment infeasibility feeds the bounded documented
-repair loop; final prices reference the final commitment. The market module cannot
-skip the final full-row network check or turn an unsolved window into shortage.
+Use the pre-pass → national UC → fixed-commitment network redispatch → national
+fixed-UC pricing pipeline for P1. Commitment infeasibility feeds the bounded UC↔
+redispatch repair loop. **Non-convergence is reported and invokes a fallback; reaching
+the repair bound does not fail the whole run.** This supersedes the earlier PR #4
+snapshot's failed/partial-on-three-repairs wording for round-3 integration.
+
+The proposed fallback is a capability-checked, time-bounded **network-aware joint
+UC/redispatch solve for the affected window**, permitting commitment changes while
+retaining all physical/security rows, intertemporal state and independent full-row
+checks. Persist its formulation/version, trigger, repair count, original/final
+commitment, bounds/gaps, cost difference and approximation/fallback flag. A qualified
+feasible incumbent may continue subsequent windows from its validated state; final
+pricing is rerun against that final commitment with original/repaired/fallback prices
+identified separately. Fallback cost is not silently treated as ordinary scheduling.
+
+Curtailment and physically modelled load shedding retain explicit penalties and
+reporting; no arbitrary branch/security slack or disabled 132 kV constraint is added
+to make a window appear feasible. Non-convergence alone is not proof of shortage.
+If fallback also cannot produce a physically valid state, report that distinct
+outcome and retain a partial run/coverage with diagnostics; never fabricate state,
+skip an interval and claim completion. A mathematical infeasibility or backend error
+is different from a heuristic iteration limit. Exact fallback settings and capability
+qualification must agree with PR #4's final round-3 ADR 0003 before baseline acceptance.
+
 National pricing excludes redispatch network rents; nodal/proxy duals stay labelled
 diagnostics. Non-convex start/no-load costs and uncovered revenues are reported;
 fixed-UC LP prices do not assert uplift or exact imbalance settlement.

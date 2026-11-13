@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-11-13
-- **Decision sources:** D-6, D-11–D-12, D-18–D-21, D-24, D-30–D-32, D-35, D-37–D-38, D-40, D-44, D-55–D-60.
+- **Decision sources:** D-6, D-11–D-12, D-18–D-22, D-24–D-25, D-30–D-32, D-35, D-37–D-38, D-40, D-44, D-55–D-60.
 - **Related draft requirements:** PR #4 FR-1–FR-5, FR-9, FR-16, FR-19, FR-21; NFR-1–NFR-2, NFR-8, NFR-11.
 - **Companions:** [storage](0004-storage-topology.md), [execution](0005-execution-topology.md), [market modules](0006-market-design-plugin-model.md), [topology and source snapshot](../topology.md).
 
@@ -14,9 +14,12 @@ backtest must not inherit a later interconnector, network revision or market rul
 Distribution/DER, AC parameters and dynamics are end-state concerns (D-6/D-24/D-44),
 not permission to implement them in P1. All GB 132 kV remains in scope (D-60).
 
-ASSUMPTION (Q-O-1): Every schema, identity, temporal-selection and hashing policy
-below is a proposed engineering default requiring adoption through the
-[companion questionnaire](../owner-questionnaire.md). It is not a new owner decision.
+Identity, schema, temporal selection and hashing are proposed engineering defaults
+under D-22, subject to ADR acceptance. ASSUMPTION: (Q-O-1) historical backtests
+without publication-time evidence are labelled **reconstruction**, and numerical
+repeatability claims disclose the MIP limitations below. The
+[companion questionnaire](../owner-questionnaire.md) answers Q-D-5 for those claims;
+it does not ask the owner to choose schemas or encodings.
 The D-31 inventory still has to establish obtainable assets, parameters and rights;
 this ADR cannot resolve a data gap by inventing equipment or accepting equivalents.
 No application code or optimisation experiment is authorised.
@@ -24,8 +27,10 @@ No application code or optimisation experiment is authorised.
 ## Proposed decision
 
 Use typed domain records, permanent internal entity identities and immutable,
-content-addressed releases. Store validated releases relationally and export the
-same identities to columnar data. Keep a materialised release manifest plus dated
+content-addressed releases. Store entity revisions and release metadata relationally;
+validated bulk time-series inputs/results live in immutable columnar blobs with
+the same entity IDs and PostgreSQL manifests (ADR 0004). Gridded weather format
+remains a data-spike choice. Keep a materialised release manifest plus dated
 changes, rather than making every run reconstruct a global event log.
 
 | Record | Identity and version boundary |
@@ -66,8 +71,10 @@ canonical IDs or assume rights to a particular CIM dataset.
 Use half-open UTC effective intervals `[from, to)`, including an explicit open end.
 Commissioning, retirement, switch state, endpoints, ratings, outages, memberships,
 interconnector trading regimes and security proxies are dated independently.
-Topology-changing events split the solve horizon; no rolling window may apply one
-factorisation through an unmodelled topology transition. Shorter-than-step events
+Resolve the topology for each model interval inside a rolling window; cache sparse
+factors/PTDF rows per distinct topology state. Switching/outages do not force new
+rolling-window boundaries or discard intertemporal state. No factorisation may be
+reused across an incompatible topology state. Shorter-than-step events
 require an explicit resampling policy or an unsupported-resolution error.
 
 Keep **effective time**, **source publication/revision time**, and **acquisition
@@ -82,7 +89,10 @@ A reconstruction may use a later-corrected release, declared explicitly. An as-o
 forecast backtest selects only revisions provably published by its knowledge cut
 and records when that cut advances across forecast origins. A present-day download
 of a revised historic table is not proof of what was available then. Unknown
-publication history blocks an as-of claim; acquisition time never fabricates it.
+publication history requires the **reconstruction** label in UI, exports and provenance,
+not rejection of historical research runs or fabricated publication times. Evidence-
+backed archived vintages and future ingest snapshots can support as-of claims; no
+claim is made that all historical sources expose such vintages.
 Freeze holdout inputs before calibration, as PR #4 proposes.
 
 Canonical delivery intervals use UTC starts and durations. Version the mapping to
@@ -133,22 +143,46 @@ revision, leaving completed runs intact. Do not allow a script or executable pat
 inside scenario data. User-selected input locations resolve through the authorised
 catalogue rather than arbitrary API filesystem reads.
 
-Preserve original TOML bytes for human provenance. Hash its validated semantic form
-after explicit default expansion, unit conversion and reference resolution, using a
-schema-specific deterministic CBOR encoding [S1] and SHA-256. Specify map order,
-array ordering, UTC/UUID normalisation and exact numeric representation; decimal
-coefficients are normalised without lossy floating-point parsing. Reject duplicate
-keys, unknown executable options, NaN/infinity and unsupported schema versions.
-Comments/key order do not change identity; changed defaults or ordered patches do.
-Store the canonicalisation version, original file hash and resolved lock hash.
-Use maintained TOML/CBOR/hash libraries, with cross-client golden vectors after
-baseline, rather than inventing a new parser or hashing protocol.
+Preserve original TOML bytes for provenance. Hash a validated semantic form after
+explicit default expansion, schema-defined unit conversion and reference resolution,
+using deterministic CBOR [S1] and SHA-256. Define map/array order, UTC/UUID and numeric
+normalisation by canonicalisation version. TOML non-money floats resolve to correctly
+rounded IEEE-754 binary64 (nearest, ties-to-even); encode their canonical 64-bit value
+as a fixed-width byte field, not a CBOR float with variable shortest-width rules.
+Normalise negative zero to positive zero; reject NaN/infinity. Exact money uses typed
+decimal strings plus currency/scale, not TOML floats. Use maintained TOML/decimal/CBOR
+libraries; no handwritten parser.
 
-Schema migrations are explicit, deterministic transforms producing a new revision
-and before/after hashes. Existing manifests remain readable through their versioned
-reader or retained compatible build. An engine/build/solver/platform change creates
-a different execution identity even when scenario semantics are unchanged. Numerical
-agreement follows PR #4 NFR-2; neither UUIDs nor hashes promise bitwise MILP reruns.
+Schema unit factors are exact rational constants. For identity, apply the conversion
+to the exact parsed binary64 rational value and round once to canonical binary64;
+never hash platform-dependent chains of FMA/host floating-point operations. An
+implementation must use a maintained exact arithmetic dependency for this conversion.
+Daily FX is a pinned input to execution, not a lossy monetary conversion while
+hashing TOML. Golden vectors include `0.1`/`0.10`, signed zero, equivalent authored
+units, numeric boundaries and x86-64/aarch64/client agreement after baseline.
+
+Reject duplicate keys, unknown executable options and unsupported schema versions.
+Comments/key order do not change identity; defaults and ordered patches do. Record
+original file, canonicalisation and resolved lock hashes. A version change creates
+a new identity rather than silently rehashing an old manifest.
+
+Schema migration creates a new revision and before/after hashes; original blobs and
+manifests remain immutable. Version-specific Arrow adapters project old and new
+schemas into an explicit query schema (units, null/missing fields and semantics
+included) before DataFusion/Polars union/aggregation. Reject incompatible units or
+meaning rather than concatenate mismatched Parquet schemas. A materialised migrated
+copy is a new derived dataset with lineage, not an overwrite of the old digest.
+Retain old readers or compatible builds for historical manifests.
+
+Execution identity pins engine/build, solver/native/library versions, fixed seeds,
+thread counts, platform/options and warm-start policy separately from scenario
+identity. ADR 0005 defines persisted boundary state and genesis recovery. A resume
+restarts an uncommitted window from that state; it does not restore a portable MIP
+search tree. **Bit-identical MIP schedules/prices are not promised**, even with fixed
+seeds, because alternative integer optima, tolerances, time limits and parallelism
+can change a valid path. Record the limitation, gap/tolerances, resume history and
+available comparison evidence in run provenance; physical conservation and numerical
+acceptance follow PR #4 NFR-2. Hash equality proves input identity, not solver equality.
 
 ## Provenance, licences and retention
 
@@ -181,7 +215,8 @@ not a measured performance claim. Reuse PostgreSQL range/index primitives [S2] a
 existing columnar formats; do not import prior-art OSM datasets contrary to D-56.
 
 Before acceptance: review D-31 mappings/coverage with no scope reduction; adopt
-Q-O-1; reconcile these contracts with PR #4's final schema. After baseline:
+the Q-O-1 claim policy (answers Q-D-5); reconcile these contracts with PR #4's
+final schema. After baseline:
 demonstrate renamed/split assets, corrected historic topology, unavailable as-of
 vintages, DST/leap calendars, patch conflicts, client round-trip hashes and licence
 lineage rejection. Measure full-network load/build costs on the runtime target.

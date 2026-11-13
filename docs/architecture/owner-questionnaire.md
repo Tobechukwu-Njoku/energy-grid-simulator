@@ -1,82 +1,81 @@
 # Architecture owner questionnaire — ADRs 0002/0004/0005/0006
 
-Date: 2026-11-13. All five items are **open proposals**, not recorded owner answers.
-This is a companion to the requirements questionnaire: that file belongs to PR #4
-and is intentionally unchanged. Q-O IDs are new stable IDs; existing Q-N IDs and
-decisions retain their meaning. The coordinator can register these entries in the
-main questionnaire after integration. No baseline, implementation or merge approval
-is implied by the recommended defaults.
+Date: 2026-11-13. Four **open product choices**; no owner answer is recorded here.
+The [canonical questionnaire](../requirements/02-questionnaire.md#o-architecture-product-choices-pr-17)
+registers these IDs. This companion supplies rationale/options for that same queue,
+not a second set of competing defaults. Disposition must cite a future D-ID and mark
+the mapped question answered only to the stated scope. Engineering protocols are
+proposed ADR defaults under D-22, not additional owner questions.
 
-## Q-O-1 — Immutable, dated data and scenario identity
+## Q-O-1 — Honest historical backtest and repeatability claims
 
-- [ ] Accept ADR 0002's identity, effective-time/knowledge-time and TOML-lock policy?
-- **Recommended default:** persistent internal entity IDs, immutable hashed dataset
-  releases and patches, sourced effective dates and separate publication/acquisition
-  times; preserve the original TOML plus a semantically canonical resolved lock.
-  Missing historical knowledge evidence blocks an as-of forecasting claim, while
-  an explicitly labelled reconstruction remains possible. Adopt the detailed schema,
-  hashing and migration defaults in [ADR 0002](adr/0002-network-and-scenario-data-model.md).
-- Alternatives: mutable latest-state tables and floating scenario references
-  (simpler ingest, weak reruns and backtests); full event sourcing (strong history,
-  more replay and operational complexity).
-- Relates to Q-D-5, Q-N-6/Q-N-9 and D-19/D-35/D-56. Data-spike feasibility and
-  individual missing/equivalenced assets still go through Q-N-3; this is no scope waiver.
+- [ ] **Answers Q-D-5** for the reproducibility/claim contract; historical data gaps
+  still use the existing data-gap process, not a new scope waiver.
+- **Recommended default:** label historical backtests **reconstruction** when source
+  publication times/vintages cannot prove the knowledge cut. Permit historical research
+  with that label; reserve **as-of** for evidence-backed vintages. Pin inputs, solver
+  seeds/thread counts/versions and persisted state; disclose that MIP reruns/resumes
+  promise declared numerical tolerances, not bit-identical schedules or prices.
+- Alternatives: reject backtests lacking historic vintages (less usable research);
+  require qualified bit identity for every accepted backend/platform (restricts solver
+  capabilities and still does not establish historical information availability).
+- [ADR 0002](adr/0002-network-and-scenario-data-model.md) and
+  [ADR 0005](adr/0005-execution-topology.md) define the evidence and execution contract.
+  Based on D-19/D-25/D-35/D-56; publication evidence is never invented.
 
-## Q-O-2 — PostgreSQL/PostGIS and Parquet storage boundary
+## Q-O-3 — Valkey default, Redis-compatible alternative
 
-- [ ] Accept ADR 0004's storage, publication and retention defaults?
-- **Recommended default:** PostgreSQL 18 with PostGIS after its service/package
-  licence review; no TimescaleDB initially. Keep transactional metadata, summaries
-  and a bounded query projection in PostgreSQL; full arrays in immutable Parquet
-  behind a filesystem/object-store interface. Adopt the detailed retention, backup,
-  garbage-collection and pinning defaults in [ADR 0004](adr/0004-storage-topology.md).
-- Alternatives: TimescaleDB for measured SQL time-series needs, or a separate
-  columnar database for sustained cross-run analytics; each adds deployment and
-  licence/operations work. Plain PostgreSQL without PostGIS avoids that extension's
-  packaging obligations but gives up mature spatial indexing and operations.
-- Relates to Q-C-6, Q-I-6, Q-N-8/Q-N-9 and D-3/D-36. Keep D-36's indefinite
-  summaries and pinned full results; the proposed policies do not shorten them.
+- [ ] **Answers Q-I-5** and refines Q-I-1/D-3's named Redis baseline on disposition.
+- **Recommended default:** Valkey (BSD-3-Clause core); application clients use only
+  the shared Redis protocol. Redis is a compatible alternative with a separately
+  recorded licence/deployment assessment. P1 job dispatch stays in PostgreSQL.
+- Alternatives: Redis 8 with assessed AGPLv3/RSALv2/commercial terms. Its independent
+  client does not automatically become copyleft, but the service/package assessment
+  is more complex. Neither choice excuses bundled-code notice or compatibility checks.
+- [ADR 0004](adr/0004-storage-topology.md); D-3/D-17/D-22. This proposal does not
+  amend the append-only decisions log or assert the owner has already chosen Valkey.
 
-## Q-O-3 — Redis licence path and the Valkey alternative
+## Q-O-5 — Customer market code deferred until P4
 
-- [ ] Approve the proposed Redis licence path, or explicitly amend D-3 for Valkey?
-- **Recommended default:** retain Redis 8 as a private, unmodified, separate service;
-  assess and record AGPLv3 compliance as the selected path before runtime packaging
-  or exposure. Keep the application independent of Redis-specific modules and
-  recent commands. No direct customer Redis access or general cache/database API.
-- Alternatives: an assessed RSALv2 path or commercial agreement; owner-approved
-  Valkey with BSD-3-Clause core, followed by queue/recovery compatibility tests.
-  SSPLv1 is available but is not the recommended path for this service.
-- Relates to Q-I-5/Q-N-8 and D-3/D-17. This is a software/service assessment, separate
-  from dataset clearance. Until disposition, the architecture is proposed and no
-  Redis licence exception or Valkey substitution is approved. See [ADR 0004](adr/0004-storage-topology.md).
+- [ ] **Answers Q-J-2 for customer market-code uploads before P4**; other plug-in types
+  and the P4 extension/isolation decision remain in that existing question's scope.
+- **Recommended default:** no customer-uploaded market code before P4. Offer trusted,
+  reviewed compiled Rust modules and typed versioned TOML parameters. Consider
+  third-party code only with P4 tenant isolation, resource and capability qualification.
+- Alternatives: introduce a sandboxed WASM/process extension earlier (adds runtime,
+  security and API qualification); a declarative-only interface (less algorithmic power).
+  Arbitrary native library loading is not proposed.
+- [ADR 0006](adr/0006-market-design-plugin-model.md); D-15/D-20/D-39/D-44. This does
+  not reduce the end-state obligation to model GB/I-SEM and alternative markets.
 
-## Q-O-4 — Service/worker separation and recovery defaults
+## Q-O-6 — Scheduled forecasts preempt research in P2
 
-- [ ] Accept ADR 0005's modular monolith and durable job/checkpoint protocol?
-- **Recommended default:** one Rust API/orchestrator service, isolated native solver
-  subprocesses, PostgreSQL job leases/outbox/checkpoint authority, Redis Streams
-  delivery and live telemetry. Start with one active simulation on the separate
-  runtime target; measure before raising concurrency. Adopt the detailed recovery,
-  resource-admission and phased scaling defaults in [ADR 0005](adr/0005-execution-topology.md).
-- Alternatives: PostgreSQL-only dispatch (fewer moving parts); an API/orchestrator
-  service split with a durable broker/workflow engine (independent scaling and
-  stronger built-in workflow features, more failure modes and deployment work).
-- Relates to Q-H-4/Q-H-6, Q-N-5/Q-N-10/Q-N-12 and D-8/D-17/D-39/D-65.
-  This adds no P1 distributed sweep or public tenancy commitment. Final tenant
-  isolation and availability targets remain P4 choices, as D-39 requires.
+- [ ] **New product policy**, related to Q-H-4 concurrency and Q-C-4 live feeds.
+  It does not answer target concurrency counts or availability/HA (Q-H-6).
+- **Recommended default:** forecast runs preempt research/sweep runs. Prefer a committed
+  checkpoint boundary when it meets the deadline; otherwise kill/reap and discard the
+  uncommitted window, resuming research later. Qualified reserved forecast capacity
+  is another way to enforce this priority. A day-ahead forecast never queues behind
+  a long research run merely because it arrived later.
+- Alternatives: dedicated forecast hardware only (capacity must actually be available);
+  FIFO with no preemption (can miss the forecasting product's gate/deadline).
+- [ADR 0005](adr/0005-execution-topology.md); D-8/D-25/D-35/D-44. Priority is not a
+  guarantee against missing feeds or insufficient solve capacity.
 
-## Q-O-5 — Trusted, versioned market modules before external plug-ins
+## Deprecated IDs and engineering disposition
 
-- [ ] Accept ADR 0006's compiled-in market modules and explicit fidelity inventory?
-- **Recommended default:** trusted Rust modules behind a versioned domain contract,
-  separate GB and I-SEM rules/ledgers with dated interconnector coordination, P1
-  scheduling/pricing and cost-based balancing proxies, P3 zonal/nodal modules.
-  Pin rule/data versions and fail on unsupported capabilities. Adopt the detailed
-  composition, result-schema and qualification defaults in [ADR 0006](adr/0006-market-design-plugin-model.md).
-- Alternatives: a declarative-only rule DSL (less executable extension power),
-  or sandboxed WASM/process plug-ins (stronger extension isolation, additional
-  runtime/IPC/schema work). Do not load arbitrary third-party native libraries.
-- Relates to Q-J-2, Q-N-1/Q-N-2 and D-15/D-26/D-38/D-44/D-55/D-59.
-  End-state market replication remains required by D-15; P1 proxies are labelled
-  limitations, never a claim of complete GB or I-SEM market replication.
+Q-O-2 is **deprecated**, not renumbered: PostgreSQL authority, Parquet layout,
+publication, pin/GC/recovery and no initial TimescaleDB are D-22 engineering proposals
+in ADR 0004. This ADR supplies an engineering recommendation to existing Q-I-6;
+optional P1 PostGIS remains consistent with Q-C-6 and the baseline. Neither existing
+product question is silently marked answered by accepting operational timings.
+
+Q-O-4 is **deprecated**, not renumbered: independent worker supervision, PostgreSQL
+SKIP LOCKED/leases, physical fencing, resource budgets and transport adapters are
+D-22 engineering proposals in ADR 0005. Q-H-4/Q-H-6 keep their existing product scope.
+The D-48 hardware floor is an ASSUMPTION pending the D-65 inventory clarification
+tracked under Q-H-7, not an additional architecture owner choice.
+
+Lease durations, N-hour staging sweeps, backup windows, partition sizes, canonical
+encoding and solver configuration are reviewed with the ADRs and baseline. They are
+not extra owner questions. All four ADRs remain Proposed; no implementation gate opens.

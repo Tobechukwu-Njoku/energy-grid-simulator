@@ -1,6 +1,6 @@
 # 02 — Requirements Questionnaire
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 Each question has a stable ID, why it matters, options, and a **recommended default** (★) that
 agents may assume *only* if the owner explicitly says "use defaults" for that section.
@@ -107,7 +107,9 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-D-4 Interactivity.** Real-time "what if I trip this line now" interactive
   sandbox while a simulation runs, or submit-and-wait batch jobs, or both?
 - [ ] **Q-D-5 Reproducibility.** Must every run be bit-for-bit reproducible (versioned
-  inputs, seeds, solver versions)? ★ Yes.
+  inputs, seeds, solver versions)? Original default: yes. PR #17 proposes the
+  tolerance/evidence contract in **Q-O-1** below as its answer; disposition is shared,
+  not a second independent question/default.
 
 ## E. Time horizon & resolution
 
@@ -144,6 +146,10 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-H-3 Deployment target:** single beefy workstation (Docker Compose) · on-prem
   cluster / Kubernetes · cloud (AWS/GCP/Azure) · hybrid burst-to-cloud for sweeps?
 - [x] **Q-H-7 GPU machine specs (from D-29):** GPU model(s) and VRAM, CPU cores, RAM, OS/distro, reachable remotely by agents?
+  **Pending target inventory clarification (D-65):** the separate simulator target
+  remains unspecified. ASSUMPTION: use D-48's 5900X/128 GB only as a planning floor,
+  not a confirmed runtime/GPU specification. This note does not reopen the recorded
+  answer about the available Linux machine or invent a target decision.
 - [ ] **Q-H-4 Concurrency:** how many simultaneous simulations / users?
 - [x] **Q-H-5 Data volume:** retain all time-series results of all runs forever, or prune?
   (A 100k-bus × 8,760 h × 1,000 scenarios run is ~TBs.)
@@ -160,7 +166,8 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   allowed (Gurobi, CPLEX, Xpress, Mosek — 5–100× faster on big MILPs; academic licences free)?
 - [x] **Q-I-4 Language preferences / aversions** for backend, frontend, scripting?
 - [ ] **Q-I-5 Redis vs Valkey:** Redis 8 (AGPLv3/RSAL/SSPL licensing) or Valkey (BSD fork)?
-  Matters only if you ever distribute/sell.
+  **Q-O-3** below proposes Valkey as the answer/refinement of D-3; it is the same
+  pending disposition. Review service and distribution terms before deployment.
 - [x] **Q-I-7 Rust scope (from D-9):** Rust for the simulation core only · core + backend
   services · everything incl. frontend (Leptos/Dioxus/WASM)? Keep Python/Julia OSS engines
   (PyPSA, PowerModels) as references/validators or wrap them?
@@ -176,7 +183,8 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [ ] **Q-J-1 Import/export formats:** MATPOWER, PSS/E RAW, CIM/CGMES, pandapower,
   PyPSA netCDF, OpenDSS, GridLAB-D?
 - [ ] **Q-J-2 Plugins:** can users add custom models (new device types, control logic,
-  market rules) via a plugin API?
+  market rules) via a plugin API? **Q-O-5** below proposes the answer for
+  customer market-code uploads before P4; other extensions/P4 policy remain here.
 - [ ] **Q-J-3 Co-simulation:** integrate external simulators via HELICS / FMI?
 - [ ] **Q-J-4 Public API:** REST, GraphQL, gRPC, WebSocket streaming?
 
@@ -217,3 +225,33 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   (including F's candidate 20–40 zones) are assumptions, exclude procurement,
   external access delays, engine/UI work and independent D-28 numerical acceptance,
   and need owner review before they become schedule commitments.
+
+## O. Architecture product choices (PR #17)
+
+These four entries register the open choices detailed in the
+[architecture companion](../architecture/owner-questionnaire.md). They share
+resolution with the mapped questions above; no answer or D-ID is invented.
+Operational protocols remain proposed engineering defaults under D-22.
+
+- [ ] **Q-O-1 Historical backtest/repeatability claims — answers Q-D-5.**
+  **★ Recommended default:** label runs **reconstruction** when publication-time
+  evidence is unknown; allow **as-of** only with proven vintages. Pin execution
+  settings/state and disclose MIP tolerance-based repeatability rather than promise
+  bit identity. Alternatives: reject unproven historic vintages; restrict all
+  backends/platforms to a separately qualified bit-identity contract.
+- [ ] **Q-O-3 Cache service — answers Q-I-5, refines Q-I-1/D-3.**
+  **★ Recommended default:** Valkey (BSD-3-Clause), shared Redis protocol only;
+  Redis remains a compatible alternative with a recorded licence assessment.
+  Alternative: assessed Redis 8 licence/deployment path. P1 dispatch uses PostgreSQL.
+- [ ] **Q-O-5 Customer market-code uploads — answers Q-J-2 for this scope.**
+  **★ Recommended default:** none before P4; trusted compiled modules and typed
+  parameters only. Alternatives: earlier qualified WASM/process sandbox, or a
+  declarative-only extension surface. General/P4 plug-in policy stays open in Q-J-2.
+- [ ] **Q-O-6 Forecast priority — new; relates to Q-H-4/Q-C-4.**
+  **★ Recommended default:** P2 forecast runs preempt research/sweeps; checkpoint
+  when timely, otherwise kill/reap and replay the uncommitted window later.
+  Alternatives: dedicated reserved forecast capacity; FIFO accepting deadline risk.
+
+Q-O-2 and Q-O-4 are deprecated engineering bundles; never renumber or reuse them.
+Existing Q-C-6/Q-I-6 and Q-H-4/Q-H-6 retain their product scope. Target inventory
+clarification is tracked in Q-H-7; the D-48 planning floor remains an assumption.
