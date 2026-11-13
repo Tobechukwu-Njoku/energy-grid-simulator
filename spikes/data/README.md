@@ -6,7 +6,9 @@ See [REPORT.md](REPORT.md) for the R-12 verdict and licensing boundaries.
 
 ## Reproduce
 
-Requirements: POSIX shell, `curl`, `jq`, `unzip`, Python 3, and `uv`.
+Requirements: POSIX shell, `curl`, `jq`, `unzip`, Python 3 and timezone data
+(`Europe/London`). `uv` is optional;
+any Python 3.9+ environment with `openpyxl==3.1.5` can run the inspectors.
 The small Python scripts are **one-off file inspections** of XLSX, PSS/E RAW,
 CSV, JSON and XML, not an ingest service or supported parser. `openpyxl==3.1.5`
 is the only additional parsing dependency. They do not run power flow.
@@ -18,8 +20,9 @@ uv run --with openpyxl==3.1.5 python spikes/data/inspect_tabular.py
 
 This downloads sources with identified open terms, plus official metadata/licence
 pages, into ignored `raw/` (roughly 80 MB). It skips uncleared network and exchange
-data. The tabular inspection now skips missing optional research-only files,
-including their manifest entries, so this cleared-only audit works independently.
+data. Both inspectors skip missing optional inputs with explicit messages.
+Absent sources retain their existing manifest entries; a cleared-only run never
+drops research-only provenance.
 No account or secret is required for these public downloads.
 
 For the **D-56 non-commercial research network inspection**, not for commercial
@@ -30,8 +33,8 @@ sh spikes/data/fetch.sh --include-uncleared
 unzip -t spikes/data/raw/tytfs-2024.zip
 uv run --with openpyxl==3.1.5 python spikes/data/inspect_networks.py
 uv run --with openpyxl==3.1.5 python spikes/data/inspect_tabular.py
-jq . spikes/data/samples/network-statistics.json
-jq . spikes/data/samples/tabular-statistics.json
+jq . spikes/data/output/network-statistics.json
+jq . spikes/data/output/tabular-statistics.json
 ```
 
 Including uncleared inspection sources brings raw storage to about 135 MB.
@@ -45,15 +48,43 @@ approved bus equivalence. No OSM/ODbL data is fetched or used.
 `sources.tsv` pins the exact URLs used for successful data downloads. Live files
 can be revised in place: `samples/download-manifest.json` preserves the original
 byte sizes and SHA-256 values, **not** a promise that a future fetch matches.
-The fetcher checks existing SHA-256 pins and **warns, without failing**, on live
-source drift. Review differences before re-running inspections, which overwrite
-the samples/manifest. The manifest tags downloaded sources `open-commercial` or
-`research-only` and records dataset/metadata role and URL; legal/discovery metadata
-is conservatively research-only. Commercial clearance stays in
-`docs/requirements/TODO-pre-commercial.md` (PC-1–PC-5), not a research-ingest gate.
-The manifest also fingerprints the principal licence pages. Failed discovery
-requests and page-only investigations are documented in the report, not presented
-as successful data downloads. Running inspections again overwrites sample files.
+The fetcher checks existing SHA-256 pins and **fails on any mismatch**. To
+explicitly inspect revised live sources, pass `--allow-drift` to `fetch.sh` or
+`verify_hashes.py`; mismatches are still reported. This flag does not change pins.
+Review source changes before accepting a refreshed manifest. Missing files are
+reported and skipped, so hash verification alone is not a completeness check.
+
+Both inspectors treat `samples/` as **read-only fixtures**. New excerpts,
+statistics and a merged manifest go to ignored `output/`; no script writes to
+`samples/`. The new manifest starts from the committed manifest plus any prior
+output manifest, then updates present files only. This preserves research-only
+entries through partial runs. An output manifest contains observed hashes, not
+independently accepted pins; `verify_hashes.py` defaults to the committed pins.
+Use `--manifest PATH` only after reviewing an alternative manifest.
+The dataset tags remain `open-commercial` / `research-only`. Legal/discovery
+pages use `source_role: metadata`, `licence_status: public-metadata`: this marks
+evidence, not permission for datasets linked by the page. OGL/CC-BY deeds are
+not restricted datasets. Commercial clearance stays in
+`docs/requirements/TODO-pre-commercial.md` (PC-1–PC-5).
+
+The default raw directory is `spikes/data/raw/`. To use external storage, set
+`SPIKE_RAW_DIR` consistently for fetch, verification and both inspections:
+
+```sh
+export SPIKE_RAW_DIR=/home/njotob/energy-data/raw/pr5-spike
+sh spikes/data/fetch.sh --include-uncleared --allow-drift
+python3 spikes/data/verify_hashes.py --allow-drift
+python3 spikes/data/inspect_tabular.py
+python3 spikes/data/inspect_networks.py
+unzip -t "$SPIKE_RAW_DIR/tytfs-2024.zip"
+```
+
+`SPIKE_RAW_DIR=/home/njotob/energy-data/raw` also works; paths follow the flat
+filenames in `sources.tsv`, not the separate gathering PRs' nested filenames.
+`SPIKE_OUTPUT_DIR` overrides the output directory (defaults to `spikes/data/output/`);
+it must be outside `samples/`. Use a separate output directory for an isolated run.
+Both overrides resolve caller-relative paths consistently. No secrets are required
+for these public downloads or written to either manifest.
 
 ## What is committed
 
@@ -72,11 +103,14 @@ CDS registration, dataset terms acceptance and credentials are prerequisites; no
 local `~/.cdsapirc` was present and no secret was requested or stored.
 
 Subsequent work is cross-referenced, not re-audited, in REPORT.md §4: **PR #10**
-inventories all DNO 132-kV sources; **PR #11** gathers network/Irish data;
+is merged and inventories all DNO 132-kV sources; **PR #11** is merged and
+gathers network/Irish data;
 **PR #12** reports the full-year Elexon download (roughly 4.2 GB, 4.16 GiB stated)
 outside git at **`~/energy-data/raw/elexon/`**. These are candidate archives,
 not proof of semantic completeness. ENTSO-E I-SEM DAM/flow retrieval still needs
-an owner API token; its CC-BY scope has provider exceptions. No token is stored.
+an owner API token. Day-ahead prices and scheduled exchanges are `research-only`;
+of these three series, only physical flows are in the cited free-reuse list,
+with provider exceptions. No token is stored.
 The revised ERA5 candidate extends east to 10° and adds precipitation/direct
 radiation; its January request remains unexecuted, pending Q-C-12.
 

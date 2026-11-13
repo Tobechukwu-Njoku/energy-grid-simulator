@@ -15,3 +15,12 @@ Exact original URLs are in `../sources.tsv`. The download manifest is provenance
 not raw source data; network/tabular statistics contain non-reconstructive
 aggregate findings. Research-only ETYS/Irish network records, Market Index
 Data and SEMOpx flow records are not included as samples (D-56).
+
+These committed excerpts are **read-only, open-commercial fixtures**. All eleven
+sample datasets map to open-commercial rows in `../sources.tsv` (generation uses
+`generation-mix.csv`). Inspectors write regenerated excerpts/statistics/manifests
+to `../output/` or `SPIKE_OUTPUT_DIR`, never here. The original aggregate JSON
+files are historical audit snapshots: the NGED 1,138 count includes all circuit
+change statuses; see REPORT.md for the corrected status/area breakdown. The
+manifest's `public-metadata` category describes legal/discovery evidence and
+makes no dataset licence grant.
