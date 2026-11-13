@@ -212,6 +212,37 @@ fn invokes_python(script: &str) -> bool {
         })
 }
 
+/// Shells a `run:` step may use. Any other value, including a custom
+/// `interpreter {0}` template, runs the script under another interpreter
+/// (Python, Node, Perl, ...), so shells are allowed by name rather than
+/// banned by name (D-73, ADV23R3-05).
+const ALLOWED_SHELLS: &[&str] = &["bash", "sh", "pwsh", "powershell", "cmd"];
+
+/// Checks a `shell` value wherever it is set: on a step, or inherited through
+/// `defaults.run.shell` of a job or the workflow (ADV23R3-05).
+fn check_shell(path: &str, scope: &str, shell: &Yaml, findings: &mut Vec<Finding>) {
+    let value = scalar(shell);
+    if !ALLOWED_SHELLS.contains(&value.trim()) {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "{scope}: shell `{value}` is not allowed; use one of {ALLOWED_SHELLS:?} (D-73)"
+            ),
+        ));
+    }
+}
+
+/// Checks a `defaults:` mapping of a workflow or job.
+fn check_defaults(path: &str, scope: &str, holder: &Yaml, findings: &mut Vec<Finding>) {
+    if let Some(shell) = get(holder, "defaults")
+        .and_then(|defaults| get(defaults, "run"))
+        .and_then(|run| get(run, "shell"))
+    {
+        check_shell(path, &format!("{scope} defaults.run"), shell, findings);
+    }
+}
+
 /// Checks one parsed workflow.
 #[must_use]
 pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
@@ -284,6 +315,7 @@ pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
     for (name, value) in entries(get(workflow, "env").unwrap_or(&Yaml::Null)) {
         check_env(path, &name, value, &mut findings);
     }
+    check_defaults(path, "workflow", workflow, &mut findings);
 
     let jobs = get(workflow, "jobs");
     let job_entries = jobs.map(entries).unwrap_or_default();
@@ -438,6 +470,7 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
     for (key, value) in entries(get(job, "env").unwrap_or(&Yaml::Null)) {
         check_env(path, &key, value, findings);
     }
+    check_defaults(path, &scope, job, findings);
     for key in ["container", "services"] {
         if get(job, key).is_some() {
             findings.push(Finding::at(
@@ -505,14 +538,8 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
                 ));
             }
         }
-        if let Some(shell) = get(step, "shell")
-            && invokes_python(&scalar(shell))
-        {
-            findings.push(Finding::at(
-                path,
-                None,
-                format!("{step_scope}: Python shell is not allowed (D-73)"),
-            ));
+        if let Some(shell) = get(step, "shell") {
+            check_shell(path, &step_scope, shell, findings);
         }
     }
 }
@@ -812,6 +839,36 @@ jobs:
             "env: {RUSTFLAGS: \"-A unsafe_code\"}\npermissions:",
         );
         assert!(!run(&flags).is_empty());
+    }
+
+    // ADV23R3-05: a shell inherited from workflow or job defaults is checked,
+    // and shells are allowed by name, so any interpreter template is rejected.
+    #[test]
+    fn adv23r3_05_inherited_shells_are_checked() {
+        let script = "run: |\n          import sys\n          sys.exit(0)";
+        let body = GOOD.replace("run: cargo xtask docs", script);
+        let job = body.replace(
+            "    runs-on: macos-15\n",
+            "    runs-on: macos-15\n    defaults:\n      run:\n        shell: python\n",
+        );
+        assert!(!run(&job).is_empty(), "job defaults accepted");
+        let workflow = body.replace(
+            "permissions:",
+            "defaults:\n  run:\n    shell: python {0}\npermissions:",
+        );
+        assert!(!run(&workflow).is_empty(), "workflow defaults accepted");
+        for shell in ["node {0}", "perl {0}", "/usr/bin/env python3 {0}", "py"] {
+            let step = GOOD.replace(
+                "run: cargo xtask docs",
+                &format!("run: cargo xtask docs\n        shell: \"{shell}\""),
+            );
+            assert!(!run(&step).is_empty(), "step shell {shell} accepted");
+        }
+        let controls = GOOD.replace(
+            "permissions:",
+            "defaults:\n  run:\n    shell: bash\npermissions:",
+        );
+        assert!(run(&controls).is_empty(), "{:?}", run(&controls));
     }
 
     // R1: the trusted gate graph cannot be weakened by the workflow under test.

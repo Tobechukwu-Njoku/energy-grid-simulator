@@ -8,12 +8,15 @@
 //! added line of the range. Added lines come from a forced-text diff that
 //! ignores `.gitattributes`, text conversion and external diff drivers (R3).
 //!
-//! Each line is also tested after Unicode NFKC normalisation, removal of
-//! zero-width and other format characters, combining-mark removal and
-//! confusable folding (ADV23-07), and after stripping comment, quote and
-//! Markdown prefixes, link syntax (inline and reference style) and string
-//! literal quoting, so comments and headers in any language are covered
-//! (R2/ADV23-01). Exemptions name one exact line in one file (ADV23-17).
+//! Each line is also tested after Unicode NFKD decomposition, removal of
+//! zero-width and other format characters, removal of every combining mark
+//! (so precomposed accents fall away, ADV23R3-01) and confusable folding
+//! (ADV23-07), and after stripping comment, quote and Markdown prefixes, link
+//! syntax (inline and reference style) and string literal quoting. Comment
+//! delimiters are also recognised generically, as any run of characters that
+//! are neither letters, digits nor white space, so comments in any language
+//! are covered without a per-language list (R2/ADV23-01, ADV23R3-03).
+//! Exemptions name one exact line in one file (ADV23-17).
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -21,6 +24,7 @@ use std::sync::OnceLock;
 
 use fancy_regex::{Regex, RegexBuilder};
 use unicode_normalization::UnicodeNormalization as _;
+use unicode_normalization::char::is_combining_mark;
 use unicode_security::confusable_detection::skeleton;
 
 use crate::util::{Ctx, Finding, git, git_command, is_sha};
@@ -139,18 +143,6 @@ const fn is_invisible(character: char) -> bool {
     )
 }
 
-/// Combining marks that only decorate a base letter.
-const fn is_combining(character: char) -> bool {
-    matches!(
-        character,
-        '\u{0300}'..='\u{036f}'
-            | '\u{1ab0}'..='\u{1aff}'
-            | '\u{1dc0}'..='\u{1dff}'
-            | '\u{20d0}'..='\u{20ff}'
-            | '\u{fe20}'..='\u{fe2f}'
-    )
-}
-
 /// Folds one non-ASCII character to its ASCII look-alike using the Unicode
 /// confusables table (UTS #39 skeletons, ADV23-07, ADV23R-01/02). When the
 /// character itself has no ASCII prototype, its upper- and lower-case forms
@@ -184,7 +176,10 @@ fn pictographs() -> &'static Regex {
     })
 }
 
-/// NFKC, invisible and combining-mark removal, then confusable folding.
+/// Compatibility decomposition (NFKD), removal of invisible characters and
+/// of every combining mark (Unicode category M), then confusable folding.
+/// Decomposing first splits precomposed letters such as `á` into a base
+/// letter and a mark, so accents of any kind fall away (ADV23R3-01).
 #[must_use]
 pub fn normalise(line: &str) -> String {
     normalise_with(line, 'l')
@@ -193,8 +188,8 @@ pub fn normalise(line: &str) -> String {
 fn normalise_with(line: &str, l_as: char) -> String {
     let mut out = String::with_capacity(line.len());
     for character in line
-        .nfkc()
-        .filter(|character| !is_invisible(*character) && !is_combining(*character))
+        .nfkd()
+        .filter(|character| !is_invisible(*character) && !is_combining_mark(*character))
     {
         fold_char(character, l_as, &mut out);
     }
@@ -332,6 +327,52 @@ fn trailing_payloads(line: &str) -> BTreeSet<&str> {
     found
 }
 
+/// A comment or markup delimiter: any character that is neither a letter,
+/// a digit nor white space. Comment syntax differs between languages
+/// (`<# #>`, `--[[ ]]`, `@`, `REM`, `!`, `%`, ...), so delimiters are
+/// recognised generically rather than from a list (ADV23R3-03).
+fn is_delimiter(character: char) -> bool {
+    !character.is_alphanumeric() && !character.is_whitespace()
+}
+
+/// Generic delimiter stripping. Returns the forms of `line` that start at the
+/// line start or at any white-space separated token that begins with a
+/// delimiter, with those leading delimiters removed; each form is returned
+/// as is, without trailing delimiter-only tokens, and without any trailing
+/// delimiters. A payload hidden behind any comment syntax, at the start of a
+/// line or after code, is thereby exposed without a per-language list.
+fn delimiter_forms(line: &str) -> BTreeSet<String> {
+    let mut starts = vec![0];
+    let mut previous_space = true;
+    for (index, character) in line.char_indices() {
+        if previous_space && index > 0 && is_delimiter(character) {
+            starts.push(index);
+        }
+        previous_space = character.is_whitespace();
+    }
+    let mut found = BTreeSet::new();
+    for start in starts {
+        let body = line[start..].trim_start_matches(|c: char| is_delimiter(c) || c.is_whitespace());
+        if body.is_empty() {
+            continue;
+        }
+        found.insert(body.to_owned());
+        let mut words: Vec<&str> = body.split_whitespace().collect();
+        while words
+            .last()
+            .is_some_and(|word| word.chars().all(is_delimiter))
+        {
+            words.pop();
+        }
+        found.insert(words.join(" "));
+        found.insert(
+            body.trim_end_matches(|c: char| is_delimiter(c) || c.is_whitespace())
+                .to_owned(),
+        );
+    }
+    found
+}
+
 /// Every form of a line that is tested against the patterns.
 #[must_use]
 pub fn candidates(line: &str) -> Vec<String> {
@@ -358,6 +399,7 @@ pub fn candidates(line: &str) -> Vec<String> {
                 for payload in trailing_payloads(variant) {
                     set.insert(strip_markup(payload));
                 }
+                set.extend(delimiter_forms(variant));
             }
             for segment in quoted(&form) {
                 set.insert(strip_markup(&segment));
@@ -912,6 +954,117 @@ mod tests {
         for identity in [
             "egs-bot <egs-bot@users.noreply.github.com>",
             "Claude Shannon <cshannon@example.com>",
+        ] {
+            assert!(!p.matches_identity(identity), "false positive: {identity}");
+        }
+    }
+
+    // ADV23R3-01: precomposed accents decompose and their marks are removed.
+    #[test]
+    fn adv23r3_01_precomposed_diacritics_are_detected() {
+        let p = patterns();
+        for line in [
+            j(&["Gener", "ated with Cl\u{00e1}", "ude Code"]),
+            j(&["G\u{00e9}n\u{00e9}r", "ated with Cl\u{00e0}", "ude"]),
+            j(&["Co-Auth", "ored-By: Cl\u{00e2}", "ude"]),
+            j(&["Co-auth", "ored-by: G\u{00e9}m\u{00ed}n\u{00ed}"]),
+            j(&["Gener", "ated with C\u{014d}p\u{012b}l\u{014d}t"]),
+            j(&["Gener", "ated with \u{0108}laude"]),
+            j(&["Gener", "ated with Cla\u{1ee5}de"]),
+        ] {
+            assert!(p.matches_line(&line), "missed: {line:?}");
+        }
+        assert_eq!(normalise("Cl\u{00e1}ude"), "Claude");
+        assert!(!p.matches_line("R\u{00e9}sum\u{00e9} generated with care"));
+    }
+
+    // ADV23R3-02: a vendor name before the model name.
+    #[test]
+    fn adv23r3_02_vendor_prefixed_models_are_detected() {
+        let p = patterns();
+        for line in [
+            j(&["Gener", "ated with Google Gem", "ini"]),
+            j(&["Gener", "ated with OpenAI Chat", "GPT"]),
+            j(&["Gener", "ated with Meta Lla", "ma 3"]),
+            j(&["Gener", "ated with Google's Gem", "ini 2.5 Pro"]),
+            j(&["Gener", "ated with Microsoft GitHub Cop", "ilot"]),
+            j(&[
+                "Gener",
+                "ated with [Google Gem",
+                "ini](https://example.com)",
+            ]),
+            j(&["Co-Auth", "ored-By: Anthropic Cla", "ude"]),
+            j(&["Co-Auth", "ored-By: Google Gem", "ini <x@example.org>"]),
+            j(&["Co-Auth", "ored-By: Mistral AI Mis", "tral Large"]),
+        ] {
+            assert!(p.matches_line(&line), "missed: {line}");
+        }
+        for line in [
+            "Generated with Google Sheets",
+            "Co-authored-by: Meta Hansen <meta@example.org>",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    // ADV23R3-03: comment syntax of any language, recognised generically.
+    #[test]
+    fn adv23r3_03_any_comment_syntax_is_detected() {
+        let p = patterns();
+        let footer = footer();
+        let trailer = trailer();
+        for line in [
+            format!("<# {footer} #>"),
+            format!("--[[ {footer} ]]"),
+            format!("@ {footer}"),
+            format!("mov r0, r1 @ {footer}"),
+            format!("$x = 1 <# {footer} #>"),
+            format!("x = 1 --[[{footer}]]"),
+            format!("{{# {footer} #}}"),
+            format!("<%-- {footer} --%>"),
+            format!("{{{{!-- {footer} --}}}}"),
+            format!("!! {footer}"),
+            format!("\\ {footer}"),
+            format!("(: {footer} :)"),
+            format!("<# {trailer} #>"),
+            format!("@rem {footer}"),
+        ] {
+            assert!(p.matches_line(&line), "missed: {line}");
+        }
+        for line in [
+            "@ generated with care",
+            "<# Generated with the build script #>",
+            "x = 1 -- written by hand",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    // ADV23R3-04: vendor domains, including Google and subdomains.
+    #[test]
+    fn adv23r3_04_vendor_domains_are_detected() {
+        let p = patterns();
+        for identity in [
+            j(&["Assistant <gem", "ini@google.com>"]),
+            j(&["Assistant <assistant@", "google.com>"]),
+            j(&["Helper <cop", "ilot@microsoft.com>"]),
+            j(&["Assistant <agent@", "deepmind.com>"]),
+            j(&["Helper <x@mail.", "anthropic.com>"]),
+            j(&["Helper <x@", "x.ai>"]),
+            j(&["Helper <x@", "cognition.ai>"]),
+        ] {
+            assert!(p.matches_identity(&identity), "missed: {identity}");
+            assert!(
+                p.matches_line(&format!("{}{identity}", j(&["Co-Auth", "ored-By: "]))),
+                "missed trailer: {identity}"
+            );
+        }
+        // Large employers' domains need a model or agent in the local part,
+        // so their human staff can still be credited.
+        for identity in [
+            "Jane Doe <jane@example.org>",
+            "Jane Doe <jane@google.com>",
+            "Jane Doe <jane@notgoogle.com.example.org>",
         ] {
             assert!(!p.matches_identity(identity), "false positive: {identity}");
         }

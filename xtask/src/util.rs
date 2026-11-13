@@ -220,8 +220,11 @@ pub fn is_sha(text: &str) -> bool {
             .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
 }
 
-/// Simple glob: `*` matches within a path segment, `**` across segments, and a
-/// trailing `/` matches everything below a directory.
+/// Gitignore-style glob without character classes: `?` matches one
+/// character and `*` any run of characters within a path segment, `**`
+/// matches across segments, and a trailing `/` matches everything below a
+/// directory. Callers reject `[`, `]` and `\` where a pattern is untrusted
+/// (R3-04).
 #[must_use]
 pub fn glob_match(pattern: &str, path: &str) -> bool {
     if let Some(prefix) = pattern.strip_suffix('/') {
@@ -249,6 +252,18 @@ fn glob_bytes(pattern: &[u8], path: &[u8]) -> bool {
             }
             false
         }
+        Some((b'?', rest)) => match path.split_first() {
+            Some((b'/', _)) | None => false,
+            Some((_, tail)) => {
+                // One character, not one byte: skip UTF-8 continuation bytes.
+                let width = path
+                    .iter()
+                    .skip(1)
+                    .take_while(|byte| (**byte & 0xC0) == 0x80)
+                    .count();
+                glob_bytes(rest, &tail[width..])
+            }
+        },
         Some((head, rest)) => path.first() == Some(head) && glob_bytes(rest, &path[1..]),
     }
 }
@@ -297,6 +312,10 @@ mod tests {
         assert!(glob_match("docs/**", "docs/a/b.md"));
         assert!(glob_match("**/*.py", "a/b/c.py"));
         assert!(glob_match("**/*.py", "c.py"));
+        assert!(glob_match("xtask/sr?/lib.rs", "xtask/src/lib.rs"));
+        assert!(glob_match("caf?", "café"));
+        assert!(!glob_match("a?b", "a/b"));
+        assert!(!glob_match("a?", "a"));
     }
 
     #[test]

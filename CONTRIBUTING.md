@@ -59,13 +59,21 @@ on the separate target system (D-65).
   ([CI security policy](docs/security/ci-runner-policy.md)).
 - **Data:** never commit raw `research-only` data; commit download scripts only (D-56).
   Every provenance manifest tags each dataset `open-commercial` or `research-only`.
+  A provenance manifest is always named `manifest.toml` (or is a `sources.tsv` table);
+  any other file that declares a `licence_status` or is named like a manifest is rejected,
+  because it would not be read (ADV23R3-07). A manifest key names files when its last
+  `_`/`-` word is `file`, `files`, `filename`, `path`, `paths` or `name` (for example
+  `sha256_index_file`, `relative_path`, `local_name`), at any depth; any value shaped like
+  a file name is also registered (ADV23R3-06).
 - **Policy paths** (`.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
   `Cargo.toml`, `rust-toolchain.toml`, `docs/security/`) need the policy owner's APPROVED
   review on the exact head. Agents push and open pull requests from the machine account
   in `xtask/policy/repository.toml` (`agent_account`, D-74); the owner cannot approve a
   pull request they opened, so an owner-opened policy change cannot pass.
 - **Unsafe code:** every crate root outside `crates/solver-*` starts with
-  `#![forbid(unsafe_code)]`.
+  `#![forbid(unsafe_code)]`: the bare Rust lint, not a tool-qualified one such as
+  `clippy::unsafe_code` (R3-01). Every file Cargo selects as a target or build script
+  is checked whatever its file name (R3-02).
 
 Checks to require on `main` (branch protection is configured by the owner; it is not
 on yet): `merge-gates` (all automated gates, listing the ones not yet applicable),

@@ -462,9 +462,11 @@ fn changed_paths(repo: &Path, from: &str, to: &str) -> Result<BTreeSet<String>, 
 }
 
 /// Whether a review of `reviewed` still covers `head`: every path changed
-/// between them, other than review reports, either has the same tree entry
-/// (blob AND mode) or is no longer changed by the pull request (`main`'s
-/// version, after a merge of `main`).
+/// between them either has the same tree entry (blob AND mode) or is no
+/// longer changed by the pull request (`main`'s version, after a merge of
+/// `main`). No directory is exempt: a file under the reviews directory can be
+/// compiled or included like any other, so evidence lands on `main`, never on
+/// the pull-request branch (R3-03).
 ///
 /// # Errors
 ///
@@ -474,9 +476,6 @@ pub fn still_current(repo: &Path, main: &str, reviewed: &str, head: &str) -> Res
         .trim()
         .to_owned();
     for path in changed_paths(repo, reviewed, head)? {
-        if path.starts_with(REVIEWS) {
-            continue;
-        }
         if !same_entries(repo, reviewed, head, &path)
             && !same_entries(repo, &merge_base, head, &path)
         {

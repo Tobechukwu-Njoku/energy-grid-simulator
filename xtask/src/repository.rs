@@ -106,17 +106,93 @@ fn mentions_share_alike(text: &str) -> bool {
             .any(|word| word == "osm")
 }
 
-/// Manifest keys naming a dataset's files: a string or an array of strings
-/// (ADV23R-09).
-const FILE_KEYS: &[&str] = &[
-    "filename",
+/// Final words of a manifest key that names files (ADV23R-09, ADV23R3-06).
+///
+/// Manifest schema rule: a key names one or more files when its last
+/// `_`/`-`-separated word is one of these (`file`, `sha256_index_file`,
+/// `relative_path`, `local_name`, `data_files`, ...), at any depth inside a
+/// dataset table. The dataset's own `name` is its title, not a file. In
+/// addition, any string value shaped like a file name (no white space, no URL
+/// scheme, a final segment with an extension) is registered whatever its key,
+/// so a key outside the schema cannot hide a file.
+const FILE_KEY_WORDS: &[&str] = &[
     "file",
     "files",
-    "relative_path",
-    "local_name",
+    "filename",
+    "filenames",
     "path",
     "paths",
+    "name",
+    "names",
 ];
+
+fn is_file_key(key: &str) -> bool {
+    let lower = key.to_ascii_lowercase();
+    lower != "name"
+        && lower
+            .rsplit(['_', '-', '.'])
+            .next()
+            .is_some_and(|word| FILE_KEY_WORDS.contains(&word))
+}
+
+fn looks_like_file(value: &str) -> bool {
+    if value.is_empty() || value.contains(char::is_whitespace) || value.contains("://") {
+        return false;
+    }
+    let last = value.rsplit('/').next().unwrap_or(value);
+    last.rsplit_once('.').is_some_and(|(stem, extension)| {
+        !stem.is_empty()
+            && !extension.is_empty()
+            && extension.len() <= 10
+            && extension.chars().all(|c| c.is_ascii_alphanumeric())
+            && extension.chars().any(|c| c.is_ascii_alphabetic())
+    })
+}
+
+/// Collects file references from one dataset table, recursively.
+fn collect_files(key: &str, item: &Item, out: &mut Vec<String>) {
+    let named = is_file_key(key);
+    let take = |value: &toml_edit::Value, out: &mut Vec<String>| {
+        if let Some(text) = value.as_str()
+            && (named || looks_like_file(text))
+        {
+            out.push(text.to_owned());
+        }
+    };
+    match item {
+        Item::Value(toml_edit::Value::Array(array)) => {
+            for value in array {
+                match value {
+                    toml_edit::Value::InlineTable(table) => {
+                        for (inner, value) in table {
+                            collect_files(inner, &Item::Value(value.clone()), out);
+                        }
+                    }
+                    other => take(other, out),
+                }
+            }
+        }
+        Item::Value(toml_edit::Value::InlineTable(table)) => {
+            for (inner, value) in table {
+                collect_files(inner, &Item::Value(value.clone()), out);
+            }
+        }
+        Item::Value(value) => take(value, out),
+        Item::Table(table) => {
+            for (inner, value) in table {
+                collect_files(inner, value, out);
+            }
+        }
+        Item::ArrayOfTables(tables) => {
+            for table in tables {
+                for (inner, value) in table {
+                    collect_files(inner, value, out);
+                }
+            }
+        }
+        Item::None => {}
+    }
+}
 
 /// Datasets declared by one manifest: (name, status, file names, licence text).
 fn manifest_datasets(document: &DocumentMut) -> Vec<(String, Option<String>, Vec<String>, String)> {
@@ -124,13 +200,9 @@ fn manifest_datasets(document: &DocumentMut) -> Vec<(String, Option<String>, Vec
     let describe = |name: String, table: &dyn toml_edit::TableLike| {
         let field = |key: &str| table.get(key).and_then(Item::as_str).map(str::to_owned);
         let mut files = Vec::new();
-        for key in FILE_KEYS {
-            match table.get(key) {
-                Some(item) if item.as_str().is_some() => {
-                    files.push(item.as_str().unwrap_or_default().to_owned());
-                }
-                Some(item) => files.extend(string_array(item)),
-                None => {}
+        for (key, item) in table.iter() {
+            if key != "name" {
+                collect_files(key, item, &mut files);
             }
         }
         let licence = ["licence", "licence_name", "license", "license_name"]
@@ -710,6 +782,48 @@ fn load_secret_exemptions(document: &DocumentMut) -> Result<Vec<(String, String)
     Ok(found)
 }
 
+/// The one canonical provenance manifest name (ADV23R3-07). Records may also
+/// live in a `sources.tsv` table.
+pub const MANIFEST_NAME: &str = "manifest.toml";
+/// The canonical provenance table name.
+pub const SOURCES_NAME: &str = "sources.tsv";
+
+/// Whether a tracked file other than the canonical `manifest.toml` and
+/// `sources.tsv` looks like a provenance manifest: a structured-data file
+/// whose name mentions a manifest, provenance, dataset or sources, or whose
+/// content declares a licence status. Such a file would not be read, so its
+/// records would be ignored; it is rejected instead (ADV23R3-07). Reviewed
+/// metadata files listed in the trusted policy are exempt.
+#[must_use]
+pub fn misnamed_manifest(path: &str, text: &str, metadata: &[String]) -> Option<Finding> {
+    let name = path.rsplit('/').next().unwrap_or(path).to_ascii_lowercase();
+    if name == MANIFEST_NAME || name == SOURCES_NAME || metadata.iter().any(|m| m == path) {
+        return None;
+    }
+    let structured = [
+        ".toml", ".json", ".jsonl", ".ndjson", ".yaml", ".yml", ".tsv", ".csv", ".xml", ".ini",
+    ]
+    .iter()
+    .any(|extension| name.ends_with(extension));
+    if !structured {
+        return None;
+    }
+    let named = ["manifest", "provenance", "dataset", "sources"]
+        .iter()
+        .any(|word| name.contains(word));
+    let lower = text.to_ascii_lowercase();
+    let declares = lower.contains("licence_status") || lower.contains("license_status");
+    (named || declares).then(|| {
+        Finding::at(
+            path,
+            None,
+            format!(
+                "provenance records must be in a file named {MANIFEST_NAME} (or {SOURCES_NAME}); this file would not be read (D-56)"
+            ),
+        )
+    })
+}
+
 /// Runs the provenance, secrets and raw-data gate.
 ///
 /// # Errors
@@ -722,18 +836,20 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let mut records = Vec::new();
     let mut manifests = 0;
     let secret_exemptions = load_secret_exemptions(&document)?;
+    let metadata = string_array(&document["data_metadata_files"]);
     for path in &paths {
         let name = path.rsplit('/').next().unwrap_or(path);
         let bytes =
             std::fs::read(ctx.repo.join(path)).map_err(|error| format!("{path}: {error}"))?;
         let text = String::from_utf8_lossy(&bytes);
-        if name == "manifest.toml" {
+        findings.extend(misnamed_manifest(path, &text, &metadata));
+        if name == MANIFEST_NAME {
             manifests += 1;
             let (found, entries) = manifest_records(path, &text);
             findings.extend(found);
             records.extend(entries);
         }
-        if name == "sources.tsv" {
+        if name == SOURCES_NAME {
             let (found, entries) = sources_records(path, &text);
             findings.extend(found);
             records.extend(entries);
@@ -1115,6 +1231,69 @@ mod tests {
         }
     }
 
+    // ADV23R3-06: file references are found by the schema rule (any key whose
+    // last word is file/path/name...) and by value shape, at any depth.
+    #[test]
+    fn adv23r3_06_file_references_follow_the_schema_rule() {
+        for files in [
+            "sha256_index_file = \"restricted_grid.json\"",
+            "index_file = \"restricted_grid.json\"",
+            "data_files = [\"restricted_grid.json\"]",
+            "source-path = \"a/restricted_grid.json\"",
+            "checksums = \"restricted_grid.json\"",
+            "parts = [{ uri = \"restricted_grid.json\" }]",
+            "[datasets.r.storage]\nlocation = \"restricted_grid.json\"",
+        ] {
+            let text = format!(
+                "[datasets.r]\nname = \"Restricted grid\"\nlicence_status = \"research-only\"\n{files}\n"
+            );
+            let (found, restricted) = check_manifest("m.toml", &text);
+            assert!(found.is_empty(), "{found:?}");
+            assert!(
+                restricted
+                    .iter()
+                    .any(|f| f.ends_with("restricted_grid.json")),
+                "{files}: {restricted:?}"
+            );
+        }
+        // The title, URLs, versions and prose are not file references.
+        let text = "[datasets.r]\nname = \"Grid.v2\"\nlicence_status = \"research-only\"\nversion = \"1.0.0\"\nsource_url = \"https://example.org/a.csv\"\nnote = \"see the README.md file\"\n";
+        let (_, restricted) = check_manifest("m.toml", text);
+        assert!(restricted.is_empty(), "{restricted:?}");
+    }
+
+    // ADV23R3-07: provenance records under any other file name are rejected.
+    #[test]
+    fn adv23r3_07_misnamed_manifests_are_rejected() {
+        let record = "[[datasets]]\nname = \"r\"\nlicence_status = \"research-only\"\n";
+        for path in [
+            "spikes/data/provenance.toml",
+            "spikes/data/data-manifest.toml",
+            "spikes/data/dataset.toml",
+            "spikes/data/manifest.json",
+            "spikes/data/manifest.yaml",
+            "spikes/data/anything.toml",
+        ] {
+            assert!(
+                misnamed_manifest(path, record, &[]).is_some(),
+                "{path} accepted"
+            );
+        }
+        assert!(misnamed_manifest("spikes/data/manifest.toml", record, &[]).is_none());
+        assert!(misnamed_manifest("spikes/data/sources.tsv", "", &[]).is_none());
+        assert!(misnamed_manifest("Cargo.toml", "[package]\n", &[]).is_none());
+        assert!(misnamed_manifest("docs/notes.md", record, &[]).is_none());
+        let listed = vec!["spikes/data/samples/download-manifest.json".to_owned()];
+        assert!(
+            misnamed_manifest(
+                "spikes/data/samples/download-manifest.json",
+                record,
+                &listed
+            )
+            .is_none()
+        );
+    }
+
     // ADV23R-09: grid and market exchange formats count as data.
     #[test]
     fn adv23r_09_more_data_extensions_are_gated() {
@@ -1165,6 +1344,19 @@ mod tests {
         assert_eq!(star.len(), 2, "direct children only: {star:?}");
         assert!(star.iter().all(|f| !f.message.contains("src/lib.rs")));
         assert!(check("* @someone\n/xtask/ @Owner\n/deny.toml @Owner\n").is_empty());
+    }
+
+    // R3-04: `?` is a gitignore wildcard, so a later `?` rule can override.
+    #[test]
+    fn r3_04_question_mark_override_is_rejected() {
+        let protected = paths(&["/xtask/"]);
+        let tracked = paths(&["xtask/src/lib.rs"]);
+        let check = |text: &str| check_codeowners_paths(text, "Owner", &protected, &tracked);
+        assert!(!check("/xtask/ @Owner\n/xtask/sr?/lib.rs @someone\n").is_empty());
+        assert!(!check("/xtask/ @Owner\n/x?ask/ @someone\n").is_empty());
+        // Controls: `?` needs exactly one character and never matches `/`.
+        assert!(check("/xtask/ @Owner\n/xtask/sr?x/lib.rs @someone\n").is_empty());
+        assert!(check("/xtask/ @Owner\n/xtask?src/lib.rs @someone\n").is_empty());
     }
 
     #[test]

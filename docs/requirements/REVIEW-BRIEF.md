@@ -60,6 +60,8 @@ The gate runs from `main` (`trusted-gates.yml`) and checks, against the trusted 
   else (for example `accepted`) leaves the finding open.
 - **Currentness:** the reviewed SHA (and the triage SHA) must be a commit of the pull
   request, and no tree entry the pull request owns (contents or file mode) may differ
-  between it and the current head, other than review reports.
+  between it and the current head. No path is exempt, including the reviews directory
+  (a file there can be compiled like any other, R3-03): reports land on `main`, never
+  on the pull-request branch. Merging `main` into the branch keeps a review current.
 
 After a report lands on `main`, re-run the trusted-gates run of the pull request.

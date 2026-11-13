@@ -214,10 +214,8 @@ fn f6_mode_change_invalidates_review() {
         !review_gates::still_current(repo.path(), &main, &reviewed, &mode_changed).expect("git")
     );
 
-    // A later commit touching only review reports, and a merge of main, keep it current.
+    // A merge of main (which carries the evidence) keeps it current.
     repo.git(&["checkout", "-q", "-b", "pr2", &reviewed]);
-    repo.write(&format!("{REVIEW_DIR}/note.md"), "evidence only\n");
-    repo.commit("docs: evidence");
     repo.git(&["merge", "-q", "--no-ff", "main", "-m", "merge main"]);
     let merged = repo.git(&["rev-parse", "HEAD"]);
     assert!(review_gates::still_current(repo.path(), &main, &reviewed, &merged).expect("git"));
@@ -282,4 +280,41 @@ fn f2_owner_authored_policy_pr_explains_why_it_cannot_pass() {
             .any(|m| m.contains("reuses the name of trusted gate")),
         "{text:?}"
     );
+}
+
+// R3-03: a PR-branch change under the reviews directory is not exempt. Here
+// the "evidence" file is compiled production source, included by the crate.
+#[test]
+fn r3_03_review_directory_change_invalidates_review() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+    repo.write(
+        "crates/engine/src/lib.rs",
+        "#![forbid(unsafe_code)]\ninclude!(\"../../../docs/requirements/reviews/payload.rs\");\n",
+    );
+    repo.write(
+        &format!("{REVIEW_DIR}/payload.rs"),
+        "pub fn price() -> u8 { 1 }\n",
+    );
+    let reviewed = repo.commit("feat: engine");
+    repo.write(
+        &format!("{REVIEW_DIR}/payload.rs"),
+        "pub fn price() -> u8 { 99 }\n",
+    );
+    let changed = repo.commit("docs: notes");
+    repo.git(&["checkout", "-q", "main"]);
+    for (path, text) in evidence(&reviewed) {
+        repo.write(&path, &text);
+    }
+    let main = repo.commit("docs: review evidence");
+    assert!(!review_gates::still_current(repo.path(), &main, &reviewed, &changed).expect("git"));
+    let found =
+        review_gates::independent_review(&review_ctx(&repo), &main, &changed).expect("gate");
+    assert!(!found.is_empty(), "changed payload accepted");
+    // Control: the reviewed commit itself passes.
+    let found =
+        review_gates::independent_review(&review_ctx(&repo), &main, &reviewed).expect("gate");
+    assert!(found.is_empty(), "{found:?}");
 }

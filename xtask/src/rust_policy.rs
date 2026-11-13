@@ -208,12 +208,33 @@ pub fn scan_rust_as(path: &str, source: &str, build_script: bool) -> Vec<Finding
 
 /// Whether a parsed file starts with a top-level `#![forbid(unsafe_code)]`
 /// (not inside `cfg_attr`, which a configuration could switch off).
+///
+/// The lint list is parsed structurally: one of its entries must be the bare,
+/// unqualified Rust lint path `unsafe_code`. A tool-qualified lint such as
+/// `clippy::unsafe_code` or a nested group does not forbid Rust's lint and does
+/// not qualify (R3-01). A trailing `reason = "..."` is allowed.
 #[must_use]
 pub fn forbids_unsafe(file: &syn::File) -> bool {
+    use syn::punctuated::Punctuated;
     file.attrs.iter().any(|attribute| {
-        matches!(attribute.style, syn::AttrStyle::Inner(_))
-            && attribute.path().is_ident("forbid")
-            && matches!(&attribute.meta, syn::Meta::List(list) if names_unsafe(list.tokens.clone()))
+        if !matches!(attribute.style, syn::AttrStyle::Inner(_))
+            || !attribute.path().is_ident("forbid")
+        {
+            return false;
+        }
+        let syn::Meta::List(list) = &attribute.meta else {
+            return false;
+        };
+        list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
+            .is_ok_and(|entries| {
+                entries.iter().any(|entry| {
+                    matches!(entry, syn::Meta::Path(path)
+                        if path.leading_colon.is_none()
+                            && path.segments.len() == 1
+                            && path.segments[0].arguments.is_none()
+                            && path.segments[0].ident.unraw() == "unsafe_code")
+                })
+            })
     })
 }
 
@@ -344,8 +365,25 @@ pub fn check_sources(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             ));
         }
     }
-    for path in &files {
-        if !path.ends_with(".rs") || !in_scope(path) {
+    for path in &roots {
+        if in_scope(path) && !files.contains(path) && !build_scripts.contains(path) {
+            findings.push(Finding::at(
+                path,
+                None,
+                "crate target selected by Cargo.toml is not a tracked file",
+            ));
+        }
+    }
+    // Every file Cargo compiles as a target is scanned whatever its suffix:
+    // Cargo does not require `.rs` for an explicit target or build script
+    // (R3-02). Ordinary modules are found by their `.rs` suffix.
+    let scanned: BTreeSet<&String> = files
+        .iter()
+        .filter(|path| path.ends_with(".rs"))
+        .chain(roots.iter().filter(|path| files.contains(*path)))
+        .collect();
+    for path in scanned {
+        if !in_scope(path) {
             continue;
         }
         let source = std::fs::read_to_string(ctx.repo.join(path))

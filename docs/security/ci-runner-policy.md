@@ -35,8 +35,11 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
 5. A `run:` script contains only allow-listed `${{ }}` expressions (`runner.temp`,
    `runner.os`). Every event value reaches a script as a shell variable set in `env:`
    (`"$TITLE"`), never as `${{ env.TITLE }}`, which pastes the value into the script
-   text (F5). Scripts never run Python (D-73). No YAML aliases, `RUSTFLAGS` or rustc
-   wrapper; Cargo config files may hold only `[alias]`.
+   text (F5). Scripts never run Python (D-73). A `shell:` (on a step, or inherited from
+   `defaults.run.shell` of a job or the workflow) is one of `bash`, `sh`, `pwsh`,
+   `powershell` or `cmd`; any other value, including an `interpreter {0}` template, is
+   rejected (ADV23R3-05). No YAML aliases, `RUSTFLAGS` or rustc wrapper; Cargo config
+   files may hold only `[alias]`.
 6. No `secrets.*` other than `GITHUB_TOKEN`, no `secrets: inherit`; only the hosted
    labels `ubuntu-24.04` and `macos-15` before M1; no `container:` or `services:`.
 7. **Trusted gates.** `independent-review` and `policy-approval` run from `main`

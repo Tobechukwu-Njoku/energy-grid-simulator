@@ -31,6 +31,16 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision 4 (implementation, 2026-11-13):** R3-01..04 (GPT) and ADV23R3-01..07
+(Gemini) addressed with general mechanisms and mapped regression tests (finding→test
+table in the PR body): structural parse of the `forbid` lint list; every Cargo-selected
+target scanned regardless of suffix; no currentness exemption for the reviews directory;
+`?` wildcard with a differential test against `git check-ignore`; NFKD plus removal of
+all combining marks; vendor-prefixed model names and vendor domains; generic comment
+delimiter stripping; shell allow-list including inherited `defaults.run.shell`; a
+schema rule for manifest file keys; one canonical manifest name. Needs exact-head GPT
+re-review, Gemini adversarial re-check and triage before bootstrap attestation.
+
 **PR #23 revision-3 review:** exact head `b2173e28f8f232366ffe6a27d5e787fd2adfc39c`
 re-reviewed; verdict **must-fix**. All 111 submitted tests pass. The original
 F1–F9 / ADV23R-01..09 inputs are addressed (D-74 account/approval activation

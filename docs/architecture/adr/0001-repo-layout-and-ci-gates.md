@@ -123,10 +123,11 @@ requires verified output; adversarial review alone never supplies independent ap
 D-53 triage by the designated verifier/coordinator is required in addition to review.
 
 Shared-identity evidence is attestation, not cryptographic proof. Review reports bind
-the exact code/doc head they reviewed. A later committed evidence-only change may refer
-to that ancestor only if a base-policy validator proves the entire intervening diff is
-review-evidence metadata and unchanged reviewed-tree hashes. For the simplest path,
-use a structured PR comment on the final SHA. Any substantive edit invalidates approval.
+the exact code/doc head they reviewed. Review evidence lands on `main`, never on the
+pull-request branch: every tree entry the pull request owns must be unchanged between
+the reviewed commit and the head (a merge of `main` is allowed). No directory is exempt,
+because a file under the reviews directory can be included in compiled code (R3-03).
+Any substantive edit invalidates approval.
 A same-PR reviewer-authored approval file cannot prove its own independence.
 
 Reference fixtures in tests/cases and tests/reference have source, licence, checksum,
