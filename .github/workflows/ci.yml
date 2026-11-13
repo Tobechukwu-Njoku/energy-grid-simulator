@@ -1,5 +1,5 @@
 # M0 merge gates on GitHub-hosted runners (ADR 0001 bootstrap profile, NFR-3).
-# Security rules: docs/process/ci-security.md. Checked by ci/policy_checks.py.
+# Security rules: docs/security/ci-runner-policy.md. Checked by ci/policy_checks.py.
 # Never add pull_request_target, workflow_run, self-hosted runners or secrets here.
 name: ci
 

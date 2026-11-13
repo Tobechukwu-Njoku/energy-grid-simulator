@@ -3,7 +3,7 @@
 
   unsafe-scope   `unsafe` code may be allowed only inside crates/solver-* adapters
   crate-lints    every workspace crate inherits the workspace lints
-  workflows      GitHub workflows are hardened (see docs/process/ci-security.md):
+  workflows      GitHub workflows are hardened (see docs/security/ci-runner-policy.md):
                  - no pull_request_target, workflow_run or self-hosted runners
                    (self-hosted execution is an M1 activation step)
                  - explicit top-level `permissions:` with no write scopes
