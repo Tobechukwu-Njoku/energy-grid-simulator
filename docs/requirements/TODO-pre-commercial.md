@@ -10,5 +10,5 @@ offering, paid customer, or public SaaS launch._
 | PC-3 | Clear SEMO/SEMOpx price and market data for commercial reuse | No affirmative licence found | spike PR #5 |
 | PC-4 | Licence or replace GB day-ahead auction prices (EPEX, Nord Pool N2EX) if used | Redistribution needs consent | spike PR #5, D-57 |
 | PC-5 | Review every dataset in the provenance manifest marked "research-only" and clear, replace or remove it | D-56 | — |
-| PC-6 | Confirm dependency licences for closed SaaS (Redis vs Valkey, TimescaleDB TSL, GPL/LGPL libraries, solver ISV terms) | R-2, R-3, R-4 | PR #2 |
+| PC-6 | Confirm dependency licences for closed SaaS (Valkey default under D-67, any optional Redis deployment, TimescaleDB TSL, GPL/LGPL libraries, solver ISV terms) | R-2, R-3, R-4 | PR #2, D-67 |
 | PC-7 | Legal review of all of the above | Licence screening by agents is not legal advice | — |

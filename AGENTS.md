@@ -37,7 +37,8 @@ requirements are baselined. Sole exception: the data spike in `spikes/` (D-31).
 3. **Cross-reference:** every requirement cites the decision(s) it comes from.
 4. **Update STATUS.md** at the end of any session that changes these docs.
 5. Performance stance from the owner: **resource cost (RAM/CPU/power) is not a constraint** —
-   prefer the highest-performance, most capable option. Baseline: PostgreSQL 18 + Redis.
+   prefer the highest-performance, most capable option. Baseline: PostgreSQL 18 + Valkey
+   (D-67); shared Redis-protocol clients keep Redis compatible. P1 dispatch uses PostgreSQL.
 6. Prefer reusing mature open-source tools (see `docs/research/prior-art.md`) over rebuilding.
 7. **Context is auto-compacted** in every thread. Never rely on chat history for project state:
    write decisions, progress and handoff notes into the repo docs as you go.
