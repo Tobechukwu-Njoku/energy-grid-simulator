@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod attribution;
+pub mod build_gate;
 pub mod docs;
 pub mod repository;
 pub mod review_gates;

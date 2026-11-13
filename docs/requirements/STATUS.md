@@ -31,22 +31,21 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
-**PR #23 revision 5 (implementation, 2026-11-13):** R4-01..04 (GPT) and ADV23R4-01..10
-(Gemini) addressed; finding→test table in the PR body, each test shown failing on
-`dc3093e`. Scope of the Rust policy now follows what Cargo compiles: workspace members,
-non-spike packages and their `path`-dependency closure, plus every module reached through
-`mod`/`#[path]`/`include!`, wherever it lives; build-script modules and path
-build-dependencies are build-script code. Link names are decoded string literals. `**/`
-follows Git's component semantics (differential test extended). Manifest values are
-walked recursively; the misnamed-manifest rule no longer depends on suffix. Every
-`action.yml` anywhere is checked and local `uses:` must stay under `./.github/`.
-Attribution names live once in `.githooks/attribution-patterns.regex` as `define`
-fragments; footers and e-mail-less trailers accept any trailing qualifier words, while
-trailers carrying a non-vendor e-mail accept only listed qualifiers and versions so
-humans who share a model's first name stay creditable. Two footer controls
-("…GPT tokenizer fixtures", "…cursor movement hooks") are now stripped by design.
-Needs exact-head GPT re-review, Gemini adversarial re-check and triage before bootstrap
-attestation.
+**PR #23 revision 6 (implementation, 2026-11-13):** R5-01..04 (GPT) and ADV23R5-01..10
+(Gemini) addressed by a change of approach (coordinator decision): the static Rust
+reachability walker is deleted. What Cargo builds now comes from `cargo metadata`
+(resolved members, targets, path deps, patches, build-deps); the cheap static rules stay
+(crate-root `forbid`, manifests, alias-only Cargo config, workflows). New
+`cargo xtask build-gate`, a step of the unprivileged `policy` CI job, builds the PR
+workspace (all targets, all features) with main's xtask as `RUSTC_WRAPPER`: `-F unsafe_code`
+for every repository crate outside `crates/solver-*` (lint caps stripped), plus a linker
+guard and Cargo `build-script-executed` output for the Python/Julia ban. Workflows may set
+no `CARGO_*`/`RUSTC*`/`RUSTDOC*`/`RUSTUP_*`/`*RUSTFLAGS` variable unless `allowed_env` in
+the trusted `gates.toml` lists it. Attribution: generic verb/joiner/"help of" footer
+phrases, any `<Words> by:` trailer with a model-shaped name, and Cody/Sourcegraph,
+CodeWhisperer, GLM, Command R in the single name list. Residual risks in the ADR 0001
+revision-6 addendum. Finding→test table in the PR body. Needs exact-head GPT re-review,
+Gemini adversarial re-check and triage before bootstrap attestation.
 
 **PR #23 revision-5 review:** exact head `b21d83de896ba09b59259fa687e427271bbc06ed`
 re-reviewed; verdict **must-fix**. All 143 submitted tests pass, and all fourteen

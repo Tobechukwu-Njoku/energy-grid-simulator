@@ -307,3 +307,49 @@ Residual risks, not closed by code:
 4. `pull_request_target` does not run on review events: after approving, the owner
    re-runs the trusted-gates run. A compromised owner or machine-account token
    defeats these controls.
+
+## Addendum — 2026-11-13: compiler-enforced unsafe boundary (PR #23 revision 6)
+
+Revisions 4 and 5 tried to prove statically which Rust files Cargo compiles; each
+round found another macro, include, glob or patch form the walker missed (R5-01..04,
+ADV23R5-02..05). That approach is withdrawn. It adds no decision beyond D-73.
+
+- **What is built** comes from `cargo metadata --locked --all-features` (resolved
+  members, targets, path dependencies, patches, build-dependencies), never from our
+  own reading of manifests or globs. `cargo xtask policy` keeps the cheap static
+  rules on that graph: every target root of a local package outside
+  `crates/solver-*` starts with `#![forbid(unsafe_code)]`; local packages and
+  targets are tracked files in the repository; dependencies come from crates.io or
+  the repository; manifests and Cargo config as before.
+- **The unsafe boundary is enforced by the compiler.** `cargo xtask build-gate`, a
+  step of the unprivileged `policy` job, builds the pull request's workspace (all
+  targets, all features, build scripts and proc macros) with `main`'s xtask binary
+  as `RUSTC_WRAPPER`. For every crate whose package is in the repository it removes
+  `--cap-lints`, refuses argument files and appends `-F unsafe_code` (library and
+  test targets of `crates/solver-*` adapters excepted; their build scripts are not).
+  A command-line `forbid` cannot be lowered by any attribute, `[lints]` entry or
+  macro expansion. Cargo runs from the trusted tree, so no repository Cargo config
+  is loaded, and every `CARGO_*`/`RUSTC*`/`RUSTDOC*`/`*RUSTFLAGS` variable is
+  removed from its environment.
+- **Native runtimes (NFR-10)** are checked on the build's output: the wrapper also
+  sets `-C linker=<xtask>`, a guard that refuses any linker input naming Python or
+  Julia before running `cc`; Cargo's `build-script-executed` messages are read for
+  `rustc-link-lib` requests and link-search directories holding such libraries.
+- **Workflows** may not set `CARGO_*`, `RUSTC*`, `RUSTDOC*`, `RUSTUP_*` or
+  `*RUSTFLAGS` variables unless `allowed_env` in the trusted `gates.toml` lists
+  them, nor write `$GITHUB_ENV`/`$GITHUB_PATH` (ADV23R5-01).
+
+Residual risks of this approach:
+
+5. The build gate runs the pull request's build scripts and proc macros. They run
+   as the job's user and could tamper with that job (for example replace the
+   wrapper binary for later units). The job is unprivileged (read-only token, no
+   secrets) and is never a trusted gate; build-time code is reviewed like any
+   other code, and the root `forbid` rule still holds in every ordinary build.
+6. Only code that is compiled for the CI host is checked by the compiler: code
+   behind another target's `cfg`, and doctests, are covered by the root `forbid`
+   rule (which applies whenever they are compiled) but not by the gate itself.
+7. A native library linked statically from a `#[link(kind = "static")]` attribute
+   is bundled into the rlib without a linker flag. It is caught only when its
+   search path comes from a build script; Cargo config and `RUSTFLAGS` cannot add
+   one in the gate.

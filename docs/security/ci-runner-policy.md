@@ -38,8 +38,17 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    text (F5). Scripts never run Python (D-73). A `shell:` (on a step, or inherited from
    `defaults.run.shell` of a job or the workflow) is one of `bash`, `sh`, `pwsh`,
    `powershell` or `cmd`; any other value, including an `interpreter {0}` template, is
-   rejected (ADV23R3-05). No YAML aliases, `RUSTFLAGS` or rustc wrapper; Cargo config
-   files may hold only `[alias]`.
+   rejected (ADV23R3-05). No YAML aliases. No `env:` may set a `CARGO_*`, `RUSTC*`,
+   `RUSTDOC*`, `RUSTUP_*` or `*RUSTFLAGS` variable (flags, wrappers, linkers, lint
+   caps) unless `allowed_env` in the trusted `gates.toml` lists it, and no script may
+   write `$GITHUB_ENV` or `$GITHUB_PATH` (ADV23R5-01). Cargo config files may hold
+   only `[alias]`.
+5a. **Compiler-enforced unsafe scope.** The `policy` job also runs
+   `cargo xtask build-gate` from `main`'s tree: it builds the PR workspace with
+   `main`'s xtask as rustc wrapper, adding `-F unsafe_code` to every repository crate
+   outside `crates/solver-*` and a linker guard that refuses Python or Julia
+   runtimes (ADR 0001 addendum, revision 6). It runs PR build scripts, so it only
+   ever runs in this unprivileged job, never in the trusted gates.
 6. No `secrets.*` other than `GITHUB_TOKEN`, no `secrets: inherit`; only the hosted
    labels `ubuntu-24.04` and `macos-15` before M1; no `container:` or `services:`.
 7. **Trusted gates.** `independent-review` and `policy-approval` run from `main`

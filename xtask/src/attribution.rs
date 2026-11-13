@@ -1357,6 +1357,100 @@ mod tests {
         }
     }
 
+    // ADV23R5-06/07: any attribution verb and joining word, with or without
+    // a "the help/assistance of" phrase, before a known name.
+    #[test]
+    fn adv23r5_06_07_attribution_phrases_are_detected() {
+        let p = patterns();
+        let name = j(&["Cla", "ude"]);
+        for verb in [
+            "Generated",
+            "Produced",
+            "Written",
+            "Created",
+            "Made",
+            "Built",
+            "Developed",
+        ] {
+            for joiner in [
+                "with",
+                "by",
+                "via",
+                "using",
+                "with help from",
+                "with the help of",
+                "with the assistance of",
+                "with the aid of",
+                "using the support of",
+            ] {
+                let line = format!("{verb} {joiner} {name} Code");
+                assert!(p.matches_line(&line), "missed: {line}");
+            }
+        }
+        for line in [
+            "Generated via the build script",
+            "Produced by the release pipeline",
+            "Written with help from the team",
+            "Made with love",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    // ADV23R5-08/09: newly listed tools and models, in every form.
+    #[test]
+    fn adv23r5_08_09_listed_tools_are_detected() {
+        let p = patterns();
+        all_match(
+            &p,
+            &[
+                &["Sourcegraph Co", "dy"],
+                &["Co", "dy"],
+                &["Amazon Code", "Whisperer"],
+                &["Amazon ", "Q Developer"],
+                &["GL", "M-4"],
+                &["Chat", "GLM"],
+                &["Zhipu GL", "M-4"],
+                &["Command ", "R+"],
+                &["Cohere Command ", "R"],
+            ],
+        );
+        let identity = j(&["Co", "dy <co", "dy@sourcegraph.com>"]);
+        assert!(p.matches_identity(&identity), "missed: {identity}");
+        assert!(p.matches_line(&j(&["Co-Auth", "ored-", "By: ", &identity])));
+        for line in [
+            "Generated with command run.sh",
+            "Co-authored-by: Cody Smith <cody@example.org>",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    // ADV23R5-10: any `<Words> by:` or `<Words> with:` trailer naming a known
+    // name, not only listed verbs.
+    #[test]
+    fn adv23r5_10_any_words_by_trailer_is_detected() {
+        let p = patterns();
+        let name = j(&["Cla", "ude"]);
+        for words in [
+            "Prompted by",
+            "Implemented by",
+            "Prepared by",
+            "Pair programmed with",
+            "Reviewed and tested by",
+        ] {
+            let line = format!("{words}: {name}");
+            assert!(p.matches_line(&line), "missed: {line}");
+        }
+        for line in [
+            "Prompted by: the outage report",
+            "Reviewed by: Claude Monet <monet@example.fr>",
+            "Fixes issue raised by: Jane Doe",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
     // Fragment references fail closed: an undefined or unterminated name is
     // a load error, not a silently empty rule.
     #[test]

@@ -1023,5 +1023,103 @@
     "input": "fix: exercise message policy\n\nThe status bar shows a cursor agent icon.\n",
     "exit": 0,
     "expected": "fix: exercise message policy\n\nThe status bar shows a cursor agent icon.\n"
+  },
+  {
+    "name": "r5-strip-1",
+    "source": "gemini ADV23R5-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642076696120436c6175646520436f64650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-2",
+    "source": "gemini ADV23R5-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a50726f647563656420627920436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-3",
+    "source": "gemini ADV23R5-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682068656c702066726f6d20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-4",
+    "source": "gemini ADV23R5-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e20776974682074686520617373697374616e6365206f6620436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-5",
+    "source": "gemini ADV23R5-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820536f75726365677261706820436f64790a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-6",
+    "source": "gemini ADV23R5-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436f6479203c636f647940736f7572636567726170682e636f6d3e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-7",
+    "source": "gemini ADV23R5-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820416d617a6f6e20436f64655768697370657265720a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-8",
+    "source": "gemini ADV23R5-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820474c4d2d340a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-9",
+    "source": "gemini ADV23R5-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436f6d6d616e6420522b0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-10",
+    "source": "gemini ADV23R5-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a50726f6d707465642062793a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-11",
+    "source": "gemini ADV23R5-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496d706c656d656e7465642062793a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-keep-1",
+    "source": "R5 human/prose control",
+    "input": "fix: exercise message policy\n\nGenerated via the build script\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nGenerated via the build script\n"
+  },
+  {
+    "name": "r5-keep-2",
+    "source": "R5 human/prose control",
+    "input": "fix: exercise message policy\n\nPhoto by: Claude Monet\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nPhoto by: Claude Monet\n"
+  },
+  {
+    "name": "r5-keep-3",
+    "source": "R5 human/prose control",
+    "input": "fix: exercise message policy\n\nPrompted by: the outage report\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nPrompted by: the outage report\n"
   }
 ]

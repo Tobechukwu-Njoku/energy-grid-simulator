@@ -9,6 +9,10 @@ allowed_triggers = ["pull_request", "push"]
 # "$T" in the script.
 run_expressions = ["runner.temp", "runner.os"]
 runner_labels = ["ubuntu-24.04", "macos-15"]
+# The only Cargo/rustc/rustup variables (CARGO*, RUSTC*, RUSTDOC*, RUSTUP_*,
+# *RUSTFLAGS) a workflow `env:` may set (ADV23R5-01). None of them changes
+# compiler flags, wrappers, linkers or lint levels.
+allowed_env = ["CARGO_TERM_COLOR", "CARGO_INCREMENTAL", "CARGO_DENY_VERSION"]
 
 # Pull-request gates. They build and test PR code with a read-only token and no
 # secrets. Their workflow files are protected paths: any change needs the owner's

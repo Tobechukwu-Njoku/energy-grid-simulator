@@ -127,7 +127,7 @@ jobs:
   policy:
     name: repository policy (unsafe scope, manifests, workflows, Python)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -141,6 +141,15 @@ jobs:
         run: |
           cd "$TRUSTED"
           cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" policy
+      # Builds the PR workspace (its build scripts and proc macros run here, in this
+      # unprivileged job only) with main's xtask as rustc wrapper and linker guard:
+      # -F unsafe_code outside crates/solver-*, no Python/Julia link (ADR 0001, NFR-10).
+      - name: Compiler-enforced unsafe scope and native runtimes (flags from main)
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" build-gate --target-dir "$RUNNER_TEMP/build-gate"
 
   provenance:
     name: provenance, secrets and raw data (D-56)

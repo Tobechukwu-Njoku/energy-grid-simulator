@@ -1,273 +1,228 @@
-//! Rust source and manifest policy (ADR 0001, NFR-10).
+//! Rust source and manifest policy (ADR 0001, NFR-10): the cheap static rules.
 //!
-//! - `unsafe-scope`: outside `crates/solver-*`, every crate root (library,
-//!   binaries, tests, examples, benches and build scripts, as Cargo selects
-//!   them) starts with `#![forbid(unsafe_code)]`. A `forbid` cannot be lowered
-//!   later, so the compiler rejects any opt-out, including one assembled by a
-//!   macro from a parameter (F4). As defence in depth, no attribute anywhere
-//!   lowers the lint by name; files are parsed with `syn`, so multiline,
-//!   `cfg_attr`, nested and macro-body attributes are seen (R5, ADV23-03,
-//!   ADV23-05). Unparseable Rust fails the check.
+//! What Cargo compiles is never inferred here from manifests, globs or source
+//! text. It is read from `cargo metadata` (resolved packages, targets, path
+//! dependencies, patches and build-dependencies), and the compiler itself
+//! enforces the unsafe boundary and the native-runtime ban over the real build
+//! (`build_gate`, run in the unprivileged CI job). This module keeps:
+//!
+//! - `unsafe-scope`: every target (library, binaries, tests, examples, benches,
+//!   build script) of every local package outside `crates/solver-*`, as
+//!   `cargo metadata` lists it, starts with `#![forbid(unsafe_code)]` (F4,
+//!   R3-01), so ordinary builds reject an opt-out too; every local package and
+//!   target file is a tracked file inside the repository; dependencies come
+//!   from crates.io or the repository only; a tracked package outside
+//!   `spikes/` that the workspace does not build is reported.
 //! - `manifests`: the workspace keeps `unsafe_code` at deny/forbid; every
 //!   package inherits workspace lints and nothing else (ADV23-06); every package
 //!   inherits the workspace licence (ADV23-13); a Cargo configuration file
 //!   (`config` or `config.toml` in any `.cargo/` directory) may hold only
 //!   `[alias]` entries (ADV23R-06).
-//! - `native-runtimes`: no build script (the one Cargo selects, including a
-//!   custom `build = "..."` path, F7, and every module it includes,
-//!   ADV23R4-02) and no `link` attribute, conditional or not, names a Python
-//!   or Julia library (ADV23-12). String literals are decoded before matching,
-//!   so escapes cannot hide a name (ADV23R4-01).
-//!
-//! Scope is decided by what Cargo compiles, not by directory (R4-01): every
-//! workspace member, every package outside `spikes/`, and every package they
-//! reach through `path` dependencies is a production package. Its targets and
-//! every module or included file reachable from them (`mod`, `#[path]`,
-//! `include!`) are checked wherever they live. The `spikes/` exemption covers
-//! only files no production package reaches.
 
-use proc_macro2::{Delimiter, TokenStream, TokenTree};
-use quote::ToTokens as _;
 use syn::ext::IdentExt as _;
-use syn::spanned::Spanned as _;
-use syn::visit::Visit;
 use toml_edit::{DocumentMut, Item};
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use crate::util::{Ctx, Finding, glob_match, tracked};
+use crate::util::{Ctx, Finding, tracked};
 
-const LOWERING: &[&str] = &["allow", "expect", "warn"];
 const ENFORCING: &[&str] = &["deny", "forbid"];
 
-fn in_solver_adapter(path: &str) -> bool {
-    path.strip_prefix("crates/")
-        .is_some_and(|rest| rest.starts_with("solver-"))
-}
+/// The registry sources a dependency may come from.
+const REGISTRIES: &[&str] = &[
+    "registry+https://github.com/rust-lang/crates.io-index",
+    "sparse+https://index.crates.io/",
+];
 
 fn in_scope(path: &str) -> bool {
     !path.starts_with("spikes/")
 }
 
-/// Whether a token stream lowers `unsafe_code`: an `allow`, `expect` or
-/// `warn` group that names it, at any nesting depth.
+/// Whether a repository-relative package directory is a reviewed solver
+/// adapter: exactly `crates/solver-<name>`.
 #[must_use]
-pub fn lowers_unsafe(tokens: TokenStream) -> bool {
-    let trees: Vec<TokenTree> = tokens.into_iter().collect();
-    for (index, tree) in trees.iter().enumerate() {
-        match tree {
-            TokenTree::Ident(ident) => {
-                let name = ident.unraw().to_string();
-                if LOWERING.contains(&name.as_str())
-                    && let Some(TokenTree::Group(group)) = trees.get(index + 1)
-                    && group.delimiter() == Delimiter::Parenthesis
-                    && names_unsafe(group.stream())
-                {
-                    return true;
-                }
-            }
-            TokenTree::Group(group) if lowers_unsafe(group.stream()) => return true,
-            _ => {}
-        }
-    }
-    false
-}
-
-/// Whether a token stream holds a `link(...)` group naming a Python or Julia
-/// library at any depth, e.g. inside `cfg_attr` or a macro body (F7).
-#[must_use]
-pub fn links_runtime(tokens: TokenStream) -> bool {
-    let trees: Vec<TokenTree> = tokens.into_iter().collect();
-    for (index, tree) in trees.iter().enumerate() {
-        match tree {
-            TokenTree::Ident(ident) => {
-                if ident.unraw() == "link"
-                    && let Some(TokenTree::Group(group)) = trees.get(index + 1)
-                    && group.delimiter() == Delimiter::Parenthesis
-                    && names_runtime(&decoded_text(group.stream()))
-                {
-                    return true;
-                }
-            }
-            TokenTree::Group(group) if links_runtime(group.stream()) => return true,
-            _ => {}
-        }
-    }
-    false
-}
-
-fn names_unsafe(tokens: TokenStream) -> bool {
-    tokens.into_iter().any(|tree| match tree {
-        TokenTree::Ident(ident) => ident.unraw() == "unsafe_code",
-        TokenTree::Group(group) => names_unsafe(group.stream()),
-        _ => false,
-    })
-}
-
-struct Scan<'a> {
-    path: &'a str,
-    build_script: bool,
-    check_unsafe: bool,
-    findings: Vec<Finding>,
-}
-
-impl Scan<'_> {
-    fn flag(&mut self, line: usize, message: &str) {
-        self.findings
-            .push(Finding::at(self.path, Some(line), message.to_owned()));
-    }
-}
-
-/// The text of a token stream with every string literal decoded as Rust
-/// would decode it (`\x70`, `\u{74}`, raw strings, ...), so an escape cannot
-/// hide a name (ADV23R4-01). Returns the raw token text, then each decoded
-/// literal on its own line, then all decoded literals concatenated, so a
-/// name split across `concat!` pieces is also seen.
-#[must_use]
-pub fn decoded_text(tokens: TokenStream) -> String {
-    fn literals(tokens: TokenStream, out: &mut Vec<String>) {
-        for tree in tokens {
-            match tree {
-                TokenTree::Literal(literal) => {
-                    let stream = TokenTree::Literal(literal).into_token_stream();
-                    if let Ok(text) = syn::parse2::<syn::LitStr>(stream.clone()) {
-                        out.push(text.value());
-                    } else if let Ok(bytes) = syn::parse2::<syn::LitByteStr>(stream.clone()) {
-                        out.push(String::from_utf8_lossy(&bytes.value()).into_owned());
-                    } else if let Ok(text) = syn::parse2::<syn::LitCStr>(stream.clone()) {
-                        out.push(text.value().to_string_lossy().into_owned());
-                    } else if let Ok(character) = syn::parse2::<syn::LitChar>(stream) {
-                        out.push(character.value().to_string());
-                    }
-                }
-                TokenTree::Group(group) => literals(group.stream(), out),
-                _ => {}
-            }
-        }
-    }
-    let mut values = Vec::new();
-    let raw = tokens.to_string();
-    literals(tokens, &mut values);
-    format!("{raw}\n{}\n{}", values.join("\n"), values.concat())
-}
-
-fn names_runtime(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    ["python", "julia", "libpython", "libjulia"]
-        .iter()
-        .any(|name| lower.contains(name))
-}
-
-impl<'ast> Visit<'ast> for Scan<'_> {
-    fn visit_attribute(&mut self, attribute: &'ast syn::Attribute) {
-        let tokens = quote_attr(attribute);
-        let line = attribute.span().start().line;
-        if self.check_unsafe && lowers_unsafe(tokens.clone()) {
-            self.flag(
-                line,
-                "unsafe_code may only be lowered in crates/solver-* adapters",
-            );
-        }
-        if (attribute.path().is_ident("link") && names_runtime(&decoded_text(tokens.clone())))
-            || links_runtime(tokens)
-        {
-            self.flag(
-                line,
-                "linking a Python or Julia runtime is forbidden (NFR-10)",
-            );
-        }
-        syn::visit::visit_attribute(self, attribute);
-    }
-
-    fn visit_macro(&mut self, mac: &'ast syn::Macro) {
-        if self.check_unsafe && lowers_unsafe(mac.tokens.clone()) {
-            self.flag(
-                mac.span().start().line,
-                "macro body lowers unsafe_code outside crates/solver-*",
-            );
-        }
-        if links_runtime(mac.tokens.clone()) {
-            self.flag(
-                mac.span().start().line,
-                "macro body links a Python or Julia runtime (NFR-10)",
-            );
-        }
-        if self.build_script && names_runtime(&decoded_text(mac.tokens.clone())) {
-            self.flag(
-                mac.span().start().line,
-                "build script names a Python or Julia library (NFR-10)",
-            );
-        }
-        syn::visit::visit_macro(self, mac);
-    }
-
-    fn visit_lit_str(&mut self, literal: &'ast syn::LitStr) {
-        if self.build_script && names_runtime(&literal.value()) {
-            self.flag(
-                literal.span().start().line,
-                "build script names a Python or Julia library (NFR-10)",
-            );
-        }
-    }
-
-    fn visit_lit_byte_str(&mut self, literal: &'ast syn::LitByteStr) {
-        if self.build_script && names_runtime(&String::from_utf8_lossy(&literal.value())) {
-            self.flag(
-                literal.span().start().line,
-                "build script names a Python or Julia library (NFR-10)",
-            );
-        }
-    }
-}
-
-fn quote_attr(attribute: &syn::Attribute) -> TokenStream {
-    attribute.meta.to_token_stream()
-}
-
-/// Scans one Rust file; a file named `build.rs` is treated as a build script.
-#[must_use]
-pub fn scan_rust(path: &str, source: &str) -> Vec<Finding> {
-    scan_rust_as(
-        path,
-        source,
-        path == "build.rs" || path.ends_with("/build.rs"),
+pub fn is_adapter_dir(dir: &str) -> bool {
+    let mut parts = dir.split('/');
+    matches!(
+        (parts.next(), parts.next(), parts.next()),
+        (Some("crates"), Some(name), None) if name.len() > "solver-".len() && name.starts_with("solver-")
     )
 }
 
-/// Scans one Rust file, stating whether Cargo uses it as a build script (F7).
+/// Environment variables a policy-run Cargo never inherits: anything that can
+/// change the compiler, its flags, wrappers, linkers, lint caps or the target
+/// directory (ADV23R5-01). `CARGO_HOME` and `CARGO_NET_OFFLINE` are kept.
 #[must_use]
-pub fn scan_rust_as(path: &str, source: &str, build_script: bool) -> Vec<Finding> {
-    scan_rust_with(path, source, build_script, !in_solver_adapter(path))
+pub fn is_sanitised(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    if upper == "CARGO_HOME" || upper == "CARGO_NET_OFFLINE" {
+        return false;
+    }
+    upper == "CARGO"
+        || upper.starts_with("CARGO_")
+        || upper.starts_with("__CARGO")
+        || upper.starts_with("RUSTC")
+        || upper.starts_with("RUSTDOC")
+        || upper.contains("RUSTFLAGS")
+        || upper.starts_with("XTASK_")
 }
 
-/// Scans one Rust file, stating whether it is build-script code and whether
-/// the unsafe-scope rule applies (it does unless only solver adapters use it).
+/// A Cargo command from the trusted toolchain with a sanitised environment,
+/// run from the trusted tree so no repository `.cargo/config` is loaded.
 #[must_use]
-pub fn scan_rust_with(
-    path: &str,
-    source: &str,
-    build_script: bool,
-    check_unsafe: bool,
-) -> Vec<Finding> {
-    let file = match syn::parse_file(source) {
-        Ok(file) => file,
-        Err(error) => {
-            return vec![Finding::at(
-                path,
-                Some(error.span().start().line),
-                format!("cannot parse Rust ({error}); the policy check fails closed"),
-            )];
+pub fn cargo(ctx: &Ctx) -> Command {
+    let cargo = std::env::var_os("CARGO").map_or_else(|| PathBuf::from("cargo"), PathBuf::from);
+    let rustc = cargo
+        .parent()
+        .map(|dir| dir.join(format!("rustc{}", std::env::consts::EXE_SUFFIX)))
+        .filter(|path| path.is_file());
+    let mut command = Command::new(&cargo);
+    for (name, _) in std::env::vars_os() {
+        if is_sanitised(&name.to_string_lossy()) {
+            command.env_remove(&name);
         }
-    };
-    let mut scan = Scan {
-        path,
-        build_script,
-        check_unsafe,
-        findings: Vec::new(),
-    };
-    scan.visit_file(&file);
-    scan.findings
+    }
+    if let Some(rustc) = rustc {
+        command.env("RUSTC", rustc);
+    }
+    command.current_dir(&ctx.policy);
+    command
+}
+
+/// One target of a resolved package.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Target {
+    /// Target name.
+    pub name: String,
+    /// Target kinds (`lib`, `bin`, `test`, `custom-build`, ...).
+    pub kinds: Vec<String>,
+    /// Source path: repository-relative if inside the repository, else absolute.
+    pub src: String,
+    /// Whether `src` lies inside the repository.
+    pub inside: bool,
+}
+
+/// One resolved package.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Package {
+    /// Package name.
+    pub name: String,
+    /// Manifest: repository-relative if inside the repository, else absolute.
+    pub manifest: String,
+    /// Whether the manifest lies inside the repository.
+    pub inside: bool,
+    /// Source (`None` for a local path package).
+    pub source: Option<String>,
+    /// Whether the package is a reviewed `crates/solver-*` adapter.
+    pub adapter: bool,
+    /// Targets.
+    pub targets: Vec<Target>,
+}
+
+/// The resolved package graph, as `cargo metadata` reports it.
+#[derive(Debug, Clone, Default)]
+pub struct Metadata {
+    /// Every package in the resolve, local and registry.
+    pub packages: Vec<Package>,
+}
+
+impl Metadata {
+    /// Local (path) packages: workspace members, path dependencies of any
+    /// kind and local patches.
+    pub fn local(&self) -> impl Iterator<Item = &Package> {
+        self.packages.iter().filter(|p| p.source.is_none())
+    }
+}
+
+fn relative(root: &Path, path: &str) -> (String, bool) {
+    let path = Path::new(path);
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    match canonical.strip_prefix(root) {
+        Ok(rest) => (rest.to_string_lossy().replace('\\', "/"), true),
+        Err(_) => (canonical.to_string_lossy().into_owned(), false),
+    }
+}
+
+/// Parses `cargo metadata --format-version 1` output.
+///
+/// # Errors
+///
+/// Fails on malformed JSON.
+pub fn parse_metadata(repo: &Path, json: &[u8]) -> Result<Metadata, String> {
+    let root = repo.canonicalize().unwrap_or_else(|_| repo.to_path_buf());
+    let value: serde_json::Value =
+        serde_json::from_slice(json).map_err(|error| format!("cargo metadata: {error}"))?;
+    let packages = value["packages"]
+        .as_array()
+        .ok_or("cargo metadata: no packages")?;
+    let mut out = Vec::new();
+    for package in packages {
+        let (manifest, inside) = relative(&root, package["manifest_path"].as_str().unwrap_or(""));
+        let dir = manifest.rsplit_once('/').map_or("", |(dir, _)| dir);
+        let source = package["source"].as_str().map(str::to_owned);
+        let targets = package["targets"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .map(|target| {
+                let (src, inside) = relative(&root, target["src_path"].as_str().unwrap_or(""));
+                Target {
+                    name: target["name"].as_str().unwrap_or_default().to_owned(),
+                    kinds: target["kind"]
+                        .as_array()
+                        .map(Vec::as_slice)
+                        .unwrap_or_default()
+                        .iter()
+                        .filter_map(|kind| kind.as_str().map(str::to_owned))
+                        .collect(),
+                    src,
+                    inside,
+                }
+            })
+            .collect();
+        out.push(Package {
+            name: package["name"].as_str().unwrap_or_default().to_owned(),
+            adapter: source.is_none() && inside && is_adapter_dir(dir),
+            manifest,
+            inside,
+            source,
+            targets,
+        });
+    }
+    Ok(Metadata { packages: out })
+}
+
+/// Runs `cargo metadata` on the tree under test: every feature, every
+/// platform, the committed lock file. Cargo resolves members, globs, path
+/// dependencies, patches and build-dependencies; nothing is re-derived here.
+///
+/// # Errors
+///
+/// Returns Cargo's message if it cannot resolve the workspace; callers report
+/// it as a finding, so the check fails closed.
+pub fn metadata(ctx: &Ctx) -> Result<Metadata, String> {
+    let output = cargo(ctx)
+        .args([
+            "metadata",
+            "--format-version",
+            "1",
+            "--locked",
+            "--all-features",
+            "--manifest-path",
+        ])
+        .arg(ctx.repo.join("Cargo.toml"))
+        .output()
+        .map_err(|error| format!("cargo metadata: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "cargo metadata failed, so what Cargo builds cannot be checked: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    parse_metadata(&ctx.repo, &output.stdout)
 }
 
 /// Whether a parsed file starts with a top-level `#![forbid(unsafe_code)]`
@@ -312,627 +267,106 @@ pub fn check_crate_root(path: &str, source: &str) -> Vec<Finding> {
             Some(1),
             "crate root outside crates/solver-* must start with #![forbid(unsafe_code)] (ADR 0001)",
         )],
-        Err(_) => Vec::new(), // scan_rust reports the parse failure
+        Err(error) => vec![Finding::at(
+            path,
+            Some(error.span().start().line),
+            format!("cannot parse Rust ({error}); the policy check fails closed"),
+        )],
     }
 }
 
-/// Rust targets of one package, as Cargo selects them: explicit target
-/// paths plus the conventional auto-discovered files. Returns (crate roots,
-/// build scripts), repository-relative.
-#[must_use]
-pub fn package_targets(
-    manifest_path: &str,
-    document: &DocumentMut,
-    tracked: &BTreeSet<String>,
-) -> (BTreeSet<String>, BTreeSet<String>) {
-    let mut roots = BTreeSet::new();
-    let mut build = BTreeSet::new();
-    let Some(package) = document.get("package") else {
-        return (roots, build);
-    };
-    let dir = manifest_path
-        .rsplit_once('/')
-        .map_or(String::new(), |(dir, _)| format!("{dir}/"));
-    let join = |relative: &str| normalise_path(&format!("{dir}{relative}"));
-    match package.get("build") {
-        Some(item) if item.as_bool() == Some(false) => {}
-        Some(item) if item.as_str().is_some() => {
-            build.insert(join(item.as_str().unwrap_or_default()));
-        }
-        _ => {
-            let default = join("build.rs");
-            if tracked.contains(&default) || package.get("build").is_some() {
-                build.insert(default);
-            }
-        }
-    }
-    for key in ["lib", "bin", "test", "example", "bench"] {
-        let tables: Vec<&dyn toml_edit::TableLike> = match document.get(key) {
-            Some(Item::ArrayOfTables(array)) => array
-                .iter()
-                .map(|table| table as &dyn toml_edit::TableLike)
-                .collect(),
-            Some(item) => item.as_table_like().into_iter().collect(),
-            None => Vec::new(),
-        };
-        for table in tables {
-            if let Some(path) = table.get("path").and_then(Item::as_str) {
-                roots.insert(join(path));
-            }
-        }
-    }
-    for file in tracked {
-        let Some(relative) = file.strip_prefix(&dir) else {
-            continue;
-        };
-        let parts: Vec<&str> = relative.split('/').collect();
-        let root = match parts.as_slice() {
-            ["src", "lib.rs" | "main.rs"] => true,
-            ["src", "bin", name] | ["tests" | "examples" | "benches", name] => {
-                name.ends_with(".rs")
-            }
-            ["src", "bin", _, "main.rs"] | ["tests" | "examples" | "benches", _, "main.rs"] => true,
-            _ => false,
-        };
-        if root {
-            roots.insert(file.clone());
-        }
-    }
-    for script in &build {
-        roots.insert(script.clone());
-    }
-    (roots, build)
-}
-
-fn normalise_path(path: &str) -> String {
-    normalise_within(path).unwrap_or_else(|| path.to_owned())
-}
-
-/// Normalises a repository-relative path; `None` if it leaves the repository.
-fn normalise_within(path: &str) -> Option<String> {
-    let mut parts: Vec<&str> = Vec::new();
-    for part in path.split('/') {
-        match part {
-            "" | "." => {}
-            ".." => {
-                parts.pop()?;
-            }
-            other => parts.push(other),
-        }
-    }
-    Some(parts.join("/"))
-}
-
-fn parent_dir(path: &str) -> &str {
-    path.rsplit_once('/').map_or("", |(dir, _)| dir)
-}
-
-fn join_dir(dir: &str, relative: &str) -> Option<String> {
-    if relative.starts_with('/') {
-        return None;
-    }
-    normalise_within(&if dir.is_empty() {
-        relative.to_owned()
-    } else {
-        format!("{dir}/{relative}")
-    })
-}
-
-/// A package Cargo compiles in the workspace build.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Package {
-    /// Repository-relative `Cargo.toml` path.
-    pub manifest: String,
-    /// Whether the package is a reviewed `crates/solver-*` adapter.
-    pub adapter: bool,
-    /// Whether the package is compiled into a build script (a path
-    /// build-dependency, directly or transitively), so its code may emit
-    /// Cargo link instructions.
-    pub build_context: bool,
-}
-
-const DEPENDENCY_TABLES: &[&str] = &[
-    "dependencies",
-    "dev-dependencies",
-    "dev_dependencies",
-    "build-dependencies",
-    "build_dependencies",
-];
-
-/// `path` dependencies of one manifest: (dependency directory as written,
-/// whether it is a build dependency).
-fn path_dependencies(
-    document: &DocumentMut,
-    workspace_paths: &BTreeMap<String, String>,
-) -> Vec<(String, bool)> {
-    let mut found = Vec::new();
-    let mut table = |deps: &dyn toml_edit::TableLike, build: bool| {
-        for (name, entry) in deps.iter() {
-            let Some(entry) = entry.as_table_like() else {
-                continue;
-            };
-            if let Some(path) = entry.get("path").and_then(Item::as_str) {
-                found.push((path.to_owned(), build));
-            } else if entry.get("workspace").and_then(Item::as_bool) == Some(true) {
-                let key = entry.get("package").and_then(Item::as_str).unwrap_or(name);
-                if let Some(path) = workspace_paths
-                    .get(key)
-                    .or_else(|| workspace_paths.get(name))
-                {
-                    found.push((format!("/{path}"), build));
-                }
-            }
-        }
-    };
-    let mut scopes: Vec<&dyn toml_edit::TableLike> = vec![document.as_table()];
-    if let Some(targets) = document.get("target").and_then(Item::as_table_like) {
-        scopes.extend(targets.iter().filter_map(|(_, item)| item.as_table_like()));
-    }
-    for scope in scopes {
-        for key in DEPENDENCY_TABLES {
-            if let Some(deps) = scope.get(key).and_then(Item::as_table_like) {
-                table(deps, key.starts_with("build"));
-            }
-        }
-    }
-    if let Some(deps) = document
-        .get("workspace")
-        .and_then(|w| w.get("dependencies"))
-        .and_then(Item::as_table_like)
-    {
-        table(deps, false);
-    }
-    if let Some(outer) = document.get("patch").and_then(Item::as_table_like) {
-        for (_, inner) in outer.iter() {
-            if let Some(inner) = inner.as_table_like() {
-                table(inner, false);
-            }
-        }
-    }
-    // `[replace]` entries map a package spec to a table with a `path`.
-    if let Some(replace) = document.get("replace").and_then(Item::as_table_like) {
-        table(replace, false);
-    }
-    found
-}
-
-/// Every package the workspace build compiles (R4-01): workspace members
-/// (by the root manifest's `members`/`exclude` globs), every package outside
-/// `spikes/`, and the closure of their `path` dependencies wherever those
-/// live. Returns packages by manifest path and findings for dependencies
-/// that cannot be checked.
+/// Checks the resolved package graph: local packages and their targets are
+/// tracked files inside the repository, every target of a non-adapter local
+/// package forbids unsafe code at its root, dependencies come only from
+/// crates.io or the repository, and no tracked package outside `spikes/` is
+/// left out of the workspace build.
 ///
 /// # Errors
 ///
-/// Fails if a manifest cannot be read.
-pub fn production_packages(
-    repo: &Path,
-    files: &BTreeSet<String>,
-) -> Result<(BTreeMap<String, Package>, Vec<Finding>), String> {
-    let read = |path: &str| -> Result<Option<DocumentMut>, String> {
-        let text =
-            std::fs::read_to_string(repo.join(path)).map_err(|error| format!("{path}: {error}"))?;
-        Ok(text.parse::<DocumentMut>().ok())
-    };
-    let manifests: Vec<&String> = files
-        .iter()
-        .filter(|path| *path == "Cargo.toml" || path.ends_with("/Cargo.toml"))
-        .collect();
-    let mut queue: Vec<(String, bool)> = manifests
-        .iter()
-        .filter(|path| in_scope(path))
-        .map(|path| ((*path).clone(), false))
-        .collect();
-    let mut workspace_paths = BTreeMap::new();
-    if files.contains("Cargo.toml")
-        && let Some(root) = read("Cargo.toml")?
-    {
-        let workspace = root.get("workspace");
-        let globs = |key: &str| {
-            workspace
-                .and_then(|w| w.get(key))
-                .map(crate::util::string_array)
-                .unwrap_or_default()
-        };
-        let members = globs("members");
-        let exclude = globs("exclude");
-        for manifest in &manifests {
-            let dir = parent_dir(manifest);
-            let matches = |list: &[String]| {
-                list.iter()
-                    .any(|glob| normalise_within(glob).is_some_and(|g| glob_match(&g, dir)))
-            };
-            if matches(&members) && !matches(&exclude) {
-                queue.push(((*manifest).clone(), false));
-            }
-        }
-        if let Some(deps) = workspace
-            .and_then(|w| w.get("dependencies"))
-            .and_then(Item::as_table_like)
-        {
-            for (name, entry) in deps.iter() {
-                if let Some(path) = entry
-                    .as_table_like()
-                    .and_then(|t| t.get("path"))
-                    .and_then(Item::as_str)
-                    .and_then(normalise_within)
-                {
-                    workspace_paths.insert(name.to_owned(), path);
-                }
-            }
-        }
-    }
-    let mut packages: BTreeMap<String, Package> = BTreeMap::new();
+/// Fails if Git or file reads fail. A Cargo resolution failure is a finding.
+pub fn check_graph(ctx: &Ctx, metadata: &Metadata) -> Result<Vec<Finding>, String> {
+    let files: BTreeSet<String> = tracked(&ctx.repo)?.into_iter().collect();
     let mut findings = Vec::new();
-    while let Some((manifest, build_context)) = queue.pop() {
-        if let Some(known) = packages.get_mut(&manifest) {
-            if build_context && !known.build_context {
-                known.build_context = true;
-            } else {
+    let mut roots: BTreeMap<String, bool> = BTreeMap::new(); // root -> needs forbid
+    let mut built = BTreeSet::new();
+    for package in &metadata.packages {
+        match &package.source {
+            Some(source) if REGISTRIES.contains(&source.as_str()) => continue,
+            Some(source) => {
+                findings.push(Finding::general(format!(
+                    "dependency `{}` comes from `{source}`; only crates.io or this repository are allowed",
+                    package.name
+                )));
                 continue;
             }
-        } else {
-            packages.insert(
-                manifest.clone(),
-                Package {
-                    manifest: manifest.clone(),
-                    adapter: in_solver_adapter(&manifest),
-                    build_context,
-                },
-            );
+            None => {}
         }
-        let Some(document) = read(&manifest)? else {
-            continue; // `manifests` reports invalid TOML
-        };
-        let dir = parent_dir(&manifest);
-        for (path, build) in path_dependencies(&document, &workspace_paths) {
-            let target = match path.strip_prefix('/') {
-                Some(rooted) => Some(rooted.to_owned()),
-                None => join_dir(dir, &path),
-            };
-            let dependency = target.map(|t| {
-                if t.is_empty() {
-                    "Cargo.toml".to_owned()
-                } else {
-                    format!("{t}/Cargo.toml")
-                }
-            });
-            match dependency {
-                Some(dependency) if files.contains(&dependency) => {
-                    queue.push((dependency, build_context || build));
-                }
-                _ => findings.push(Finding::at(
-                    &manifest,
+        if !package.inside || !files.contains(&package.manifest) {
+            findings.push(Finding::at(
+                &package.manifest,
+                None,
+                format!(
+                    "local package `{}` is not a tracked file in this repository, so it cannot be checked",
+                    package.name
+                ),
+            ));
+            continue;
+        }
+        built.insert(package.manifest.clone());
+        for target in &package.targets {
+            if !target.inside || !files.contains(&target.src) {
+                findings.push(Finding::at(
+                    &target.src,
                     None,
                     format!(
-                        "path dependency `{path}` is not a tracked package in this repository, so it cannot be checked"
+                        "target `{}` of `{}` is not a tracked file in this repository",
+                        target.name, package.name
                     ),
-                )),
-            }
-        }
-    }
-    Ok((packages, findings))
-}
-
-/// How one reachable source file is compiled.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-struct Use {
-    build_script: bool,
-    check_unsafe: bool,
-}
-
-/// Collects the files one Rust source pulls in: out-of-line `mod`
-/// declarations (with `#[path]`, including under `cfg_attr`), `mod`
-/// declarations written inside macro bodies, and `include!` of a literal
-/// path. Candidate locations are generous: every place rustc could look is
-/// considered, so over-inclusion only widens the scan.
-struct Modules<'a> {
-    files: &'a BTreeSet<String>,
-    file_dir: &'a str,
-    bases: Vec<String>,
-    found: Vec<(String, bool)>, // (candidate path, file is mod-rs-like)
-    unresolved: Vec<(usize, String)>,
-}
-
-fn path_attributes(attrs: &[syn::Attribute]) -> Vec<String> {
-    fn literal_paths(tokens: TokenStream, out: &mut Vec<String>) {
-        let trees: Vec<TokenTree> = tokens.into_iter().collect();
-        for (index, tree) in trees.iter().enumerate() {
-            match tree {
-                TokenTree::Ident(ident) if ident.unraw() == "path" => {
-                    if let (Some(TokenTree::Punct(eq)), Some(TokenTree::Literal(lit))) =
-                        (trees.get(index + 1), trees.get(index + 2))
-                        && eq.as_char() == '='
-                        && let Ok(text) =
-                            syn::parse2::<syn::LitStr>(TokenTree::Literal(lit.clone()).into())
-                    {
-                        out.push(text.value());
-                    }
-                }
-                TokenTree::Group(group) => literal_paths(group.stream(), out),
-                _ => {}
-            }
-        }
-    }
-    let mut out = Vec::new();
-    for attribute in attrs {
-        if attribute.path().is_ident("path") || attribute.path().is_ident("cfg_attr") {
-            literal_paths(attribute.meta.to_token_stream(), &mut out);
-        }
-    }
-    out
-}
-
-impl Modules<'_> {
-    fn declare(&mut self, name: &str, paths: &[String], line: usize) {
-        let mut candidates = Vec::new();
-        for path in paths {
-            for dir in std::iter::once(self.file_dir.to_owned()).chain(self.bases.clone()) {
-                if let Some(candidate) = join_dir(&dir, path) {
-                    candidates.push((candidate, true));
-                }
-            }
-        }
-        for base in self.bases.clone() {
-            for (candidate, mod_rs) in [
-                (format!("{name}.rs"), false),
-                (format!("{name}/mod.rs"), true),
-            ] {
-                if let Some(path) = join_dir(&base, &candidate) {
-                    candidates.push((path, mod_rs));
-                }
-            }
-        }
-        candidates.retain(|(path, _)| self.files.contains(path));
-        if candidates.is_empty() {
-            self.unresolved.push((line, name.to_owned()));
-        }
-        self.found.extend(candidates);
-    }
-
-    fn scan_tokens(&mut self, tokens: TokenStream, line: usize) {
-        let trees: Vec<TokenTree> = tokens.into_iter().collect();
-        for (index, tree) in trees.iter().enumerate() {
-            match tree {
-                TokenTree::Ident(ident) if ident.unraw() == "mod" => {
-                    if let (Some(TokenTree::Ident(name)), Some(TokenTree::Punct(semi))) =
-                        (trees.get(index + 1), trees.get(index + 2))
-                        && semi.as_char() == ';'
-                    {
-                        self.declare(&name.unraw().to_string(), &[], line);
-                    }
-                }
-                TokenTree::Ident(ident) if ident.unraw() == "include" => {
-                    if let (Some(TokenTree::Punct(bang)), Some(TokenTree::Group(group))) =
-                        (trees.get(index + 1), trees.get(index + 2))
-                        && bang.as_char() == '!'
-                    {
-                        self.include(group.stream(), line);
-                    }
-                }
-                TokenTree::Group(group) => self.scan_tokens(group.stream(), line),
-                _ => {}
-            }
-        }
-    }
-
-    fn include(&mut self, tokens: TokenStream, line: usize) {
-        if let Ok(path) = syn::parse2::<syn::LitStr>(tokens.clone()) {
-            match join_dir(self.file_dir, &path.value()) {
-                Some(candidate) if self.files.contains(&candidate) => {
-                    self.found.push((candidate, true));
-                }
-                _ => self.unresolved.push((line, path.value())),
-            }
-        } else if !tokens.to_string().contains("OUT_DIR") {
-            // Generated code under OUT_DIR is produced by the (scanned) build
-            // script; any other computed path cannot be followed.
-            self.unresolved.push((line, tokens.to_string()));
-        }
-    }
-}
-
-impl<'ast> Visit<'ast> for Modules<'_> {
-    fn visit_item_mod(&mut self, item: &'ast syn::ItemMod) {
-        let name = item.ident.unraw().to_string();
-        let paths = path_attributes(&item.attrs);
-        let line = item.span().start().line;
-        if let Some((_, items)) = &item.content {
-            let saved = self.bases.clone();
-            let mut next: Vec<String> = Vec::new();
-            for base in &saved {
-                for segment in paths.iter().chain(std::iter::once(&name)) {
-                    if let Some(dir) = join_dir(base, segment) {
-                        next.push(dir);
-                    }
-                }
-            }
-            self.bases = next;
-            for inner in items {
-                self.visit_item(inner);
-            }
-            self.bases = saved;
-        } else {
-            self.declare(&name, &paths, line);
-        }
-    }
-
-    fn visit_macro(&mut self, mac: &'ast syn::Macro) {
-        let line = mac.span().start().line;
-        if mac
-            .path
-            .segments
-            .last()
-            .is_some_and(|s| s.ident == "include")
-        {
-            self.include(mac.tokens.clone(), line);
-        } else {
-            self.scan_tokens(mac.tokens.clone(), line);
-        }
-        syn::visit::visit_macro(self, mac);
-    }
-}
-
-/// Every file reachable from the given crate roots through `mod`, `#[path]`
-/// and `include!`, with how it is used. Returns the reachable files and
-/// findings for module references that cannot be followed.
-fn reachable(
-    repo: &Path,
-    files: &BTreeSet<String>,
-    starts: &[(String, Use)],
-) -> Result<(BTreeMap<String, Use>, Vec<Finding>), String> {
-    let mut seen: BTreeMap<String, Use> = BTreeMap::new();
-    let mut visited: BTreeSet<(String, Vec<String>, bool, bool)> = BTreeSet::new();
-    let mut findings = Vec::new();
-    let mut queue: Vec<(String, Vec<String>, Use)> = starts
-        .iter()
-        .map(|(path, usage)| (path.clone(), vec![parent_dir(path).to_owned()], *usage))
-        .collect();
-    while let Some((path, bases, usage)) = queue.pop() {
-        if !visited.insert((
-            path.clone(),
-            bases.clone(),
-            usage.build_script,
-            usage.check_unsafe,
-        )) {
-            continue;
-        }
-        let entry = seen.entry(path.clone()).or_default();
-        entry.build_script |= usage.build_script;
-        entry.check_unsafe |= usage.check_unsafe;
-        if !files.contains(&path) {
-            continue;
-        }
-        let source = std::fs::read_to_string(repo.join(&path))
-            .map_err(|error| format!("{path}: {error}"))?;
-        let Ok(file) = syn::parse_file(&source) else {
-            continue; // the scan reports the parse failure
-        };
-        let file_dir = parent_dir(&path).to_owned();
-        let mut modules = Modules {
-            files,
-            file_dir: &file_dir,
-            bases: bases.clone(),
-            found: Vec::new(),
-            unresolved: Vec::new(),
-        };
-        modules.visit_file(&file);
-        for (candidate, mod_rs) in modules.found {
-            if !files.contains(&candidate) {
+                ));
                 continue;
             }
-            // A file's own modules live beside it (mod.rs-like, `#[path]`,
-            // `include!`) or in a directory named after it. Both are
-            // considered, plus the includer's directories (an `include!`d
-            // file is spliced into its includer), so nothing is missed.
-            let mut child_bases = vec![parent_dir(&candidate).to_owned()];
-            if !mod_rs && let Some(stem) = candidate.strip_suffix(".rs") {
-                child_bases.push(stem.to_owned());
-            }
-            child_bases.extend(bases.iter().cloned());
-            child_bases.sort();
-            child_bases.dedup();
-            queue.push((candidate, child_bases, usage));
+            *roots.entry(target.src.clone()).or_default() |= !package.adapter;
         }
-        for (line, name) in modules.unresolved {
+    }
+    for (path, needs_forbid) in roots {
+        if !needs_forbid {
+            continue;
+        }
+        let source = std::fs::read_to_string(ctx.repo.join(&path))
+            .map_err(|error| format!("{path}: {error}"))?;
+        findings.extend(check_crate_root(&path, &source));
+    }
+    for manifest in &files {
+        let is_manifest = manifest == "Cargo.toml" || manifest.ends_with("/Cargo.toml");
+        if !is_manifest || !in_scope(manifest) || built.contains(manifest) {
+            continue;
+        }
+        let text = std::fs::read_to_string(ctx.repo.join(manifest))
+            .map_err(|error| format!("{manifest}: {error}"))?;
+        let has_package = text
+            .parse::<DocumentMut>()
+            .map_or(true, |document| document.get("package").is_some());
+        if has_package {
             findings.push(Finding::at(
-                &path,
-                Some(line),
-                format!("module or include `{name}` cannot be resolved to a tracked file, so it cannot be checked"),
+                manifest,
+                None,
+                "package outside spikes/ is not part of the workspace build; add it to members or move it to spikes/",
             ));
         }
     }
-    Ok((seen, findings))
+    Ok(findings)
 }
 
-/// Runs `unsafe-scope` and `native-runtimes` over tracked Rust files.
+/// Runs `unsafe-scope` over the resolved workspace (`cargo metadata`).
 ///
 /// # Errors
 ///
 /// Fails if Git or file reads fail.
 pub fn check_sources(ctx: &Ctx) -> Result<Vec<Finding>, String> {
-    let files: BTreeSet<String> = tracked(&ctx.repo)?.into_iter().collect();
-    let (packages, mut findings) = production_packages(&ctx.repo, &files)?;
-    let mut roots: BTreeMap<String, bool> = BTreeMap::new(); // root -> needs forbid
-    let mut build_scripts = BTreeSet::new();
-    let mut starts: Vec<(String, Use)> = Vec::new();
-    for package in packages.values() {
-        let text = std::fs::read_to_string(ctx.repo.join(&package.manifest))
-            .map_err(|error| format!("{}: {error}", package.manifest))?;
-        let Ok(document) = text.parse::<DocumentMut>() else {
-            continue;
-        };
-        let (crate_roots, scripts) = package_targets(&package.manifest, &document, &files);
-        for root in &crate_roots {
-            let build = scripts.contains(root) || package.build_context;
-            *roots.entry(root.clone()).or_default() |= !package.adapter;
-            starts.push((
-                root.clone(),
-                Use {
-                    build_script: build,
-                    check_unsafe: !package.adapter,
-                },
-            ));
-        }
-        build_scripts.extend(scripts);
+    match metadata(ctx) {
+        Ok(metadata) => check_graph(ctx, &metadata),
+        Err(message) => Ok(vec![Finding::at("Cargo.toml", None, message)]),
     }
-    for path in &build_scripts {
-        if !files.contains(path) {
-            findings.push(Finding::at(
-                path,
-                None,
-                "build script selected by Cargo.toml is not a tracked file",
-            ));
-        }
-    }
-    for path in roots.keys() {
-        if !files.contains(path) && !build_scripts.contains(path) {
-            findings.push(Finding::at(
-                path,
-                None,
-                "crate target selected by Cargo.toml is not a tracked file",
-            ));
-        }
-    }
-    let (reached, unresolved) = reachable(&ctx.repo, &files, &starts)?;
-    findings.extend(unresolved);
-    // Every file Cargo compiles is scanned whatever its suffix or directory
-    // (R3-02, R4-01). Other tracked `.rs` files outside `spikes/` are scanned
-    // too, by path.
-    let mut scanned: BTreeMap<String, Use> = files
-        .iter()
-        .filter(|path| path.ends_with(".rs") && in_scope(path))
-        .map(|path| {
-            (
-                path.clone(),
-                Use {
-                    build_script: false,
-                    check_unsafe: !in_solver_adapter(path),
-                },
-            )
-        })
-        .collect();
-    for (path, usage) in reached {
-        if files.contains(&path) {
-            let entry = scanned.entry(path).or_default();
-            entry.build_script |= usage.build_script;
-            entry.check_unsafe |= usage.check_unsafe;
-        }
-    }
-    for (path, usage) in &scanned {
-        let source = std::fs::read_to_string(ctx.repo.join(path))
-            .map_err(|error| format!("{path}: {error}"))?;
-        findings.extend(scan_rust_with(
-            path,
-            &source,
-            usage.build_script,
-            usage.check_unsafe,
-        ));
-        if roots.get(path).copied().unwrap_or(false) {
-            findings.extend(check_crate_root(path, &source));
-        }
-    }
-    Ok(findings)
 }
 
 fn level(item: &Item) -> Option<&str> {
@@ -1069,7 +503,18 @@ pub fn check_manifests(ctx: &Ctx) -> Result<Vec<Finding>, String> {
         .ok_or("trusted policy: workspace_licence missing")?
         .to_owned();
     let files: BTreeSet<String> = tracked(&ctx.repo)?.into_iter().collect();
-    let (packages, mut findings) = production_packages(&ctx.repo, &files)?;
+    let mut findings = Vec::new();
+    let packages: BTreeSet<String> = match metadata(ctx) {
+        Ok(metadata) => metadata
+            .local()
+            .filter(|package| package.inside)
+            .map(|package| package.manifest.clone())
+            .collect(),
+        Err(message) => {
+            findings.push(Finding::at("Cargo.toml", None, message));
+            BTreeSet::new()
+        }
+    };
     let mut saw_root = false;
     for path in files {
         let file_name = path.rsplit('/').next().unwrap_or(&path);
@@ -1078,7 +523,7 @@ pub fn check_manifests(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             continue;
         }
         // Production packages are checked wherever they live (R4-01).
-        if !in_scope(&path) && !packages.contains_key(&path) {
+        if !in_scope(&path) && !packages.contains(&path) {
             continue;
         }
         let text = std::fs::read_to_string(ctx.repo.join(&path))
@@ -1109,67 +554,6 @@ pub fn check_manifests(ctx: &Ctx) -> Result<Vec<Finding>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn flagged(path: &str, source: &str) -> bool {
-        !scan_rust(path, source).is_empty()
-    }
-
-    #[test]
-    fn direct_allow_is_rejected_outside_solvers_only() {
-        let source = "#![allow(unsafe_code)]\nfn main() {}\n";
-        assert!(flagged("crates/domain/src/lib.rs", source));
-        assert!(!flagged("crates/solver-highs/src/lib.rs", source));
-        assert!(!flagged(
-            "crates/domain/src/lib.rs",
-            "#![forbid(unsafe_code)]\n#![deny(unsafe_code)]\n"
-        ));
-    }
-
-    // ADV23-03: multiline attributes.
-    #[test]
-    fn adv23_03_multiline_attribute_is_rejected() {
-        assert!(flagged(
-            "crates/domain/src/lib.rs",
-            "#[allow(\n    unsafe_code\n)]\npub fn f() {}\n"
-        ));
-    }
-
-    // R5 / ADV23-05: cfg_attr and nested forms.
-    #[test]
-    fn r5_adv23_05_cfg_attr_is_rejected() {
-        for source in [
-            "#![cfg_attr(all(), allow(unsafe_code))]\n",
-            "#[cfg_attr(not(test), cfg_attr(all(), expect(unsafe_code)))]\nfn f() {}\n",
-            "#[warn(r#unsafe_code)]\nfn f() {}\n",
-            "fn f() { #[allow(unsafe_code)] let x = 1; }\n",
-            "macro_rules! m { () => { #[allow(unsafe_code)] fn g() {} } }\n",
-            "impl S { #[allow(clippy::all, unsafe_code)] fn f() {} }\n",
-        ] {
-            assert!(flagged("crates/engine/src/lib.rs", source), "{source}");
-        }
-    }
-
-    #[test]
-    fn unparseable_rust_fails_closed() {
-        assert!(flagged("crates/engine/src/lib.rs", "fn ("));
-    }
-
-    // ADV23-12: build scripts and link attributes naming Python or Julia.
-    #[test]
-    fn adv23_12_native_runtime_links_are_rejected() {
-        assert!(flagged(
-            "crates/engine/build.rs",
-            "fn main() { println!(\"cargo:rustc-link-lib=python3.12\"); }\n"
-        ));
-        assert!(flagged(
-            "crates/engine/src/lib.rs",
-            "#[link(name = \"julia\")]\nunsafe extern \"C\" {}\n"
-        ));
-        assert!(!flagged(
-            "crates/engine/build.rs",
-            "fn main() { println!(\"cargo:rerun-if-changed=build.rs\"); }\n"
-        ));
-    }
 
     fn doc(text: &str) -> DocumentMut {
         text.parse().expect("toml")

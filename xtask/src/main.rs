@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use xtask::util::{Ctx, Finding, report};
-use xtask::{attribution, docs, repository, review_gates, rust_policy, workflows};
+use xtask::{attribution, build_gate, docs, repository, review_gates, rust_policy, workflows};
 
 const HELP: &str = "\
 usage: cargo xtask [--repo DIR] [--policy DIR] <command> [options]
@@ -15,7 +15,12 @@ usage: cargo xtask [--repo DIR] [--policy DIR] <command> [options]
   --policy DIR   trusted policy tree (default: --repo). CI passes the base branch.
 
 commands:
-  policy         unsafe scope, native runtimes, manifests, workflows, Python, CODEOWNERS
+  policy         crate-root forbid over `cargo metadata`, manifests, workflows, Python,
+                 CODEOWNERS
+  build-gate     build the whole workspace with the compiler forbidding unsafe code
+                 outside crates/solver-* and a linker guard refusing Python/Julia
+                 runtimes [--target-dir DIR]. Runs the tree's build scripts: CI runs
+                 it only in an unprivileged job, never in the trusted gates
   provenance     dataset manifests, raw/research-only data, secrets (D-56)
   docs           Markdown links and requirement traceability
   attribution    AI-attribution scan (D-52) of a range:
@@ -86,10 +91,7 @@ fn event() -> Result<Option<(String, serde_json::Value)>, String> {
 
 fn run_policy(ctx: &Ctx) -> Result<bool, String> {
     let mut ok = true;
-    ok &= report(
-        "unsafe-scope and native-runtimes",
-        &rust_policy::check_sources(ctx)?,
-    );
+    ok &= report("unsafe-scope", &rust_policy::check_sources(ctx)?);
     ok &= report("manifests", &rust_policy::check_manifests(ctx)?);
     ok &= report("workflows", &workflows::check(ctx)?);
     ok &= report("python", &repository::python(ctx)?);
@@ -164,6 +166,17 @@ fn run(args: &Args) -> Result<bool, String> {
             &repository::provenance(&args.ctx)?,
         )),
         "docs" => run_docs(&args.ctx),
+        "build-gate" => {
+            let wrapper = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
+            let target = option(args, "--target-dir").map_or_else(
+                || args.ctx.repo.join("target").join("build-gate"),
+                PathBuf::from,
+            );
+            Ok(report(
+                "build-gate: compiler-enforced unsafe scope and native runtimes",
+                &build_gate::check(&args.ctx, &wrapper, &target)?,
+            ))
+        }
         "attribution" => run_attribution(args),
         "review" => {
             let main = option(args, "--main").ok_or("review: --main REV required")?;
@@ -198,6 +211,9 @@ fn run(args: &Args) -> Result<bool, String> {
 }
 
 fn main() -> ExitCode {
+    if let Some(code) = build_gate::dispatch() {
+        return code;
+    }
     let args = match parse() {
         Ok(args) => args,
         Err(message) => {

@@ -7,8 +7,10 @@
 //! reusable workflow pinned to a full SHA; checkout never persists
 //! credentials; `run:` scripts contain only allow-listed `${{ }}` expressions
 //! (ADV23-16) and never invoke Python (D-73); no secrets but `GITHUB_TOKEN`;
-//! no lint-lowering `RUSTFLAGS`; and the required gate graph from the trusted
-//! policy is intact (R1).
+//! no `CARGO_*`, `RUSTC*`, `RUSTDOC*`, `RUSTUP_*` or `*RUSTFLAGS` variable set
+//! in any `env:` unless the trusted policy allow-lists it, and no `run:` script
+//! writes `$GITHUB_ENV` or `$GITHUB_PATH` (ADV23R5-01); and the required gate
+//! graph from the trusted policy is intact (R1).
 
 use yaml_rust2::{Yaml, YamlLoader};
 
@@ -23,6 +25,7 @@ pub struct Policy {
     triggers: Vec<String>,
     expressions: Vec<String>,
     runners: Vec<String>,
+    env: Vec<String>,
     graphs: Vec<Graph>,
 }
 
@@ -84,6 +87,10 @@ impl Policy {
             triggers: string_array(&document["allowed_triggers"]),
             expressions: string_array(&document["run_expressions"]),
             runners: string_array(&document["runner_labels"]),
+            env: document
+                .get("allowed_env")
+                .map(string_array)
+                .unwrap_or_default(),
             graphs,
         })
     }
@@ -317,7 +324,7 @@ pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
     }
 
     for (name, value) in entries(get(workflow, "env").unwrap_or(&Yaml::Null)) {
-        check_env(path, &name, value, &mut findings);
+        check_env(path, &name, value, policy, &mut findings);
     }
     check_defaults(path, "workflow", workflow, &mut findings);
 
@@ -423,15 +430,27 @@ fn has_alias(yaml: &Yaml) -> bool {
     }
 }
 
-fn check_env(path: &str, name: &str, value: &Yaml, findings: &mut Vec<Finding>) {
-    let text = scalar(value).to_ascii_lowercase();
-    if (name.contains("RUSTFLAGS") || name.contains("RUSTDOCFLAGS") || name == "RUSTC_WRAPPER")
-        && !text.is_empty()
-    {
+/// Whether a variable name can change the toolchain, compiler flags, rustc
+/// wrappers, linkers or lint caps (ADV23R5-01).
+#[must_use]
+pub fn is_toolchain_env(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    upper == "CARGO"
+        || upper.starts_with("CARGO_")
+        || upper.starts_with("RUSTC")
+        || upper.starts_with("RUSTDOC")
+        || upper.starts_with("RUSTUP_")
+        || upper.contains("RUSTFLAGS")
+}
+
+fn check_env(path: &str, name: &str, _value: &Yaml, policy: &Policy, findings: &mut Vec<Finding>) {
+    if is_toolchain_env(name) && !policy.env.iter().any(|allowed| allowed == name) {
         findings.push(Finding::at(
             path,
             None,
-            format!("`{name}` may not be set in workflows (lint levels stay in Cargo.toml)"),
+            format!(
+                "`{name}` may not be set in workflows unless allowed_env in the trusted policy lists it (compiler flags, wrappers and lint levels stay out of CI)"
+            ),
         ));
     }
 }
@@ -472,7 +491,7 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
         None => findings.push(Finding::at(path, None, format!("{scope}: missing runs-on"))),
     }
     for (key, value) in entries(get(job, "env").unwrap_or(&Yaml::Null)) {
-        check_env(path, &key, value, findings);
+        check_env(path, &key, value, policy, findings);
     }
     check_defaults(path, &scope, job, findings);
     for key in ["container", "services"] {
@@ -491,7 +510,7 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
     for (index, step) in steps.iter().enumerate() {
         let step_scope = format!("{scope} step {}", index + 1);
         for (key, value) in entries(get(step, "env").unwrap_or(&Yaml::Null)) {
-            check_env(path, &key, value, findings);
+            check_env(path, &key, value, policy, findings);
         }
         if let Some(uses) = get(step, "uses") {
             let action = scalar(uses);
@@ -533,6 +552,15 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
                         ),
                     ));
                 }
+            }
+            if script.contains("GITHUB_ENV") || script.contains("GITHUB_PATH") {
+                findings.push(Finding::at(
+                    path,
+                    None,
+                    format!(
+                        "{step_scope}: run: may not write $GITHUB_ENV or $GITHUB_PATH; set env: per step"
+                    ),
+                ));
             }
             if invokes_python(&script) {
                 findings.push(Finding::at(
@@ -719,6 +747,7 @@ mod tests {
 allowed_triggers = ["pull_request", "push"]
 run_expressions = ["runner.temp"]
 runner_labels = ["ubuntu-*", "macos-*"]
+allowed_env = ["CARGO_TERM_COLOR"]
 [[workflow]]
 file = "w.yml"
 jobs = ["a", "b"]
@@ -851,6 +880,61 @@ jobs:
             "env: {RUSTFLAGS: \"-A unsafe_code\"}\npermissions:",
         );
         assert!(!run(&flags).is_empty());
+    }
+
+    // ADV23R5-01: every Cargo/rustc variable is rejected unless the trusted
+    // policy allow-lists it, at workflow, job and step level, and scripts
+    // cannot set variables for later steps.
+    #[test]
+    fn adv23r5_01_toolchain_env_is_allow_listed() {
+        for name in [
+            "RUSTC_WRAPPER",
+            "RUSTC_WORKSPACE_WRAPPER",
+            "CARGO_BUILD_RUSTC_WRAPPER",
+            "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER",
+            "CARGO_BUILD_RUSTFLAGS",
+            "RUSTFLAGS",
+            "CARGO_ENCODED_RUSTFLAGS",
+            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER",
+            "RUSTC",
+            "RUSTC_BOOTSTRAP",
+            "RUSTDOCFLAGS",
+            "RUSTUP_TOOLCHAIN",
+            "CARGO",
+        ] {
+            for text in [
+                GOOD.replace(
+                    "permissions:",
+                    &format!("env: {{{name}: \"\"}}\npermissions:"),
+                ),
+                GOOD.replace(
+                    "    runs-on: macos-15\n",
+                    &format!("    runs-on: macos-15\n    env: {{{name}: x}}\n"),
+                ),
+                GOOD.replace(
+                    "run: cargo xtask docs",
+                    &format!(
+                        "run: cargo xtask docs\n        env: {{{name}: /usr/local/bin/wrapper}}"
+                    ),
+                ),
+            ] {
+                let found = run(&text);
+                assert_eq!(found.len(), 1, "{name}: {found:?}");
+                assert!(found[0].message.contains(name));
+            }
+        }
+        let allowed = GOOD.replace(
+            "permissions:",
+            "env: {CARGO_TERM_COLOR: always, NEXTEST_VERSION: x}\npermissions:",
+        );
+        assert!(run(&allowed).is_empty());
+        for script in [
+            "echo \"RUSTC_WRAPPER=/w\" >> \"$GITHUB_ENV\"",
+            "echo /evil >> $GITHUB_PATH",
+        ] {
+            let text = GOOD.replace("run: cargo xtask docs", &format!("run: {script}"));
+            assert_eq!(run(&text).len(), 1, "{script}");
+        }
     }
 
     // ADV23R4-03: actions outside .github/actions/ are checked, and local
