@@ -42,7 +42,7 @@ verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7,
 | PR #5: data spike (R-12 "Partially") | Reviewed (Claude PR #7, Gemini PR #9); needs revision | Author revision per Claude review + PR5 triage + D-56/D-57 |
 | PR #10: DNO 132 kV inventory (Gemini) | Open; unverified | Line-by-line verification before merge |
 | Data gathering, Elexon 2024 (D-62) | Gemini (Homelab), running | Verify, then use for M1 |
-| Data gathering, NESO/DNO/EirGrid/SEMO/ENTSO-E (D-62) | Gemini (Personal), running | Verify; owner may need to supply logins/tokens |
+| PR #11: NESO/DNO/EirGrid/SEMO data gathered (~120 MB, 30 files, D-62) | Done; NESO licence tags corrected by coordinator (ETYS → research-only) | GPT verification; owner logins needed for UKPN, SPEN, NPg, ENWL portals and an ENTSO-E API token |
 | History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #5 merge: rewrite AI trailers, scan, make public, enable branch protection |
 
 Rules in force: GPT for non-code (D-51), Claude reviews GPT docs (D-54), Gemini adversarial reviews (D-53)
