@@ -34,7 +34,7 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
 
-**GPT 6.1 Sol paused: ChatGPT usage limit (2026-11-13). Owner chose to wait for the reset; GPT tasks resume then.** Raw data lives outside git in `/Users/njotob/energy-data/raw/`.
+**GPT 6.1 Sol resumed 2026-11-13:** five delegates running (revise PRs #4, #5; verify PRs #10, #11, #12). Workspace is being prepared for a move to an LXC container (local, untracked `MIGRATION.md`); raw data must move with it.
 
 | Item | State | Next action |
 |---|---|---|
