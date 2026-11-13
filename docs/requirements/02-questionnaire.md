@@ -194,9 +194,9 @@ they are not marked answered without an owner decision or explicit baseline adop
 
 - [ ] **Q-J-1 Import/export formats:** MATPOWER, PSS/E RAW, CIM/CGMES, pandapower,
   PyPSA netCDF, OpenDSS, GridLAB-D?
-- [ ] **Q-J-2 Plugins:** can users add custom models (new device types, control logic,
-  market rules) via a plugin API? **Q-O-5** below proposes the answer for
-  customer market-code uploads before P4; other extensions/P4 policy remain here.
+- [~] **Q-J-2 Plugins:** D-69 answers the pre-P4 customer market-code scope through
+  **Q-O-5**: no customer uploads, only first-party compiled modules and typed
+  parameters. Other device/control extensions and P4 isolation policy remain open.
 - [ ] **Q-J-3 Co-simulation:** integrate external simulators via HELICS / FMI?
 - [ ] **Q-J-4 Public API:** REST, GraphQL, gRPC, WebSocket streaming?
 
@@ -293,27 +293,27 @@ D-61 resolves the bot-summary policy. Do not reopen these as baseline questions.
 
 ## O. Architecture product choices (PR #17)
 
-These four entries register the open choices detailed in the
+These four entries record the answered choices detailed in the
 [architecture companion](../architecture/owner-questionnaire.md). They share
-resolution with the mapped questions above; no answer or D-ID is invented.
+resolution with the mapped questions above through D-67–D-70.
 Operational protocols remain proposed engineering defaults under D-22.
 
-- [ ] **Q-O-1 Historical backtest/repeatability claims — answers Q-D-5.**
-  **★ Recommended default:** label runs **reconstruction** when publication-time
+- [x] **Q-O-1 Historical backtest/repeatability claims — answers Q-D-5.**
+  **Answered → D-70:** label runs **reconstruction** when publication-time
   evidence is unknown; allow **as-of** only with proven vintages. Pin execution
   settings/state and disclose MIP tolerance-based repeatability rather than promise
   bit identity. Alternatives: reject unproven historic vintages; restrict all
   backends/platforms to a separately qualified bit-identity contract.
-- [ ] **Q-O-3 Cache service — answers Q-I-5, refines Q-I-1/D-3.**
-  **★ Recommended default:** Valkey (BSD-3-Clause), shared Redis protocol only;
+- [x] **Q-O-3 Cache service — answers Q-I-5, refines Q-I-1/D-3.**
+  **Answered → D-67:** Valkey (BSD-3-Clause), shared Redis protocol only;
   Redis remains a compatible alternative with a recorded licence assessment.
   Alternative: assessed Redis 8 licence/deployment path. P1 dispatch uses PostgreSQL.
-- [ ] **Q-O-5 Customer market-code uploads — answers Q-J-2 for this scope.**
-  **★ Recommended default:** none before P4; trusted compiled modules and typed
+- [x] **Q-O-5 Customer market-code uploads — answers Q-J-2 for this scope.**
+  **Answered → D-69:** none before P4; first-party compiled modules and typed
   parameters only. Alternatives: earlier qualified WASM/process sandbox, or a
   declarative-only extension surface. General/P4 plug-in policy stays open in Q-J-2.
-- [ ] **Q-O-6 Forecast priority — new; relates to Q-H-4/Q-C-4.**
-  **★ Recommended default:** P2 forecast runs preempt research/sweeps; checkpoint
+- [x] **Q-O-6 Forecast priority — relates to Q-H-4/Q-C-4.**
+  **Answered → D-68:** P2+ forecast runs preempt research/sweeps; checkpoint
   when timely, otherwise kill/reap and replay the uncommitted window later.
   Alternatives: dedicated reserved forecast capacity; FIFO accepting deadline risk.
 

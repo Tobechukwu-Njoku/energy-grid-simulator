@@ -75,7 +75,7 @@ flowchart TB
 ```
 
 PostgreSQL is the sole job/metadata authority; P1 dispatch uses SKIP LOCKED/leases
-and durable scans, with NOTIFY only a hint. Valkey is the proposed BSD-3-Clause
+and durable scans, with NOTIFY only a hint. Valkey is the D-67 BSD-3-Clause
 default; Redis is a compatible alternative. Application clients use only their
 shared Redis protocol. Neither service dispatches jobs or owns completion.
 
@@ -139,28 +139,28 @@ two reservations beyond the RAM budget.
 | [0005 — Execution](adr/0005-execution-topology.md) | Separate API/supervisor, PG dispatch, physical fencing, ingest and schedules | New Q-O-6 forecast priority; Q-O-4 deprecated as engineering detail |
 | [0006 — Markets](adr/0006-market-design-plugin-model.md) | Trusted Rust modules, distinct GB/I-SEM policies, reported repair fallback and P3 alternatives | Q-O-5 answers Q-J-2 for customer market-code uploads before P4 |
 
-Exactly four open choices remain; stable Q-O-2/Q-O-4 are deprecated, not renumbered.
-Existing Q-C-6/Q-I-6, Q-H-4/Q-H-6 and PR #4 Q-N accuracy/data-gap choices keep their
-existing scope. Target inventory clarification is tracked in Q-H-7.
+The four choices are answered: Q-O-1 → D-70, Q-O-3 → D-67, Q-O-5 → D-69 and
+Q-O-6 → D-68. Stable Q-O-2/Q-O-4 are deprecated, not renumbered. Q-C-6/Q-I-6 and
+Q-H-4/Q-H-6 retain their scope; D-66/D-71 answer PR #4’s accuracy/data-gap questions.
+Target inventory clarification is still tracked in Q-H-7 (D-65).
 
 ## Design context and evidence
 
-Main has been merged for revision; review reports are now local. Scientific context
-is pinned to PR #4 branch
-`t3/design-review-mvp-requirements-adrs` at
-`dbc6299821b8711ca0d8253b27350d1094c0bbfa`, fetched on 2026-11-13. These are evidence
-snapshots, not a dependency on merging that branch into this one. The coordinator
-has requested alignment with PR #4 round-3 fallback policy; ADR 0006 states the
-integration contract. The pinned snapshot still says repair exhaustion fails/partials
-a run, so reconcile ADR 0003 at integration rather than claim that revision is already
-present. Do not copy PR #4 files into this PR.
+Main and PR #4 branch `t3/design-review-mvp-requirements-adrs` at
+`6c6a9eb23de98e5de9addd57eb03799b6a26834d` are merged on 2026-11-13; requirements
+and ADRs 0001/0003 are now local rather than an unmerged historical snapshot.
+The questionnaire conflict is resolved with both N and O sections and the owner
+answers preserved. ADR 0006 uses ADR 0003’s bounded non-convergence fallback:
+three repair re-solves, one 300-second recovery MILP and a 900-second total window
+budget, then failed/partial only if no valid fallback state exists. ADR 0005 refines
+ADR 0001’s engine lifecycle boundary without making API restarts own worker lifetime.
 
 | Source | Architectural consequence |
 |---|---|
-| [Decisions D-1–D-65](../requirements/03-decisions-log.md) | Owner authority; no invented data/tenancy/market decisions |
-| [PR #4 proposed requirements](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/blob/dbc6299821b8711ca0d8253b27350d1094c0bbfa/docs/requirements/04-requirements.md) | Dated/as-of inputs, manifests, staged P1 fidelity, retention and honest validation limits |
-| [PR #4 ADR 0001](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/blob/dbc6299821b8711ca0d8253b27350d1094c0bbfa/docs/architecture/adr/0001-repo-layout-and-ci-gates.md) | Existing workspace/crate responsibilities and post-baseline quality gates |
-| [PR #4 ADR 0003](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/blob/dbc6299821b8711ca0d8253b27350d1094c0bbfa/docs/architecture/adr/0003-optimisation-modelling-layer-and-solver-trait.md) | Pre-pass/UC/redispatch/pricing, native isolation, rolling state, explicit capability/cancellation rules |
+| [Decisions D-1–D-71](../requirements/03-decisions-log.md) | Owner authority; no invented data/tenancy/market decisions |
+| [Merged PR #4 proposed requirements](../requirements/04-requirements.md) | Dated/as-of inputs, manifests, staged P1 fidelity, retention and D-66 reconstruction gates |
+| [Merged PR #4 ADR 0001](adr/0001-repo-layout-and-ci-gates.md) | Workspace/crate responsibilities and post-baseline quality gates |
+| [Merged PR #4 ADR 0003](adr/0003-optimisation-modelling-layer-and-solver-trait.md) | Pre-pass/UC/redispatch/pricing, bounded recovery, native isolation and rolling/cancellation rules |
 | [Stack candidates](stack-candidates.md) and [prior art](../research/prior-art.md) | Candidate/reuse evidence only; no automatic adoption, especially OSM/share-alike datasets prohibited by D-56 |
 | [Dependency-licence research](../research/dependency-licences.md) | Separate software/service terms and dataset permissions; release/source details in ADR 0004 |
 
@@ -172,10 +172,10 @@ implementation. Architecture qualification plans are deliberately post-baseline.
 
 Revisions and finding dispositions are recorded in the
 [PR #17 response](../requirements/reviews/response-pr17-2026-11-13.md).
-The canonical questionnaire now registers the four surviving product choices and
-mapped/deprecated IDs. STATUS.md and the decisions log are untouched by instruction;
-the coordinator owns the session status update and future owner-decision entries.
-No application code was written. The latest PR #4 scientific fallback and crate
-ownership wording still need integration reconciliation; this branch does not edit
-ADR 0001/0003. Independent review disposition and owner adoption remain prerequisites
+The canonical questionnaire records the four answered product choices and
+mapped/deprecated IDs. STATUS.md and the decisions log are inherited from main
+without edits; the coordinator owns any session status update.
+No application code was written. PR #4’s scientific fallback and crate boundaries
+are integrated; D-65 target hardware/OS/access and post-baseline qualification remain
+outstanding. Current-head review disposition and baseline/ADR adoption remain prerequisites
 to baseline/merge; no runtime qualification is asserted here.

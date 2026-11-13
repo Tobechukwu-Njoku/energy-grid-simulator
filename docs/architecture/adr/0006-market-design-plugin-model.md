@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-11-13
-- **Decision sources:** D-11, D-15–D-22, D-25–D-26, D-28, D-35, D-38, D-40–D-41, D-44, D-55, D-57, D-59.
+- **Decision sources:** D-11, D-15–D-22, D-25–D-26, D-28, D-35, D-38, D-40–D-41, D-44, D-55, D-57, D-59, D-69.
 - **Related draft requirements:** PR #4 FR-1, FR-4–FR-11, FR-12–FR-13, FR-18, FR-21; NFR-1–NFR-2, NFR-8–NFR-11.
 - **Companions:** [data model](0002-network-and-scenario-data-model.md), [execution](0005-execution-topology.md), [topology/source snapshot](../topology.md).
 
@@ -20,8 +20,8 @@ ADRs 0001/0003 already place dated rules in market, equations in network, solver
 in optimisation, and UC/redispatch/pricing in distinct modules.
 
 Contracts/composition below are proposed engineering defaults under D-22.
-ASSUMPTION: (Q-O-5, answers Q-J-2 for market code) no customer-uploaded market code
-before P4; customers use typed parameters. The
+D-69 (Q-O-5, answers Q-J-2 for market code) permits no customer-uploaded market code
+before P4; only first-party compiled modules and typed parameters are supported. The
 [companion questionnaire](../owner-questionnaire.md) records this product choice.
 Market parameter values and historical effective dates require sourced evidence;
 this ADR invents none. PR #4's Q-N-1/Q-N-2 pricing/proxy defaults remain proposals.
@@ -85,8 +85,8 @@ end state without silently reclassifying required future features as exclusions.
 Use the pre-pass → national UC → fixed-commitment network redispatch → national
 fixed-UC pricing pipeline for P1. Commitment infeasibility feeds the bounded UC↔
 redispatch repair loop. **Non-convergence is reported and invokes a fallback; reaching
-the repair bound does not fail the whole run.** This supersedes the earlier PR #4
-snapshot's failed/partial-on-three-repairs wording for round-3 integration.
+the repair bound does not by itself fail the whole run.** This agrees with the
+merged PR #4 ADR 0003 recovery contract; fallback failure remains failed/partial.
 
 The proposed fallback is a capability-checked, time-bounded **network-aware joint
 UC/redispatch solve for the affected window**, permitting commitment changes while
@@ -103,8 +103,11 @@ to make a window appear feasible. Non-convergence alone is not proof of shortage
 If fallback also cannot produce a physically valid state, report that distinct
 outcome and retain a partial run/coverage with diagnostics; never fabricate state,
 skip an interval and claim completion. A mathematical infeasibility or backend error
-is different from a heuristic iteration limit. Exact fallback settings and capability
-qualification must agree with PR #4's final round-3 ADR 0003 before baseline acceptance.
+is different from a heuristic iteration limit. Use merged ADR 0003’s proposed
+Q-N-5 budgets: at most three UC repair re-solves, one 300-second network-aware
+recovery MILP, freeze recovered commitment/segments and re-solve the network LP,
+then final-commitment pricing, all within the 900-second total window budget.
+Capability and full-network qualification remain post-baseline evidence.
 
 National pricing excludes redispatch network rents; nodal/proxy duals stay labelled
 diagnostics. Non-convex start/no-load costs and uncovered revenues are reported;
@@ -185,8 +188,8 @@ jurisdiction/date treatment; they do not validate our proxies or historical accu
 WASM/process extension remains an option if an owner-approved third-party extension
 use case arrives; keep task/result/state schemas versioned to support that change.
 
-Before adoption: Q-O-5 disposition, a sourced rule/fidelity inventory and agreement
-with PR #4's final price/product definitions. After baseline: identical-input
+Before adoption: apply D-69, review a sourced rule/fidelity inventory and the
+merged PR #4 price/product definitions. After baseline: identical-input
 GB/I-SEM reference fixtures, cross-border loss/FX/datetime reconciliation, unsupported
 capability rejection, rule-transition/state migration, cancellation/restart and
 negative/degenerate-price cases. P1 historical price/BM validation remains separate

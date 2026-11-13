@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-11-13
-- **Decision sources:** D-6, D-11–D-12, D-18–D-22, D-24–D-25, D-30–D-32, D-35, D-37–D-38, D-40, D-44, D-55–D-60.
+- **Decision sources:** D-6, D-11–D-12, D-18–D-22, D-24–D-25, D-30–D-32, D-35, D-37–D-38, D-40, D-44, D-55–D-60, D-70–D-71.
 - **Related draft requirements:** PR #4 FR-1–FR-5, FR-9, FR-16, FR-19, FR-21; NFR-1–NFR-2, NFR-8, NFR-11.
 - **Companions:** [storage](0004-storage-topology.md), [execution](0005-execution-topology.md), [market modules](0006-market-design-plugin-model.md), [topology and source snapshot](../topology.md).
 
@@ -15,7 +15,7 @@ Distribution/DER, AC parameters and dynamics are end-state concerns (D-6/D-24/D-
 not permission to implement them in P1. All GB 132 kV remains in scope (D-60).
 
 Identity, schema, temporal selection and hashing are proposed engineering defaults
-under D-22, subject to ADR acceptance. ASSUMPTION: (Q-O-1) historical backtests
+under D-22, subject to ADR acceptance. D-70 (Q-O-1/Q-D-5) requires historical backtests
 without publication-time evidence are labelled **reconstruction**, and numerical
 repeatability claims disclose the MIP limitations below. The
 [companion questionnaire](../owner-questionnaire.md) answers Q-D-5 for those claims;
@@ -214,8 +214,8 @@ The choice follows D-19's canonical scenarios and PR #4's dated-asset/as-of crit
 not a measured performance claim. Reuse PostgreSQL range/index primitives [S2] and
 existing columnar formats; do not import prior-art OSM datasets contrary to D-56.
 
-Before acceptance: review D-31 mappings/coverage with no scope reduction; adopt
-the Q-O-1 claim policy (answers Q-D-5); reconcile these contracts with PR #4's
+Before acceptance: review D-31 mappings/coverage with no scope reduction (D-71); apply
+the D-70 claim policy (Q-O-1/Q-D-5); reconcile these contracts with PR #4’s
 final schema. After baseline:
 demonstrate renamed/split assets, corrected historic topology, unavailable as-of
 vintages, DST/leap calendars, patch conflicts, client round-trip hashes and licence

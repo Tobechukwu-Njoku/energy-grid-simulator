@@ -1,17 +1,18 @@
 # Architecture owner questionnaire — ADRs 0002/0004/0005/0006
 
-Date: 2026-11-13. Four **open product choices**; no owner answer is recorded here.
+Date: 2026-11-13. Four **answered product choices**, citing D-67–D-70.
 The [canonical questionnaire](../requirements/02-questionnaire.md#o-architecture-product-choices-pr-17)
 registers these IDs. This companion supplies rationale/options for that same queue,
-not a second set of competing defaults. Disposition must cite a future D-ID and mark
-the mapped question answered only to the stated scope. Engineering protocols are
+not a second set of competing defaults. The mapped questions are answered only to
+the scope of those decisions. Alternatives below are retained as design history,
+not pending choices. Engineering protocols are
 proposed ADR defaults under D-22, not additional owner questions.
 
 ## Q-O-1 — Honest historical backtest and repeatability claims
 
-- [ ] **Answers Q-D-5** for the reproducibility/claim contract; historical data gaps
+- [x] **Answered → D-70; answers Q-D-5** for the reproducibility/claim contract; historical data gaps
   still use the existing data-gap process, not a new scope waiver.
-- **Recommended default:** label historical backtests **reconstruction** when source
+- **Owner answer (D-70):** label historical backtests **reconstruction** when source
   publication times/vintages cannot prove the knowledge cut. Permit historical research
   with that label; reserve **as-of** for evidence-backed vintages. Pin inputs, solver
   seeds/thread counts/versions and persisted state; disclose that MIP reruns/resumes
@@ -25,21 +26,21 @@ proposed ADR defaults under D-22, not additional owner questions.
 
 ## Q-O-3 — Valkey default, Redis-compatible alternative
 
-- [ ] **Answers Q-I-5** and refines Q-I-1/D-3's named Redis baseline on disposition.
-- **Recommended default:** Valkey (BSD-3-Clause core); application clients use only
+- [x] **Answered → D-67; answers Q-I-5** and refines Q-I-1/D-3’s former Redis baseline.
+- **Owner answer (D-67):** Valkey (BSD-3-Clause core); application clients use only
   the shared Redis protocol. Redis is a compatible alternative with a separately
   recorded licence/deployment assessment. P1 job dispatch stays in PostgreSQL.
 - Alternatives: Redis 8 with assessed AGPLv3/RSALv2/commercial terms. Its independent
   client does not automatically become copyleft, but the service/package assessment
   is more complex. Neither choice excuses bundled-code notice or compatibility checks.
-- [ADR 0004](adr/0004-storage-topology.md); D-3/D-17/D-22. This proposal does not
-  amend the append-only decisions log or assert the owner has already chosen Valkey.
+- [ADR 0004](adr/0004-storage-topology.md); D-3/D-17/D-22/D-67. The owner answer
+  selects the service; storage engineering details still require ADR acceptance.
 
 ## Q-O-5 — Customer market code deferred until P4
 
-- [ ] **Answers Q-J-2 for customer market-code uploads before P4**; other plug-in types
+- [x] **Answered → D-69; answers Q-J-2 for customer market-code uploads before P4**; other plug-in types
   and the P4 extension/isolation decision remain in that existing question's scope.
-- **Recommended default:** no customer-uploaded market code before P4. Offer trusted,
+- **Owner answer (D-69):** no customer-uploaded market code before P4. Offer first-party,
   reviewed compiled Rust modules and typed versioned TOML parameters. Consider
   third-party code only with P4 tenant isolation, resource and capability qualification.
 - Alternatives: introduce a sandboxed WASM/process extension earlier (adds runtime,
@@ -50,9 +51,9 @@ proposed ADR defaults under D-22, not additional owner questions.
 
 ## Q-O-6 — Scheduled forecasts preempt research in P2
 
-- [ ] **New product policy**, related to Q-H-4 concurrency and Q-C-4 live feeds.
+- [x] **Answered → D-68; product policy**, related to Q-H-4 concurrency and Q-C-4 live feeds.
   It does not answer target concurrency counts or availability/HA (Q-H-6).
-- **Recommended default:** forecast runs preempt research/sweep runs. Prefer a committed
+- **Owner answer (D-68):** P2+ forecast runs preempt research/sweep runs. Prefer a committed
   checkpoint boundary when it meets the deadline; otherwise kill/reap and discard the
   uncommitted window, resuming research later. Qualified reserved forecast capacity
   is another way to enforce this priority. A day-ahead forecast never queues behind

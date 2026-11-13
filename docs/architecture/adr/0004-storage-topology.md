@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-11-13
-- **Decision sources:** D-2–D-3, D-17, D-19–D-20, D-22, D-28, D-30, D-36, D-38–D-39, D-48, D-56, D-65.
+- **Decision sources:** D-2–D-3, D-17, D-19–D-20, D-22, D-28, D-30, D-36, D-38–D-39, D-48, D-56, D-65, D-67.
 - **Related draft requirements:** PR #4 FR-4, FR-11, FR-16, FR-19–FR-20; NFR-1, NFR-5–NFR-6, NFR-8–NFR-10, NFR-12.
 - **Companions:** [data model](0002-network-and-scenario-data-model.md), [execution](0005-execution-topology.md), [topology and source snapshot](../topology.md).
 
@@ -16,9 +16,9 @@ reducing the model (D-2); efficient layouts avoid unnecessary copies and content
 
 The boundaries and operational periods below are proposed engineering defaults
 under D-22. Q-O-2 is deprecated; storage mechanics do not add an owner question.
-**Valkey (BSD-3-Clause) is the recommended default**, with Redis a compatible
-alternative, through Q-O-3 (answers Q-I-5). This proposes an explicit refinement
-of D-3; it does not rewrite the decisions log or record an owner answer. Keep
+**Valkey (BSD-3-Clause) is the owner-selected default (D-67)**, with Redis a compatible
+alternative. D-67 answers Q-O-3/Q-I-5, refines D-3 and places P1 job dispatch in
+PostgreSQL. The remaining storage mechanics are still proposed ADR defaults. Keep
 application clients Redis-protocol-only, without Redis-specific modules/commands.
 No runtime database is installed in the coding container (D-65).
 
@@ -40,7 +40,7 @@ always expose product, units, interval duration, validity, rule version and nati
 currency. Object keys and cache keys include owner scope and immutable run/version
 identity; a guessed hash must never bypass authorisation.
 
-Choose **no TimescaleDB initially**; retain baseline PostGIS for spatial work,
+Choose **no TimescaleDB initially**; retain the recommended default of Q-C-6, PostGIS, for spatial work,
 optional in P1. Its GPL covers the separate PostgreSQL server extension and does
 not extend to independent application client code. Native
 PostgreSQL partitioning/indexes cover bounded projections and metadata; Parquet
@@ -211,8 +211,8 @@ on 2026-11-13; observed versions below are evidence snapshots, not installation 
   notices and other conditions; it does not generally permit managed Timescale
   DBaaS. Review actual endpoints/terms, not the label “SaaS.” No adoption now.
 - **Valkey (default):** 9.1.3 core is BSD-3-Clause [S6]; audit bundled-code notices
-  and pin a reviewed release/image at deployment. Q-O-3 answers Q-I-5 and explicitly
-  proposes refining D-3. Keep application clients to the shared Redis protocol and
+  and pin a reviewed release/image at deployment. D-67 answers Q-O-3/Q-I-5 and
+  refines D-3. Keep application clients to the shared Redis protocol and
   qualify cache/progress/ACL/reconnect semantics. No Redis-only modules or commands.
 - **Redis 8 (compatible alternative):** 8.10.3 offers AGPLv3, RSALv2 or SSPLv1 [S5].
   Deployment requires a recorded service/image/licence assessment. Separate-server

@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-11-13
-- **Decision sources:** D-2–D-3, D-8, D-10, D-13, D-16–D-22, D-24–D-25, D-28–D-29, D-35–D-36, D-39, D-43–D-44, D-48, D-55, D-59, D-62, D-65.
+- **Decision sources:** D-2–D-3, D-8, D-10, D-13, D-16–D-22, D-24–D-25, D-28–D-29, D-35–D-36, D-39, D-43–D-44, D-48, D-55, D-59, D-62, D-65, D-67–D-68, D-70.
 - **Related draft requirements:** PR #4 FR-4, FR-6–FR-11, FR-15–FR-16, FR-18; NFR-1–NFR-2, NFR-4–NFR-10, NFR-12.
 - **Companions:** [data model](0002-network-and-scenario-data-model.md), [storage](0004-storage-topology.md), [market modules](0006-market-design-plugin-model.md), [topology/source snapshot](../topology.md).
 
@@ -54,8 +54,8 @@ pipeline; `crates/api` delegates to it rather than owning a second lifecycle.
 Storage/immutable-blob adapters live in `crates/engine::store`, behind scope-aware
 repository interfaces defined with domain contracts; domain records have no database
 client dependency.
-These are proposed responsibility clarifications for ADR 0001 integration, not new
-workspace code. Ingest uses `crates/ingest`, market/network/optimisation retain their
+These proposed responsibility details refine merged ADR 0001’s engine-orchestration
+boundary without changing workspace code. Ingest uses `crates/ingest`, market/network/optimisation retain their
 scientific roles, and commitment/redispatch/pricing retain the staged engine contract.
 
 Heavy DataFusion/Polars scans, model construction and LOLE/EUE/cross-member
@@ -92,7 +92,9 @@ cron or Valkey notification is the only trigger. A delayed feed produces an expl
 blocked/missed-deadline status, never an undisclosed later knowledge cut or latest
 release. New vintages resolve to immutable locks before a run becomes runnable.
 
-ASSUMPTION: (new Q-O-6) Forecast runs preempt research/sweep work in P2. Persist
+D-68 (Q-O-6) requires P2+ forecast runs to preempt research/sweep work. The
+checkpoint/replay and reservation mechanics below remain proposed engineering
+defaults. Persist
 priority class, deadline, preemption intent and resume parent in the same job model
 from P1. Select eligible forecasts before research. To meet a deadline, checkpoint
 a research run at the next committed advance boundary **only if that is soon enough**;
@@ -109,7 +111,7 @@ PostgreSQL owns jobs, schedules, attempts, dependencies, cancellation/preemption
 intent, reservations, leases and checkpoints. P1 dispatch uses transactional
 `SELECT ... FOR UPDATE SKIP LOCKED` [S1], with `LISTEN/NOTIFY` [S2] as a wake-up
 hint and periodic runnable-job scans. Lost notifications cannot lose work. Valkey
-(the recommended Redis-protocol service; Q-O-3 answers Q-I-5) holds only rebuildable
+(the D-67 default Redis-protocol service; Q-O-3/Q-I-5 answered) holds only rebuildable
 progress/recent events, presence, rate limits and cache. No Streams relay, consumer
 acknowledgement or cache availability is required to claim a P1 job.
 
@@ -200,7 +202,7 @@ check physical feasibility and report objective gaps, tolerances, termination ca
 resume boundary and any non-bit-identical outcome in run provenance. Conservation
 and accepted numerical tolerances follow PR #4 NFR-2, not a hash-based guarantee of
 identical prices/commitment. Wider scientific sensitivity needs separate evidence.
-Q-O-1's disposition answers the corresponding reproducibility claim in Q-D-5.
+D-70 answers the corresponding reproducibility claim in Q-O-1/Q-D-5.
 
 **Resume after expiry:** unpinned terminal partial/cancelled/failed checkpoints expire
 with their interval results under the same 90-day clock. Before any resume, lock
@@ -265,9 +267,11 @@ Never accept arbitrary native plug-ins, SQL, cache commands or host paths from T
 | API and separate controller microservice | Independent scaling | Worker supervision already separate; further control extraction follows evidence |
 | Cluster scheduler | Mature placement/quotas | Reconsider for multiple nodes/tenants; not required for P1 |
 
-Before adoption: owner product choices, target inventory and reconciliation with
-PR #4's final contracts, especially its round-3 non-convergence fallback. This ADR
-and ADR 0006 specify the intended integration; they do not edit ADR 0003 here.
+Before adoption: apply D-67/D-68/D-70, confirm target inventory and review the
+integrated contracts. PR #4 head `6c6a9eb` is merged; ADR 0003 now supplies the
+shared non-convergence recovery and numerical budgets used by ADR 0006. No repair
+policy conflict remains; the crate-responsibility section refines ADR 0001’s engine
+boundary without assigning a second lifecycle to the API.
 After baseline, inject lost wakeups, cache/database loss, stale leases and zombie
 workers, API restarts, partial promotion, checkpoint expiry and cancel/complete races.
 Verify complete coverage, fenced resource reuse and responsive heartbeats under
