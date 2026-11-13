@@ -1,0 +1,306 @@
+{
+  "api_probes": [
+    {
+      "categories": {},
+      "checked_at": "2026-11-13T12:52:03.630545+00:00",
+      "dataset": "BOALF",
+      "records": 0,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream?from=2024-03-14&to=2024-03-14&settlementPeriodFrom=21&settlementPeriodTo=21"
+    },
+    {
+      "categories": {},
+      "checked_at": "2026-11-13T12:52:03.632558+00:00",
+      "dataset": "BOALF",
+      "records": 0,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream?from=2024-07-08&to=2024-07-08&settlementPeriodFrom=27&settlementPeriodTo=27"
+    },
+    {
+      "categories": {},
+      "checked_at": "2026-11-13T12:52:03.630050+00:00",
+      "dataset": "BOALF",
+      "records": 0,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream?from=2024-09-22&to=2024-09-22&settlementPeriodFrom=29&settlementPeriodTo=29"
+    },
+    {
+      "categories": {},
+      "checked_at": "2026-11-13T12:52:03.641571+00:00",
+      "dataset": "BOALF",
+      "records": 0,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream?from=2024-11-03&to=2024-11-03&settlementPeriodFrom=23&settlementPeriodTo=23"
+    },
+    {
+      "categories": {},
+      "checked_at": "2026-11-13T12:52:03.718600+00:00",
+      "dataset": "BOALF",
+      "records": 0,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream?from=2024-11-03&to=2024-11-03&settlementPeriodFrom=24&settlementPeriodTo=24"
+    },
+    {
+      "categories": {
+        "N2EXMIDP": 1
+      },
+      "checked_at": "2026-11-13T12:52:03.701739+00:00",
+      "dataset": "MID",
+      "records": 1,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/MID/stream?from=2024-04-13&to=2024-04-13&settlementPeriodFrom=17&settlementPeriodTo=17"
+    },
+    {
+      "categories": {
+        "APXMIDP": 1
+      },
+      "checked_at": "2026-11-13T12:52:03.718137+00:00",
+      "dataset": "MID",
+      "records": 1,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/MID/stream?from=2024-01-30&to=2024-01-30&settlementPeriodFrom=45&settlementPeriodTo=45"
+    },
+    {
+      "categories": {
+        "BIOMASS": 48,
+        "CCGT": 48,
+        "COAL": 48,
+        "INTELEC": 48,
+        "INTEW": 48,
+        "INTFR": 48,
+        "INTIFA2": 48,
+        "INTIRL": 48,
+        "INTNED": 48,
+        "INTNEM": 48,
+        "INTNSL": 48,
+        "INTVKL": 48,
+        "NPSHYD": 48,
+        "NUCLEAR": 48,
+        "OCGT": 48,
+        "OIL": 48,
+        "OTHER": 48,
+        "PS": 48,
+        "WIND": 48
+      },
+      "checked_at": "2026-11-13T12:52:03.769198+00:00",
+      "dataset": "FUELHH",
+      "records": 912,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/FUELHH/stream?settlementDateFrom=2024-03-20&settlementDateTo=2024-03-20"
+    },
+    {
+      "checked_at": "2026-11-13T13:06:19.572285+00:00",
+      "dataset": "REMIT",
+      "local_payload_frequencies": {
+        "72b7e6ad90a6dd2a3f08e6b2ae58c21e186e93f57044f99bbcfeb2954325b8c8": 2
+      },
+      "matches_local_capture": true,
+      "payload_frequencies": {
+        "72b7e6ad90a6dd2a3f08e6b2ae58c21e186e93f57044f99bbcfeb2954325b8c8": 2
+      },
+      "records": 2,
+      "selected_identifier": "IFA202410240600T-ELXP-RMT-00000021",
+      "selected_revision": 5,
+      "selected_rows": 2,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/REMIT/stream?publishDateTimeFrom=2024-10-24T12:59:08Z&publishDateTimeTo=2024-10-24T12:59:09Z"
+    }
+  ],
+  "compression_measurements": {
+    "datasets": [
+      {
+        "dataset": "bmunits",
+        "stored_bytes": 2171607,
+        "uncompressed_bytes": 2171607
+      },
+      {
+        "dataset": "boalf",
+        "stored_bytes": 1389492362,
+        "uncompressed_bytes": 1389492362
+      },
+      {
+        "dataset": "bod",
+        "stored_bytes": 905579666,
+        "uncompressed_bytes": 14051101638
+      },
+      {
+        "dataset": "demand_outturn",
+        "stored_bytes": 3564108,
+        "uncompressed_bytes": 3564108
+      },
+      {
+        "dataset": "fuelhh",
+        "stored_bytes": 61770007,
+        "uncompressed_bytes": 61770007
+      },
+      {
+        "dataset": "interconnectors",
+        "stored_bytes": 40898830,
+        "uncompressed_bytes": 40898830
+      },
+      {
+        "dataset": "mels",
+        "stored_bytes": 795833135,
+        "uncompressed_bytes": 10742183664
+      },
+      {
+        "dataset": "mid",
+        "stored_bytes": 5627284,
+        "uncompressed_bytes": 5627284
+      },
+      {
+        "dataset": "mils",
+        "stored_bytes": 633417702,
+        "uncompressed_bytes": 10049113561
+      },
+      {
+        "dataset": "pn",
+        "stored_bytes": 523401063,
+        "uncompressed_bytes": 7920294413
+      },
+      {
+        "dataset": "remit",
+        "stored_bytes": 90172114,
+        "uncompressed_bytes": 90172114
+      },
+      {
+        "dataset": "system_prices",
+        "stored_bytes": 15635205,
+        "uncompressed_bytes": 15635205
+      }
+    ],
+    "gzip_subset": {
+      "storage_reduction_pct": 93.31606279437936,
+      "stored_bytes": 2858231566,
+      "uncompressed_bytes": 42762693276
+    },
+    "storage_reduction_pct": 89.93157715059965,
+    "stored_bytes": 4467563083,
+    "uncompressed_bytes": 44372024793
+  },
+  "independent_checksums": [
+    {
+      "dataset": "bmunits",
+      "index_sha256": "cceddd03523dad0455542284a19e507c97722fb28d0b3869a5af3906bd8020f0",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 1
+    },
+    {
+      "dataset": "system_prices",
+      "index_sha256": "42a40b969b62170cf962ff67c457f34db63cd733eb418685b4c6da7231b0164e",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "demand_outturn",
+      "index_sha256": "098d3e8c90be2a9f75f47dce469d03883244c93cf5df0ba4b0c1439dcf41384a",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "fuelhh",
+      "index_sha256": "3b5792e472586039d0cfba6f2def1d9b657e1f4fe6413f8c7dea25b94bc48292",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "interconnectors",
+      "index_sha256": "7ae152bed6d1fa00f17c590a85fafd1c4e314ef7548582d2f5501797002b8bd8",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "mid",
+      "index_sha256": "bffdb29678556e6495467ae443fc457131c5acf4ee5a8ffd1386ffc1f2d36226",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "remit",
+      "index_sha256": "4dd8b74ce30b76ca5412df6fbd59ed4dbcb230bb0e95bdd4cb13d05023d24ab0",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 12
+    },
+    {
+      "dataset": "boalf",
+      "index_sha256": "b44415536b90a1b03aacee7fb8d04fb591a9407eca99730f57c16f006c5b6180",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "mels",
+      "index_sha256": "c040c799af4302293143ed5e3981166a25e3897f0fa9d62cdc2aecea4603c5af",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "mils",
+      "index_sha256": "af6a215f293a002ea78c8c308c08d6c05798829c4844b826df0bf3c3a3a73104",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "pn",
+      "index_sha256": "3b8dd42fdff37938b64323f0c422409491c94e7d95568d363f3bd70127623097",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    },
+    {
+      "dataset": "bod",
+      "index_sha256": "82db08ac452186ba670239e80bee11ab00b8752f576386c843aaa76afd994756",
+      "mismatches": [],
+      "missing": [],
+      "unlisted": [],
+      "verified_files": 366
+    }
+  ],
+  "independent_clock_oracle": {
+    "clock_changes": {
+      "2024-03-31": 46,
+      "2024-10-27": 50
+    },
+    "days_by_period_count": {
+      "46": 1,
+      "48": 364,
+      "50": 1
+    },
+    "method": "UTC elapsed seconds between consecutive Europe/London midnights divided by 1800",
+    "settlement_periods": 17568
+  },
+  "licence_check": {
+    "checked_date": "2026-11-13",
+    "classification": "open-commercial",
+    "html_sha256": "a04639e6665a39a55f2881a574f2a6131b457f3106ee29fb3b8f1a03a43ae319",
+    "required_attribution_template": "Contains BMRS data \u00a9 Elexon Limited copyright and database right [year].",
+    "url": "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+  },
+  "secondary_counts": {
+    "boalf_rows": 3469685,
+    "repeated_national_grid_unit_ids": {
+      "WLNYO-4": 2
+    },
+    "unique_unit_number_acceptance_time_keys": 1347595
+  }
+}
