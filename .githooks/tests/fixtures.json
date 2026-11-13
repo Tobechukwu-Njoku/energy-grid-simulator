@@ -1,0 +1,920 @@
+[
+  {
+    "name": "keep-1",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Jane Doe <jane@google.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Jane Doe <jane@google.com>\n"
+  },
+  {
+    "name": "keep-2",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Claude Monet <monet@example.fr>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Claude Monet <monet@example.fr>\n"
+  },
+  {
+    "name": "keep-3",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Claudette Colvin <colvin@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Claudette Colvin <colvin@example.com>\n"
+  },
+  {
+    "name": "keep-4",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Claude Shannon <cshannon@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Claude Shannon <cshannon@example.com>\n"
+  },
+  {
+    "name": "keep-5",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Grokowski <grokowski@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Grokowski <grokowski@example.com>\n"
+  },
+  {
+    "name": "keep-6",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Jane Doe <123+jane@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Jane Doe <123+jane@users.noreply.github.com>\n"
+  },
+  {
+    "name": "keep-7",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Cursor Researcher <cursor@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Cursor Researcher <cursor@example.org>\n"
+  },
+  {
+    "name": "keep-8",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nSigned-off-by: Jane Doe <jane@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nSigned-off-by: Jane Doe <jane@example.com>\n"
+  },
+  {
+    "name": "keep-9",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nThis query was written using cursor pagination to avoid memory spikes.\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThis query was written using cursor pagination to avoid memory spikes.\n"
+  },
+  {
+    "name": "keep-10",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nThe status bar is powered by cursor movement hooks.\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThe status bar is powered by cursor movement hooks.\n"
+  },
+  {
+    "name": "keep-11",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nThe formulation was authored by Claude Shannon in 1948.\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThe formulation was authored by Claude Shannon in 1948.\n"
+  },
+  {
+    "name": "keep-12",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with GPT tokenizer fixtures\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nGenerated with GPT tokenizer fixtures\n"
+  },
+  {
+    "name": "keep-13",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nPowered by cursor movement hooks\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nPowered by cursor movement hooks\n"
+  },
+  {
+    "name": "keep-14",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nfeat(ui): show 🤖 icon for automated runs\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nfeat(ui): show 🤖 icon for automated runs\n"
+  },
+  {
+    "name": "keep-15",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nOrdinary Unicode: café λ 日本語\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nOrdinary Unicode: café λ 日本語\n"
+  },
+  {
+    "name": "strip-1",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-2",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Copilot <copilot@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-3",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Cursor <cursor@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-4",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Codex <codex@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-5",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: ChatGPT <chatgpt@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-6",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Gemini <gemini@google.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-7",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\n  cO-AuThOrEd-bY: cLaUdE <noreply@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-8",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Sonnet 3.5 <noreply@github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-9",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Opus 5.5 <opus@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-10",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Haiku <haiku@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-11",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: DeepSeek-V3 <deepseek@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-12",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Qwen 2.5 <qwen@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-13",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Llama 3.3 <llama@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-14",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Mistral Large <mistral@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-15",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: agent <agent@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-16",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAssisted-by: Claude <claude@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-17",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated-by: Claude <noreply@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-18",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAI-assisted-by: GPT <gpt@openai.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-19",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-developed-by: Claude <noreply@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-20",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: GPT-4 <gpt@openai.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-21",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nPrompted-by: Claude <claude@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-22",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nSigned-off-by: Claude <noreply@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-23",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nHelped-by: Gemini <gemini@google.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-24",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nPair-programmed-with: Gemini <gemini@google.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-25",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo‑authored‑by: Claude <noreply@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-26",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\n> Co-Authored-By: Claude <noreply@anthropic.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-27",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: build assistant <noreply@openai.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-28",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCo-authored-by: copilot[bot] <copilot[bot]@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-29",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Claude Code\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-30",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-31",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Claude Code\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-32",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCreated with ChatGPT\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-33",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nMade with Cursor\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-34",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nMade with ChatGPT\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-35",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nBuilt with OpenAI API\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-36",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCreated with Copilot\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-37",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nDrafted by Gemini\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-38",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nCrafted by Claude\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-39",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with the help of Claude\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-40",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with: Claude Code\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-41",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with GPT6\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-42",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated by Claude3\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-43",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Claude_Code\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-44",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated using AI\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-45",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAssisted by LLM\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-46",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\n**Generated with Claude Code**\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-47",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Sonnet\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-48",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Sonnet <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-49",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Opus\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-50",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Opus <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-51",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Haiku\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-52",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Haiku <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-53",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with DeepSeek\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-54",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: DeepSeek <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-55",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Qwen\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-56",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Qwen <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-57",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Llama\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-58",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Llama <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-59",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Mistral\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-60",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Mistral <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-61",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Devin\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-62",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Devin <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-63",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with aider\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-64",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: aider <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-65",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Windsurf\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-66",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Windsurf <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-67",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Codeium\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-68",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Codeium <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-69",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Amazon Q\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-70",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Amazon Q <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-71",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with Jules\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-72",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: Jules <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-73",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with o1\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-74",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: o1 <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-75",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nGenerated with o3\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "strip-76",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "fix: exercise message policy\n\nAuthored-by: o3 <model@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "keep-subject-1",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "docs: add PR #4 review written by Gemini\n\nKeep this body.\n",
+    "expected": "docs: add PR #4 review written by Gemini\n\nKeep this body.\n",
+    "exit": 0
+  },
+  {
+    "name": "keep-subject-2",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "docs: triage findings generated by GPT reviewer\n\nKeep this body.\n",
+    "expected": "docs: triage findings generated by GPT reviewer\n\nKeep this body.\n",
+    "exit": 0
+  },
+  {
+    "name": "keep-subject-3",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "test: cover reports generated by GPT tokenizer fixtures\n\nKeep this body.\n",
+    "expected": "test: cover reports generated by GPT tokenizer fixtures\n\nKeep this body.\n",
+    "exit": 0
+  },
+  {
+    "name": "keep-subject-4",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "docs: fix 🤖 emoji render bug\n\nKeep this body.\n",
+    "expected": "docs: fix 🤖 emoji render bug\n\nKeep this body.\n",
+    "exit": 0
+  },
+  {
+    "name": "keep-subject-5",
+    "source": "claude §C / gemini ADV4-R2-01",
+    "input": "🤖 Fix CI runner status check\n\nKeep this body.\n",
+    "expected": "🤖 Fix CI runner status check\n\nKeep this body.\n",
+    "exit": 0
+  },
+  {
+    "name": "abort-subject-96",
+    "source": "claude M-1",
+    "input": "Generated with Claude Code\n\nKeep this body.\n",
+    "expected": "Generated with Claude Code\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "abort-subject-97",
+    "source": "claude M-1",
+    "input": "Made with ChatGPT\n\nKeep this body.\n",
+    "expected": "Made with ChatGPT\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "abort-subject-98",
+    "source": "claude M-1",
+    "input": "Co-authored-by: GPT6 <gpt@openai.com>\n\nKeep this body.\n",
+    "expected": "Co-authored-by: GPT6 <gpt@openai.com>\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "abort-subject-99",
+    "source": "claude M-1",
+    "input": "🤖\n\nKeep this body.\n",
+    "expected": "🤖\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "latin1",
+    "source": "claude M-3",
+    "input_hex": "6669783a20636166e920656e636f64696e670a",
+    "expected_hex": "6669783a20636166e920656e636f64696e670a",
+    "exit": 1,
+    "stderr": "invalid UTF-8"
+  },
+  {
+    "name": "invalid-body",
+    "source": "claude M-3",
+    "input_hex": "6669783a20656e636f64696e670a0a436f2d617574686f7265642d62793a20436c61756465203c6e6f7265706c7940616e7468726f7069632e636f6d3e0aff",
+    "expected_hex": "6669783a20656e636f64696e670a0a436f2d617574686f7265642d62793a20436c61756465203c6e6f7265706c7940616e7468726f7069632e636f6d3e0aff",
+    "exit": 1,
+    "stderr": "invalid UTF-8"
+  },
+  {
+    "name": "scissors",
+    "source": "claude §C",
+    "input": "fix: verbose diff\n\nKeep café.\n\n# ------------------------ >8 ------------------------\nGenerated with Claude Code\n",
+    "expected": "fix: verbose diff\n\nKeep café.\n\n# ------------------------ >8 ------------------------\nGenerated with Claude Code\n",
+    "exit": 0
+  },
+  {
+    "name": "mixed-trailers",
+    "source": "claude M-1",
+    "input": "fix: mixed trailers\n\nCo-authored-by: Claude <noreply@anthropic.com>\nCo-authored-by: Jane Doe <jane@google.com>\nSigned-off-by: Jane Doe <jane@example.com>\n",
+    "expected": "fix: mixed trailers\n\nCo-authored-by: Jane Doe <jane@google.com>\nSigned-off-by: Jane Doe <jane@example.com>\n",
+    "exit": 0
+  },
+  {
+    "name": "empty",
+    "source": "claude M-3",
+    "input": "",
+    "expected": "",
+    "exit": 0
+  },
+  {
+    "name": "no-newline",
+    "source": "claude M-3",
+    "input": "fix: café",
+    "expected": "fix: café",
+    "exit": 0
+  },
+  {
+    "name": "blanks",
+    "source": "claude M-3",
+    "input": "fix: preserve blanks\n\n\n",
+    "expected": "fix: preserve blanks\n\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-107",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Claude Sonnet 4.5\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-108",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Claude Sonnet 4.5 <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-109",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Claude Opus 5.5\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-110",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Claude Opus 5.5 <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-111",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with GPT-6.1 Sol\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-112",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: GPT-6.1 Sol <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-113",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Gemini Flash 3.8\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-114",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Gemini Flash 3.8 <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-115",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Amazon Q Developer\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-116",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Amazon Q Developer <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-117",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Cursor Code Editor\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-118",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Cursor Code Editor <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "leading-subject-119",
+    "source": "claude M-1 subject preservation",
+    "input": "\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "expected": "\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "leading-subject-120",
+    "source": "claude M-1 subject preservation",
+    "input": "# commit instructions\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "expected": "# commit instructions\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "r3-keep-1",
+    "source": "claude recheck r3 C.1",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Ann Lee <123+octopus@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Ann Lee <123+octopus@users.noreply.github.com>\n"
+  },
+  {
+    "name": "r3-keep-2",
+    "source": "claude recheck r3 C.1",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Sam Roe <456+secretagent@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Sam Roe <456+secretagent@users.noreply.github.com>\n"
+  },
+  {
+    "name": "r3-keep-3",
+    "source": "claude recheck r3 C.1",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Dr Llama <789+drllama@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Dr Llama <789+drllama@users.noreply.github.com>\n"
+  },
+  {
+    "name": "r3-strip-1",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nCo-authored-by: GPT-4o <gpt@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-2",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nGenerated with GPT-4o\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-3",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nGenerated with gpt-5-codex\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-4",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nGenerated with Gemini 2.5 Flash-Lite\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-5",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-6",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\n🤖️ Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  }
+]

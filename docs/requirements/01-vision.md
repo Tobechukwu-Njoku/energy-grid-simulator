@@ -14,7 +14,8 @@ _Last updated: 2026-11-12_
 - Purpose: simulate an electricity grid under varying circumstances (scenarios).
 - Build approach: new codebase; reuse existing open-source components where beneficial.
 - Performance stance: maximize performance/capability; hardware cost is not a constraint.
-- Baseline infrastructure named by owner: **PostgreSQL 18**, **Redis**.
+- Baseline infrastructure named by owner: **PostgreSQL 18**, **Valkey** (D-67 refines
+  D-3); Redis remains a compatible shared-protocol alternative. P1 dispatch uses PostgreSQL.
 - Development model: multiple AI models/threads collaborating; docs must be model-readable.
 
 ## Not yet decided

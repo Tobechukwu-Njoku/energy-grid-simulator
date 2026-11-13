@@ -3,7 +3,7 @@
 | ID | Risk | Source | Mitigation / question |
 |---|---|---|---|
 | R-1 | Scope is very large (all physics time-scales × T+D × full market replica × all-island). Risk of never shipping. | D-6, D-12, D-15 | Strict phased roadmap; define MVP slice (Q-M-2) |
-| R-2 | Redis 8 licensing (RSALv2 / SSPLv1 / AGPLv3) vs future SaaS. Running unmodified Redis server is generally fine under AGPL, but needs legal confirmation. | D-3, D-17 | Keep Redis behind an interface; Valkey (BSD) is a drop-in fallback |
+| R-2 | Deployment licence obligations for the cache/live-state service and optional compatible alternatives vs future SaaS. | D-3, D-17, D-67 | Use Valkey (BSD-3) by default; clients use only the shared Redis protocol. Review bundled code and any optional Redis deployment terms separately; P1 dispatch uses PostgreSQL. |
 | R-3 | GPL/AGPL dependencies (e.g. ANDES GPL-3) cannot be embedded in a closed SaaS. | D-17 | Licence allow-list in CI (cargo-deny); GPL tools only as offline validators |
 | R-4 | Commercial solver licences for SaaS (Gurobi cloud/ISV licensing) are costly. | D-16, D-17 | Open-source default path must be production-capable |
 | R-5 | GB/Ireland distribution network data is largely not public at LV. | D-12 | Q-C-8 |
