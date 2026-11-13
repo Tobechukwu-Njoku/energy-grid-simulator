@@ -1,12 +1,15 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members = ["crates/*", "xtask"]
 
 [workspace.package]
 version = "0.0.0"
 edition = "2024"
 rust-version = "1.99.1"
 publish = false
+# ASSUMPTION (D-17 open): no project licence is chosen yet. Every workspace crate
+# carries this placeholder so cargo-deny checks private crates instead of ignoring them.
+license = "LicenseRef-EGS-Unreleased"
 repository = "https://github.com/Tobechukwu-Njoku/energy-grid-simulator"
 
 [workspace.dependencies]
@@ -31,9 +34,20 @@ egs-sdk = { path = "crates/sdk" }
 # Third-party crates. Every addition is checked by cargo-deny (deny.toml).
 uuid = { version = "1", default-features = false, features = ["std"] }
 
+# Policy tooling (xtask, D-73) only; never a production dependency.
+fancy-regex = "0.20"
+proc-macro2 = { version = "1", default-features = false, features = ["span-locations"] }
+quote = { version = "1", default-features = false }
+serde_json = "1"
+syn = { version = "2", default-features = false, features = ["full", "parsing", "printing", "visit"] }
+toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
+unicode-normalization = "0.1"
+yaml-rust2 = { version = "0.13", default-features = false }
+
 [workspace.lints.rust]
 # ADR 0001: no unsafe code outside individually reviewed solver-* adapters. Those
-# adapters may allow it item by item; ci/policy_checks.py rejects any other allow.
+# adapters may allow it item by item; `cargo xtask policy` rejects any other allow
+# and requires this setting to stay present.
 unsafe_code = "deny"
 missing_docs = "warn"
 unreachable_pub = "warn"

@@ -1,0 +1,26 @@
+# Trusted gate graph and workflow policy (ADR 0001, NFR-12). CI reads this file
+# from the base branch, so a pull request cannot weaken the rules judging it.
+# Changing it needs the policy owner's review (.github/CODEOWNERS, policy-approval).
+
+allowed_triggers = ["pull_request", "pull_request_review", "push"]
+# The only `${{ }}` expressions allowed inside `run:` scripts. Everything else,
+# including any github.event.* value, reaches a script through `env:`.
+run_expressions = ["env.*", "runner.temp", "runner.os"]
+runner_labels = ["ubuntu-24.04", "macos-15"]
+
+[[workflow]]
+file = ".github/workflows/ci.yml"
+jobs = [
+    "rust-linux",
+    "rust-macos",
+    "licences",
+    "attribution",
+    "docs",
+    "policy",
+    "provenance",
+]
+aggregator = "merge-gates"
+
+[[workflow]]
+file = ".github/workflows/review-gates.yml"
+jobs = ["independent-review", "policy-approval"]

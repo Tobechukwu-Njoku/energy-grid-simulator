@@ -1,0 +1,10 @@
+# Policy paths: a change needs the policy owner's review (ADR 0001, R1).
+# Keep in step with protected_paths in xtask/policy/repository.toml.
+/.github/ @Tobechukwu-Njoku
+/.githooks/ @Tobechukwu-Njoku
+/.cargo/ @Tobechukwu-Njoku
+/xtask/ @Tobechukwu-Njoku
+/deny.toml @Tobechukwu-Njoku
+/Cargo.toml @Tobechukwu-Njoku
+/rust-toolchain.toml @Tobechukwu-Njoku
+/docs/security/ @Tobechukwu-Njoku

@@ -1,0 +1,6 @@
+# Attribution-scan exemptions (ADR 0001): each names ONE exact added line in ONE
+# file, with a reason. No wildcards and no whole-file or directory exemptions.
+# Commit messages, PR titles and PR bodies are never exempt. Test fixtures build
+# attribution text at runtime instead of needing an exemption.
+# Changing this file needs the policy owner's review (.github/CODEOWNERS).
+exemption = []

@@ -1,0 +1,743 @@
+//! Workflow hardening and gate graph (NFR-12, ADR 0001), on parsed YAML.
+//!
+//! Every workflow is parsed with a YAML 1.2 parser, so flow mappings such as
+//! `permissions: {contents: write}` are seen (R6, ADV23-15). Checks:
+//! allow-listed triggers only; explicit top-level permissions; every
+//! permission read or none; hosted runner labels only; every action and
+//! reusable workflow pinned to a full SHA; checkout never persists
+//! credentials; `run:` scripts contain only allow-listed `${{ }}` expressions
+//! (ADV23-16) and never invoke Python (D-73); no secrets but `GITHUB_TOKEN`;
+//! no lint-lowering `RUSTFLAGS`; and the required gate graph from the trusted
+//! policy is intact (R1).
+
+use yaml_rust2::{Yaml, YamlLoader};
+
+use crate::util::{Ctx, Finding, glob_match, string_array, tracked};
+
+/// Trusted gate-graph and workflow policy.
+pub const GATES: &str = "xtask/policy/gates.toml";
+
+/// Workflow policy loaded from the trusted tree.
+#[derive(Debug, Clone, Default)]
+pub struct Policy {
+    triggers: Vec<String>,
+    expressions: Vec<String>,
+    runners: Vec<String>,
+    graphs: Vec<Graph>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct Graph {
+    file: String,
+    jobs: Vec<String>,
+    aggregator: Option<String>,
+}
+
+impl Policy {
+    /// Loads the policy.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the trusted file is missing or malformed.
+    pub fn load(ctx: &Ctx) -> Result<Self, String> {
+        Self::parse(&ctx.policy_text(GATES)?)
+    }
+
+    /// Parses policy text.
+    ///
+    /// # Errors
+    ///
+    /// Fails on malformed TOML.
+    pub fn parse(text: &str) -> Result<Self, String> {
+        let document: toml_edit::DocumentMut =
+            text.parse().map_err(|error| format!("{GATES}: {error}"))?;
+        let mut graphs = Vec::new();
+        if let Some(tables) = document
+            .get("workflow")
+            .and_then(toml_edit::Item::as_array_of_tables)
+        {
+            for table in tables {
+                graphs.push(Graph {
+                    file: table
+                        .get("file")
+                        .and_then(toml_edit::Item::as_str)
+                        .ok_or(format!("{GATES}: workflow without file"))?
+                        .to_owned(),
+                    jobs: table.get("jobs").map(string_array).unwrap_or_default(),
+                    aggregator: table
+                        .get("aggregator")
+                        .and_then(toml_edit::Item::as_str)
+                        .map(str::to_owned),
+                });
+            }
+        }
+        Ok(Self {
+            triggers: string_array(&document["allowed_triggers"]),
+            expressions: string_array(&document["run_expressions"]),
+            runners: string_array(&document["runner_labels"]),
+            graphs,
+        })
+    }
+}
+
+fn get<'a>(yaml: &'a Yaml, key: &str) -> Option<&'a Yaml> {
+    yaml.as_hash()?.get(&Yaml::String(key.to_owned()))
+}
+
+fn entries(yaml: &Yaml) -> Vec<(String, &Yaml)> {
+    yaml.as_hash()
+        .map(|hash| {
+            hash.iter()
+                .map(|(key, value)| (scalar(key), value))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn scalar(yaml: &Yaml) -> String {
+    match yaml {
+        Yaml::String(text) | Yaml::Real(text) => text.clone(),
+        Yaml::Integer(value) => value.to_string(),
+        Yaml::Boolean(value) => value.to_string(),
+        Yaml::Null => "null".to_owned(),
+        _ => String::new(),
+    }
+}
+
+fn strings(yaml: &Yaml, out: &mut Vec<String>) {
+    match yaml {
+        Yaml::Array(items) => items.iter().for_each(|item| strings(item, out)),
+        Yaml::Hash(hash) => hash.iter().for_each(|(key, value)| {
+            strings(key, out);
+            strings(value, out);
+        }),
+        Yaml::Alias(_) | Yaml::BadValue | Yaml::Null => {}
+        other => out.push(scalar(other)),
+    }
+}
+
+fn check_permissions(path: &str, scope: &str, yaml: &Yaml, findings: &mut Vec<Finding>) {
+    match yaml {
+        Yaml::Hash(_) => {
+            for (name, level) in entries(yaml) {
+                let level = scalar(level);
+                if level != "read" && level != "none" {
+                    findings.push(Finding::at(
+                        path,
+                        None,
+                        format!("{scope}: permission `{name}: {level}` is not read-only (NFR-12)"),
+                    ));
+                }
+            }
+        }
+        Yaml::String(text) if text == "read-all" || text == "{}" => {}
+        other => findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "{scope}: permissions `{}` is not read-only (NFR-12)",
+                scalar(other)
+            ),
+        )),
+    }
+}
+
+fn pinned(action: &str) -> bool {
+    if action.starts_with("./") {
+        return true;
+    }
+    if let Some(image) = action.strip_prefix("docker://") {
+        return image.contains("@sha256:");
+    }
+    let Some((name, reference)) = action.rsplit_once('@') else {
+        return false;
+    };
+    let mut parts = name.split('/');
+    let owner_ok = parts.next().is_some_and(|p| !p.is_empty());
+    let repo_ok = parts.next().is_some_and(|p| !p.is_empty());
+    owner_ok
+        && repo_ok
+        && reference.len() == 40
+        && reference
+            .bytes()
+            .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+fn expressions(text: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("${{") {
+        let after = &rest[start + 3..];
+        let end = after.find("}}").unwrap_or(after.len());
+        found.push(after[..end].trim().to_owned());
+        rest = &after[end.min(after.len())..];
+    }
+    found
+}
+
+fn invokes_python(script: &str) -> bool {
+    script
+        .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '_'))
+        .any(|word| {
+            word == "python"
+                || word.starts_with("python3")
+                || word.starts_with("python2")
+                || word == "pip"
+                || word == "pip3"
+                || word.ends_with(".py")
+        })
+}
+
+/// Checks one parsed workflow.
+#[must_use]
+pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let documents = match YamlLoader::load_from_str(text) {
+        Ok(documents) => documents,
+        Err(error) => return vec![Finding::at(path, None, format!("invalid YAML: {error}"))],
+    };
+    let [workflow] = documents.as_slice() else {
+        return vec![Finding::at(
+            path,
+            None,
+            "expected exactly one YAML document",
+        )];
+    };
+    if workflow.as_hash().is_none() {
+        return vec![Finding::at(path, None, "workflow is not a mapping")];
+    }
+    let mut all = Vec::new();
+    strings(workflow, &mut all);
+    if has_alias(workflow) {
+        findings.push(Finding::at(
+            path,
+            None,
+            "YAML aliases are not allowed in workflows",
+        ));
+    }
+
+    let triggers: Vec<String> = match get(workflow, "on") {
+        Some(Yaml::String(name)) => vec![name.clone()],
+        Some(Yaml::Array(items)) => items.iter().map(scalar).collect(),
+        Some(map @ Yaml::Hash(_)) => entries(map).into_iter().map(|(key, _)| key).collect(),
+        _ => {
+            findings.push(Finding::at(path, None, "missing or invalid `on:` triggers"));
+            Vec::new()
+        }
+    };
+    for trigger in triggers {
+        if !policy.triggers.contains(&trigger) {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!("trigger `{trigger}` is not allowed (NFR-12)"),
+            ));
+        }
+    }
+
+    match get(workflow, "permissions") {
+        Some(permissions) => check_permissions(path, "workflow", permissions, &mut findings),
+        None => findings.push(Finding::at(
+            path,
+            None,
+            "needs an explicit top-level `permissions:` block",
+        )),
+    }
+
+    for (name, value) in entries(get(workflow, "env").unwrap_or(&Yaml::Null)) {
+        check_env(path, &name, value, &mut findings);
+    }
+
+    let jobs = get(workflow, "jobs");
+    let job_entries = jobs.map(entries).unwrap_or_default();
+    if job_entries.is_empty() {
+        findings.push(Finding::at(path, None, "workflow has no jobs"));
+    }
+    for (job_name, job) in &job_entries {
+        check_job(path, job_name, job, policy, &mut findings);
+    }
+
+    for value in &all {
+        let mut rest = value.as_str();
+        while let Some(index) = rest.find("secrets.") {
+            let name: String = rest[index + 8..]
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if name != "GITHUB_TOKEN" {
+                findings.push(Finding::at(
+                    path,
+                    None,
+                    format!("secret `{name}` is not allowed in hosted CI (NFR-12)"),
+                ));
+            }
+            rest = &rest[index + 8..];
+        }
+        if value.contains("secrets[") {
+            findings.push(Finding::at(
+                path,
+                None,
+                "dynamic secret access is not allowed",
+            ));
+        }
+    }
+
+    check_graph(path, &job_entries, policy, &mut findings);
+    findings
+}
+
+fn has_alias(yaml: &Yaml) -> bool {
+    match yaml {
+        Yaml::Alias(_) => true,
+        Yaml::Array(items) => items.iter().any(has_alias),
+        Yaml::Hash(hash) => hash.iter().any(|(k, v)| has_alias(k) || has_alias(v)),
+        _ => false,
+    }
+}
+
+fn check_env(path: &str, name: &str, value: &Yaml, findings: &mut Vec<Finding>) {
+    let text = scalar(value).to_ascii_lowercase();
+    if (name.contains("RUSTFLAGS") || name.contains("RUSTDOCFLAGS") || name == "RUSTC_WRAPPER")
+        && !text.is_empty()
+    {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!("`{name}` may not be set in workflows (lint levels stay in Cargo.toml)"),
+        ));
+    }
+}
+
+fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut Vec<Finding>) {
+    let scope = format!("job `{name}`");
+    if let Some(permissions) = get(job, "permissions") {
+        check_permissions(path, &scope, permissions, findings);
+    }
+    if let Some(uses) = get(job, "uses") {
+        let action = scalar(uses);
+        if !pinned(&action) {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!("{scope}: `{action}` must be pinned to a full commit SHA"),
+            ));
+        }
+    }
+    if matches!(get(job, "secrets"), Some(Yaml::String(text)) if text == "inherit") {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!("{scope}: `secrets: inherit` is not allowed"),
+        ));
+    }
+    match get(job, "runs-on") {
+        Some(Yaml::String(label)) if policy.runners.iter().any(|r| glob_match(r, label)) => {}
+        Some(other) => findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "{scope}: runner `{}` is not an allowed hosted label (self-hosted waits for M1)",
+                scalar(other)
+            ),
+        )),
+        None if get(job, "uses").is_some() => {}
+        None => findings.push(Finding::at(path, None, format!("{scope}: missing runs-on"))),
+    }
+    for (key, value) in entries(get(job, "env").unwrap_or(&Yaml::Null)) {
+        check_env(path, &key, value, findings);
+    }
+    for key in ["container", "services"] {
+        if get(job, key).is_some() {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!("{scope}: `{key}` needs a reviewed policy exception"),
+            ));
+        }
+    }
+    let steps = get(job, "steps")
+        .and_then(Yaml::as_vec)
+        .cloned()
+        .unwrap_or_default();
+    for (index, step) in steps.iter().enumerate() {
+        let step_scope = format!("{scope} step {}", index + 1);
+        for (key, value) in entries(get(step, "env").unwrap_or(&Yaml::Null)) {
+            check_env(path, &key, value, findings);
+        }
+        if let Some(uses) = get(step, "uses") {
+            let action = scalar(uses);
+            if !pinned(&action) {
+                findings.push(Finding::at(
+                    path,
+                    None,
+                    format!("{step_scope}: `{action}` must be pinned to a full commit SHA"),
+                ));
+            }
+            if action.starts_with("actions/checkout@") {
+                let persist = get(step, "with").and_then(|with| get(with, "persist-credentials"));
+                let off = matches!(persist, Some(Yaml::Boolean(false)))
+                    || matches!(persist, Some(Yaml::String(text)) if text == "false");
+                if !off {
+                    findings.push(Finding::at(
+                        path,
+                        None,
+                        format!(
+                            "{step_scope}: actions/checkout must set `persist-credentials: false`"
+                        ),
+                    ));
+                }
+            }
+        }
+        if let Some(run) = get(step, "run") {
+            let script = scalar(run);
+            for expression in expressions(&script) {
+                let allowed = policy
+                    .expressions
+                    .iter()
+                    .any(|pattern| glob_match(pattern, &expression));
+                if !allowed {
+                    findings.push(Finding::at(
+                        path,
+                        None,
+                        format!(
+                            "{step_scope}: `${{{{ {expression} }}}}` inside run:; pass values through env:"
+                        ),
+                    ));
+                }
+            }
+            if invokes_python(&script) {
+                findings.push(Finding::at(
+                    path,
+                    None,
+                    format!("{step_scope}: CI must not run Python (D-73); use cargo xtask"),
+                ));
+            }
+        }
+        if let Some(shell) = get(step, "shell")
+            && invokes_python(&scalar(shell))
+        {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!("{step_scope}: Python shell is not allowed (D-73)"),
+            ));
+        }
+    }
+}
+
+fn check_graph(path: &str, jobs: &[(String, &Yaml)], policy: &Policy, findings: &mut Vec<Finding>) {
+    let Some(graph) = policy.graphs.iter().find(|graph| graph.file == path) else {
+        return;
+    };
+    let names: Vec<&str> = jobs.iter().map(|(name, _)| name.as_str()).collect();
+    for required in &graph.jobs {
+        if !names.contains(&required.as_str()) {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!("required gate job `{required}` is missing (trusted gate graph)"),
+            ));
+        }
+        if let Some((_, job)) = jobs.iter().find(|(name, _)| name == required) {
+            if get(job, "if").is_some() {
+                findings.push(Finding::at(
+                    path,
+                    None,
+                    format!("required gate job `{required}` may not be conditional"),
+                ));
+            }
+            if matches!(get(job, "continue-on-error"), Some(value) if scalar(value) != "false") {
+                findings.push(Finding::at(
+                    path,
+                    None,
+                    format!("required gate job `{required}` may not continue on error"),
+                ));
+            }
+        }
+    }
+    let Some(aggregator) = &graph.aggregator else {
+        return;
+    };
+    let Some((_, job)) = jobs.iter().find(|(name, _)| name == aggregator) else {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!("aggregator job `{aggregator}` is missing"),
+        ));
+        return;
+    };
+    let needs: Vec<String> = match get(job, "needs") {
+        Some(Yaml::Array(items)) => items.iter().map(scalar).collect(),
+        Some(single) => vec![scalar(single)],
+        None => Vec::new(),
+    };
+    for required in &graph.jobs {
+        if required != aggregator && !needs.contains(required) {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!("`{aggregator}` must need required gate `{required}`"),
+            ));
+        }
+    }
+    if get(job, "if").map(scalar).as_deref() != Some("always()") {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!("`{aggregator}` must run with `if: always()`"),
+        ));
+    }
+}
+
+/// Runs the workflow checks over every tracked workflow.
+///
+/// # Errors
+///
+/// Fails if Git, file reads or the trusted policy fail.
+pub fn check(ctx: &Ctx) -> Result<Vec<Finding>, String> {
+    let policy = Policy::load(ctx)?;
+    let mut findings = Vec::new();
+    let files: Vec<String> = tracked(&ctx.repo)?
+        .into_iter()
+        .filter(|path| {
+            path.starts_with(".github/workflows/")
+                && (path.ends_with(".yml") || path.ends_with(".yaml"))
+        })
+        .collect();
+    if files.is_empty() {
+        findings.push(Finding::general(".github/workflows: no workflows found"));
+    }
+    for graph in &policy.graphs {
+        if !files.contains(&graph.file) {
+            findings.push(Finding::at(
+                &graph.file,
+                None,
+                "required workflow is missing (trusted gate graph)",
+            ));
+        }
+    }
+    for path in &files {
+        let text = std::fs::read_to_string(ctx.repo.join(path))
+            .map_err(|error| format!("{path}: {error}"))?;
+        findings.extend(check_workflow(path, &text, &policy));
+    }
+    for path in tracked(&ctx.repo)? {
+        if path.starts_with(".github/actions/")
+            && (path.ends_with("action.yml") || path.ends_with("action.yaml"))
+        {
+            let text = std::fs::read_to_string(ctx.repo.join(&path))
+                .map_err(|error| format!("{path}: {error}"))?;
+            findings.extend(check_action(&path, &text, &policy));
+        }
+    }
+    Ok(findings)
+}
+
+/// Checks a local composite action: pinned `uses`, no Python, allow-listed
+/// expressions in `run:` and no secrets.
+#[must_use]
+pub fn check_action(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
+    let documents = match YamlLoader::load_from_str(text) {
+        Ok(documents) => documents,
+        Err(error) => return vec![Finding::at(path, None, format!("invalid YAML: {error}"))],
+    };
+    let Some(action) = documents.first() else {
+        return vec![Finding::at(path, None, "empty action")];
+    };
+    let runs = get(action, "runs").unwrap_or(&Yaml::Null);
+    if get(runs, "using").map(scalar).as_deref() != Some("composite") {
+        return vec![Finding::at(
+            path,
+            None,
+            "only composite local actions are allowed",
+        )];
+    }
+    let mut job = yaml_rust2::yaml::Hash::new();
+    job.insert(
+        Yaml::String("runs-on".into()),
+        Yaml::String("ubuntu-24.04".into()),
+    );
+    job.insert(
+        Yaml::String("steps".into()),
+        get(runs, "steps")
+            .cloned()
+            .unwrap_or(Yaml::Array(Vec::new())),
+    );
+    let mut findings = Vec::new();
+    check_job(path, "composite", &Yaml::Hash(job), policy, &mut findings);
+    let mut all = Vec::new();
+    strings(action, &mut all);
+    if all
+        .iter()
+        .any(|value| value.contains("secrets.") || value.contains("secrets["))
+    {
+        findings.push(Finding::at(
+            path,
+            None,
+            "secrets are not allowed in local actions",
+        ));
+    }
+    findings
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const POLICY: &str = r#"
+allowed_triggers = ["pull_request", "push"]
+run_expressions = ["env.*", "runner.temp"]
+runner_labels = ["ubuntu-*", "macos-*"]
+[[workflow]]
+file = "w.yml"
+jobs = ["a", "b"]
+aggregator = "gate"
+"#;
+
+    const GOOD: &str = r#"
+on:
+  pull_request:
+  push: {branches: [main]}
+permissions:
+  contents: read
+jobs:
+  a:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - run: echo "$HOME ${{ env.X }}"
+  b:
+    runs-on: macos-15
+    steps:
+      - run: cargo xtask docs
+  gate:
+    if: always()
+    needs: [a, b]
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo ok
+"#;
+
+    fn run(text: &str) -> Vec<Finding> {
+        check_workflow("w.yml", text, &Policy::parse(POLICY).expect("policy"))
+    }
+
+    #[test]
+    fn hardened_workflow_passes() {
+        assert_eq!(run(GOOD), Vec::new());
+    }
+
+    // R6 / ADV23-15: flow-mapping write permissions.
+    #[test]
+    fn r6_adv23_15_flow_mapping_write_is_rejected() {
+        let flow = GOOD.replace(
+            "permissions:\n  contents: read",
+            "permissions: {contents: write}",
+        );
+        assert_eq!(run(&flow).len(), 1, "{:?}", run(&flow));
+        let all = GOOD.replace("permissions:\n  contents: read", "permissions: write-all");
+        assert_eq!(run(&all).len(), 1);
+        let job = GOOD.replace(
+            "  b:\n    runs-on: macos-15",
+            "  b:\n    permissions: { pull-requests: write }\n    runs-on: macos-15",
+        );
+        assert_eq!(run(&job).len(), 1);
+        let missing = GOOD.replace("permissions:\n  contents: read\n", "");
+        assert_eq!(run(&missing).len(), 1);
+    }
+
+    #[test]
+    fn forbidden_triggers_and_runners() {
+        let target = GOOD.replace("  pull_request:\n", "  pull_request_target:\n");
+        assert!(!run(&target).is_empty());
+        let list = GOOD.replace(
+            "on:\n  pull_request:\n  push: {branches: [main]}",
+            "on: [push, workflow_run]",
+        );
+        assert!(!run(&list).is_empty());
+        let hosted = GOOD.replace("runs-on: macos-15", "runs-on: [self-hosted, linux]");
+        assert!(!run(&hosted).is_empty());
+        let dynamic = GOOD.replace("runs-on: macos-15", "runs-on: ${{ github.event.inputs.r }}");
+        assert!(!run(&dynamic).is_empty());
+    }
+
+    #[test]
+    fn pins_and_checkout() {
+        let tag = GOOD.replace(
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "actions/checkout@v4",
+        );
+        assert!(!run(&tag).is_empty());
+        let persist = GOOD.replace(
+            "with: {persist-credentials: false}",
+            "with: {fetch-depth: 0}",
+        );
+        assert_eq!(run(&persist).len(), 1);
+    }
+
+    // ADV23-16: every non-allow-listed expression in run:, including
+    // client_payload, inputs, actor and multiline forms.
+    #[test]
+    fn adv23_16_untrusted_expressions_in_run_are_rejected() {
+        for expression in [
+            "github.event.client_payload.x",
+            "github.event.inputs.x",
+            "github.actor",
+            "github.triggering_actor",
+            "github.event.sender.login",
+            "github.head_ref",
+            "\n github.event.pull_request.title\n",
+        ] {
+            let text = GOOD.replace("${{ env.X }}", &format!("${{{{{expression}}}}}"));
+            assert_eq!(run(&text).len(), 1, "{expression}");
+        }
+        let block = GOOD.replace(
+            "      - run: echo \"$HOME ${{ env.X }}\"",
+            "      - run: |\n          echo start\n          echo ${{\n            github.event.pull_request.body }}",
+        );
+        assert_eq!(run(&block).len(), 1);
+    }
+
+    #[test]
+    fn secrets_python_and_rustflags_are_rejected() {
+        let secret = GOOD.replace("${{ env.X }}", "").replace(
+            "run: cargo xtask docs",
+            "run: cargo xtask docs\n        env: {T: \"${{ secrets.LICENCE }}\"}",
+        );
+        assert!(!run(&secret).is_empty());
+        let python = GOOD.replace("run: cargo xtask docs", "run: python3 - <<'PY'");
+        assert!(!run(&python).is_empty());
+        let script = GOOD.replace("run: cargo xtask docs", "run: ./ci/check.py");
+        assert!(!run(&script).is_empty());
+        let flags = GOOD.replace(
+            "permissions:",
+            "env: {RUSTFLAGS: \"-A unsafe_code\"}\npermissions:",
+        );
+        assert!(!run(&flags).is_empty());
+    }
+
+    // R1: the trusted gate graph cannot be weakened by the workflow under test.
+    #[test]
+    fn r1_gate_graph_is_enforced() {
+        let dropped = GOOD.replace("needs: [a, b]", "needs: [a]");
+        assert_eq!(run(&dropped).len(), 1);
+        let removed = GOOD.replace(
+            "  b:\n    runs-on: macos-15\n    steps:\n      - run: cargo xtask docs\n",
+            "",
+        );
+        assert!(!run(&removed).is_empty());
+        let conditional = GOOD.replace(
+            "  b:\n    runs-on: macos-15",
+            "  b:\n    if: false\n    runs-on: macos-15",
+        );
+        assert_eq!(run(&conditional).len(), 1);
+        let soft = GOOD.replace(
+            "  b:\n    runs-on: macos-15",
+            "  b:\n    continue-on-error: true\n    runs-on: macos-15",
+        );
+        assert_eq!(run(&soft).len(), 1);
+        let not_always = GOOD.replace("    if: always()\n", "");
+        assert_eq!(run(&not_always).len(), 1);
+    }
+}
