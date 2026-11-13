@@ -37,6 +37,7 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
   - FR-1.AC2: Interconnector assets and trading regimes have effective-from/to dates. Backtests include only commissioned assets and the capacity-allocation/coupling regime in force on each date; future links or later rule changes cannot leak into earlier years.
   - FR-1.AC3: Each directional interconnector records sending MW, receiving MW and non-negative losses. Receiving MW equals sending MW minus losses; both endpoint balances include the same losses exactly once (NFR-2). A two-market fixture reconciles energy and daily GBP/EUR conversion without double counting.
   - FR-1.AC4: ASSUMPTION: External boundaries use historical flows for reconstruction; scenario flow/price policies must be declared. A daily UTC-effective FX series is exogenous, versioned and valued consistently in a common objective numeraire; no free FX trading variable is allowed (Q-N-1, Q-N-2).
+  - FR-1.AC5: Dated fixture pairs cover Brexit coupling/decoupling, MHHS settlement changes, REMA national-versus-zonal rule status and new-link commissioning (including Viking and Greenlink). Each transition uses sourced effective dates; applying a later asset/rule snapshot to an earlier holdout fails validation. P3 zonal scenarios are never presented as historic P1 rules.
 - Priority: MUST.
 
 ### FR-2: Network completeness and fidelity declaration
@@ -251,10 +252,11 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
   - NFR-2.AC3: Tests independently recompute residuals in original units.
   - NFR-2.AC4: For non-unique/time-limited MILPs compare feasibility and compatible objective/bound certificates, not equal binaries; unsupported or incomparable cases cannot count as reference passes.
   - NFR-2.AC5: Price-method tests use 0.01 native currency/MWh tolerance on uniquely priced small fixtures.
+  - NFR-2.AC6: Exact reference solves use matched feasibility tolerances, relative MIP gap at most 1e-6 and absolute gap at most 0.001 objective-currency units on both sides, with final certificates tight enough for AC1. ADR 0003 defines signed/zero-objective gap handling; missing certificates are not exact-reference passes.
 - Priority: MUST.
 
 ### NFR-3: Enforced autonomous merge gates
-- Statement: Every PR shall satisfy all D-28 quality gates and a review from a different provider before merge, with merge gates decided by CI only.
+- Statement: Every PR shall satisfy applicable D-28 quality gates and independent cross-provider review under ADR 0001's staged bootstrap; activated automated gates shall be decided by CI only, never replaced by an unrecorded local pass.
 - Rationale / source: D-22, D-28, D-43, D-49, D-51, D-52, D-53, D-54, D-58, D-61, D-62.
 - Acceptance criteria:
   - NFR-3.AC1: ADR 0001 defines documentation bootstrap, CPU implementation and optional GPU profiles. The merge-gates aggregator verifies the CURRENT head/base and every applicable D-28 gate; required failures, pending/cancelled/skipped/inconclusive checks block.
@@ -277,7 +279,7 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Statement: The default CPU path shall be measured against a fixed P1 workload on the D-48 Ryzen 9 5900X, 12 cores/24 threads, 128 GB RAM Linux workstation.
 - Rationale / source: D-2, D-18, D-21, D-26, D-29, D-34, D-48.
 - Acceptance criteria:
-  - NFR-5.AC1: Proposed Q-N-5 targets: with one active simulation, 30-minute resolution, 48-hour look-ahead/24-hour advance and relative MIP gap at most 0.1%, model build/load p95 is at most 30 seconds per window, combined UC/redispatch/pricing p95 at most 300 seconds per window, and a full non-leap year including output writing at most 48 hours.
+  - NFR-5.AC1: Proposed Q-N-5 targets: with one active simulation, 30-minute resolution, 48-hour look-ahead/24-hour advance and UC relative MIP gap at most 0.1% OR absolute gap at most 1 objective-currency unit (plus NFR-2 feasibility), model build/load p95 is at most 30 seconds per window, combined UC/redispatch/pricing p95 at most 300 seconds per window, and a full non-leap year including energy pre-pass, repair and output writing at most 48 hours.
   - NFR-5.AC2: Peak simulation process-tree RSS is at most the smaller of 96 GiB and 80% of measured system RAM, with no swap dependence.
   - NFR-5.AC3: Report max window time and gap failures as well as p95.
   - NFR-5.AC4: A licensed, frozen full D-32 fixture is required to establish full-network feasibility; reduced-case success cannot satisfy that claim.
@@ -302,11 +304,13 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
   - NFR-7.AC2: GPU CI uses the actual installed supported NVIDIA device and logs model, compute capability, driver/toolkit/backend versions and peak VRAM; it never claims a planned RTX 5060 Ti is installed.
   - NFR-7.AC3: GPU results pass the same numerical checks as CPU; unsupported Pascal/device combinations fail capability checks.
   - NFR-7.AC4: A missing required GPU run blocks the relevant gate, not silently falling back to a CPU “GPU pass” (Q-N-7).
+  - NFR-7.AC5: GPU gates are applicable only to an implemented/enabled GPU-feature change under ADR 0001; a capability stub is not a GPU implementation. No cuOpt implementation is scheduled in CPU-first P1.
 - Priority: MUST.
 
 ### NFR-8: Licence-clean production dependency closure
 - Statement: Production deliverables shall have an explicitly approved dependency and runtime-service licence inventory compatible with the intended future commercial service.
 - Rationale / source: D-1, D-3, D-16, D-17, D-28, D-30.
+- Rationale detail: Software copyleft, native redistribution and dataset permissions are different obligations; neither a blanket ban on all GPL/AGPL use nor a wrapper's licence establishes the entire deployment's rights.
 - Acceptance criteria:
   - NFR-8.AC1: CI checks locked Rust dependencies and advisories; separately inventories native solver/CUDA binaries, TypeScript dependencies, container images and service licences that `cargo-deny` cannot see.
   - NFR-8.AC2: Unreviewed/disallowed licences or unapproved advisories block.
