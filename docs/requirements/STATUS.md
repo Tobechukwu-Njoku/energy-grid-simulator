@@ -34,13 +34,15 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
 
-**Blocked: GPT 6.1 Sol hit its ChatGPT usage limit (2026-11-13). Its tasks failed before pushing anything.**
+**GPT 6.1 Sol paused: ChatGPT usage limit (2026-11-13). Owner chose to wait for the reset; GPT tasks resume then.** Raw data lives outside git in `/Users/njotob/energy-data/raw/`.
 
 | Item | State | Next action |
 |---|---|---|
 | PR #4: MVP requirements + ADR 0001/0003 | Reviewed (Claude PR #8, Gemini PR #6); needs revision | Author revision: all review findings, triage, D-51..D-62 |
 | PR #5: data spike (R-12 "Partially") | Reviewed (Claude PR #7, Gemini PR #9); needs revision | Author revision per Claude review + PR5 triage + D-56/D-57 |
 | PR #10: DNO 132 kV inventory (Gemini) | Open; unverified | Line-by-line verification before merge |
+| Data gathering, Elexon 2024 (D-62) | Gemini (Homelab), running | Verify, then use for M1 |
+| Data gathering, NESO/DNO/EirGrid/SEMO/ENTSO-E (D-62) | Gemini (Personal), running | Verify; owner may need to supply logins/tokens |
 | History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #5 merge: rewrite AI trailers, scan, make public, enable branch protection |
 
 Rules in force: GPT for non-code (D-51), Claude reviews GPT docs (D-54), Gemini adversarial reviews (D-53)
