@@ -33,15 +33,20 @@ committed restricted raw files, and does not waive pre-commercial clearance.
 
 | Milestone | Staged evidence and requirement ownership |
 |---|---|
-| M0 | Documentation bootstrap and later CPU CI profile, independent/adversarial review, attribution rejection and dependency policy (NFR-3/8/10/12, FR-18 contract). Baseline gate still controls code. |
+| M0 | Documentation bootstrap and later CPU CI profile, independent/adversarial review, attribution rejection and dependency policy (NFR-3/8/10, FR-18 contract); NFR-12 policy review only, no operational security/penetration exit tests. Baseline gate still controls code. |
 | M0.5 | D-31 only: per-operator/voltage coverage, provenance and missing-parameter handoff (FR-2/3/19); input rights tagged separately from commercial clearance. |
-| M1 | Dated topology/assets/rules, underlying/embedded demand, losses, calendar and shared scenario identity (FR-1–5/19/21 inputs, NFR-1/2 foundations). |
+| M1 | Dated topology/assets/rules, underlying/embedded demand, losses, calendar and shared scenario identity (FR-1–5/19/21 inputs, NFR-1/2 foundations). Provision the separate D-65 target runner and pass NFR-12.AC1/AC2 configuration/access-denial tests before the first heavy B1 job; no heavy builds, databases or benchmarks on the coding container. |
 | M2a | Long-horizon energy LP pre-pass, then two-market UC MILP with reserves and commitment proxies; rolling-state and cancellation tests (FR-6/9/11/18; NFR-2/5/7/9). |
-| M2b | Full-network fixed-commitment DC cost-based redispatch, secured boundaries/proxies, constraint screening and bounded UC repair (FR-7/8/21, NFR-4). |
+| M2b | Full-network fixed-commitment DC cost-based redispatch, secured boundaries/proxies, constraint screening, signed affine loss segments and bounded UC repair/recovery with explicit non-convergence outcomes (FR-7/8/21, NFR-4). |
 | M2c | National fixed-UC pricing LP and independent UC/network reference cases; full-network CPU benchmarks (FR-10/13, NFR-2/4/5). PyPSA agreement is not BM-outturn validation. |
 | M3 | SDK/CLI/API identity, solve workers, persisted results, retention and input archival (FR-4/11/15/16, NFR-1/6/9/10/12). |
 | M4 | Dense map/analytics, comparison, keyboard/accessibility and responsiveness evidence (FR-14/20, NFR-6). |
-| M5 | Frozen historical holdout: price/mix/BM cost AND volume/curtailment/adequacy gates and stress report; final full-inventory/throughput evidence (FR-12/17, NFR-11, FR-2, NFR-5). |
+| M5 | Frozen historical holdout: perfect-information price/mix/BM constraint-only cost AND separate up/down volume/curtailment/two-sided adequacy gates and observed stress report; as-of backtest report-only; final full-inventory/throughput evidence (FR-12/17, NFR-11, FR-2, NFR-5). |
 
 M2a–c are parts of M2, not independently shippable reduced MVPs. M5 cannot be passed
 with incompatible or unavailable BM/curtailment observations labelled as success.
+
+ASSUMPTION (Q-N-4): The 2024 I-SEM price gate remains BLOCKED pending separately
+gathered, verified Irish prices. Select/freeze a common year only after checking
+both markets' inputs; this sequencing does not waive an accuracy gate. Target-runner
+specifications are pending D-65 owner details (Q-N-7), not inferred from D-48.

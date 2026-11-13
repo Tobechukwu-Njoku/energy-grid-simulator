@@ -211,27 +211,38 @@ are **ASSUMPTION:** unless an existing decision is explicitly cited.
   accept specific equivalents, or explicitly change release scope?
   ★ Keep full all-132-kV scope; acquire/derive missing parameters with provenance and
   accept equivalents individually. Reduced networks remain diagnostic fixtures, not
-  a reduced MVP. Escalate only evidenced gaps, not speculative scope questions.
+  a reduced MVP. Escalate only evidenced gaps, not speculative scope questions. Known gap:
+  2024 I-SEM prices are not yet gathered/verified (2018–2020 availability does not
+  qualify 2024); a separate gathering task is running. The 2024 Irish price gate is
+  BLOCKED. Verify both markets' price/constraint/volume coverage before selecting
+  and freezing the common holdout year; an alternate year requires Q-N-4 disposition.
 - [ ] **Q-N-4 Validation bar (alias OI-4; refines Q-L-4/Q-A-4).** Accept or amend the
   proposed numeric holdout/coverage gates in `04-requirements.md`?
-  ★ Adopt its price, mix, BM cost/volume, curtailment and adequacy gates with a frozen
-  year/product definition before calibration; missing comparable evidence blocks a
-  validated-MVP claim. If FR-17's joint weather criterion has no observed event,
-  permit a clearly synthetic stress fixture alongside the closest observed episode.
+  ★ Adopt the table as gates for **perfect-information reconstruction**; as-of
+  forecast backtest is report-only in P1 and cannot claim forecast validation. Accept
+  or amend that scope together with skill ≥ 0.15, absolute AND relative mix errors,
+  constraint-only BM costs (NESO constraint breakdown), separate up/down volumes,
+  curtailment and two-sided adequacy/over-commitment gates. Freeze year/products and
+  commit the hashed holdout manifest before calibration; missing comparable evidence
+  (including 2024 Irish prices) blocks a validated-MVP claim. FR-17 screens three
+  consecutive days with 72-hour mean wind CF < 10% and each daily mean demand above
+  the year's 75th percentile of daily means. Confirm candidate events from data; if
+  none qualifies, accept/amend the threshold or permit a labelled synthetic stress
+  fixture alongside the closest observed episode, never claim it is historical.
 
 ### Proposed engineering defaults (not additional owner questions)
 
 | ID / legacy alias | Status | Recommended default and alternatives |
 |---|---|---|
 | Q-N-1 / OI-1 | proposed default; D-55 fixes physics | DC plus secured boundaries and published commitment/stability proxies, reserves, directional interconnector losses and long-horizon storage targets; pure N-0 diagnostic only. Full AC remains P2. |
-| Q-N-2 / OI-2 | core settled D-59; detail proposed | Cost-based redispatch, never historic bid replay; GB Market Index and I-SEM DAM reference products if available (D-57); fixed historical external flows in reconstruction; explicit proxy/deferred market-rule inventory. Alternative boundary policies must be scenario-labelled. |
-| Q-N-5 / OI-5 | proposed default | 48 h look-ahead / 24 h advance, 0.1% UC relative gap or 1 native-objective-currency absolute gap, annual energy pre-pass; NFR-5 CPU budgets. Tighten after measurement, not an optimisation spike. Direct sparse production builder; no competing production-builder promotion contest. |
-| Q-N-6 / OI-6 | proposed default; relates Q-D-5 | Manifest-level numerical reproducibility with NFR-2 tolerances, not identical MILP schedules/bitwise cross-platform results. Exact reference solves use matched tolerances and relative gap ≤1e-6. |
-| Q-N-7 / OI-7 | information only; non-blocking | HiGHS CPU on D-48 host; inventory actual GPU and optional solver licences before enabling those adapters. No P1 cuOpt implementation or assumed GPU speedup. |
+| Q-N-2 / OI-2 | core settled D-59; detail proposed | Cost-based redispatch, never historic bid replay; GB Market Index and I-SEM DAM reference products if available (D-57); fixed historical external flows in reconstruction; explicit proxy/deferred market-rule inventory. Plant cost estimates include dated renewable lost RO/CfD subsidy and storage opportunity cost; compare with NESO constraint-only outturn and reconcile commercial transfers. Alternative boundary policies must be scenario-labelled. |
+| Q-N-5 / OI-5 | proposed default | 48 h look-ahead / 24 h advance, 0.1% UC relative gap or 1 native-objective-currency absolute gap, annual energy pre-pass; NFR-5 CPU budgets. Bound UC repair at three re-solves, signed loss-segment trials at two extra LPs and recovery at one network-aware MILP (300 s), within a 900 s total window budget; report non-convergence and fail/partial if fallback is invalid. Tighten after measurement on the D-65 target, not an optimisation spike. Direct sparse production builder; no competing production-builder promotion contest. |
+| Q-N-6 / OI-6 | proposed default; relates Q-D-5 | Manifest-level numerical reproducibility with NFR-2 tolerances, not identical MILP schedules/bitwise cross-platform results. Exact reference solves use matched tolerances and relative gap ≤1e-6; rerun fixtures use deterministic work/node limits or a completed gap certificate, not wall-clock-limited incumbents. |
+| Q-N-7 / OI-7 | target details pending (D-65); GPU inventory non-blocking for CPU P1 | HiGHS CPU, self-hosted runner, heavy builds, databases and benchmarks run on the separate D-65 target system, NEVER the coding container. Owner supplies target hardware/OS/access before runner provisioning/qualification. ASSUMPTION: D-48's 5900X/128 GB is provisional sizing only, not confirmed target identity. Inventory actual GPU/licences before enabling optional adapters; no P1 cuOpt implementation or assumed speedup. |
 | Q-N-8 / OI-8 | proposed default | Review all dependency/native/service terms; start with MIT, Apache-2.0, BSD-2/3-Clause, ISC, Zlib, Unicode-3.0; MPL-2.0 only after file-level obligation review. Isolate offline validators; block unreviewed exceptions. Retain Redis/PostgreSQL 18; no unapproved Valkey or TimescaleDB adoption. D-56 dataset research tags are separate from software licence approval. |
 | Q-N-9 / OI-9 | proposed default | Archive legally retainable pinned inputs as well as pinned results; manifests/summaries indefinite and unpinned full results 90 days (D-36). If rights prohibit retention, report rerun limitations and retain manifests/scripts only. |
 | Q-N-10 / OI-10 | proposed default | Submit/monitor/cancel/inspect, sequential CLI batches and limited two-run comparison; NFR-6 latency/viewports. In-place solver editing and distributed sweeps are later features. |
-| Q-N-11 / OI-11 | core settled D-54/D-58/D-61; detail proposed | ADR 0001 bootstrap profiles and shared-identity review evidence; proposed >5% wall / >10% RSS significant-regression gate with five paired repetitions. Public required checks after D-58 scans/merges; do not change bot summaries. |
+| Q-N-11 / OI-11 | core settled D-54/D-58/D-61; detail proposed | ADR 0001 bootstrap profiles and shared-identity review evidence; proposed >5% wall / >10% RSS significant-regression gate with five paired repetitions against BOTH main and the frozen last milestone/release baseline, on the D-65 target. M0 approves security policy; M1 executes runner isolation/access-denial tests before heavy B1 activation. Public required checks after D-58 scans/merges; do not change bot summaries. |
 | Q-N-12 / OI-12 | proposed default; relates Q-L-2/Q-L-3 | Localhost/private VPN, no public P1 endpoints. Resolve auth/sensitive-data questions before external exposure; no P4 tenancy work pulled forward. |
 
 D-60 resolves the 132 kV boundary; D-58 resolves the public-repository direction;

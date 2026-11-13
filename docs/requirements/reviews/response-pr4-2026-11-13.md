@@ -13,7 +13,7 @@ _Date: 2026-11-13. Proposed baseline/ADRs remain unaccepted; no application code
 - Checked out PR #4 in its existing clean worktree; merged main before revisions
   and refreshed it again to retain the coordinator's latest progress text. Only
   upstream merges change STATUS or the decisions log; this revision authors neither.
-- D-51–D-62 govern the revision. In particular D-55 fixes proxy physics, D-56 permits
+- D-51–D-65 govern the revision (D-65 added in round 3). In particular D-55 fixes proxy physics, D-56 permits
   tagged research-only inputs, D-57 limits price-data spending, D-58 chooses future
   publicity, D-59 fixes cost-based BM, D-60 requires every GB 132 kV area, and D-61
   keeps existing bot summaries. D-62 data gathering still needs independent verification.
@@ -149,7 +149,10 @@ Unresolved issues handed to the coordinator:
 1. Obtain owner Q-N-4 disposition and explicitly adopt/amend engineering assumptions;
    resolve conditional Q-N-3 only from verified spike/full-DNO/Irish parameter gaps.
 2. Confirm a compatible free holdout dataset for BOTH BM costs/volumes, curtailment
-   and adequacy; missing evidence blocks the corresponding validated-MVP claim.
+   and adequacy; missing evidence blocks the corresponding validated-MVP claim. The
+   2024 I-SEM price gate is BLOCKED until separately gathered Irish prices are
+   verified; current 2018–2020 prices do not fill it. Check both markets before
+   freezing the holdout year (Q-N-3/Q-N-4).
 3. ADR 0002 remains dependent on the data spike; ADR 0004/storage is not selected.
    No requirements-baseline or implementation permission is implied by this revision.
 4. CI/protection/runner provisioning and D-58 history/secret/restricted-data scans are
@@ -160,3 +163,85 @@ Unresolved issues handed to the coordinator:
    historic reviews and this response are NOT a current-head approval or merge waiver.
 7. Update coordinator-owned STATUS and decisions log after dispositions/acceptance.
    No review-gate or publication-setting changes are made by this design revision.
+
+## Round 3 — rev-2 reviews and coordinator triage (2026-11-13)
+
+Inputs: `claude-review-pr4-rev2-2026-11-13.md` (M-1–M-6, S-1–S-12) and
+`gemini-adversarial-pr4-rev2-2026-11-13.md` (ADV4-R2-01–12), both reviewing
+`1698c4be`. Checked out PR #4 and merged current main before making these changes.
+The coordinator's triage authorises the fixes below; proposed thresholds, budgets
+and formulation choices remain ASSUMPTION under the existing Q-N register. No owner
+answer, requirements baseline, workflow deployment or performance result is invented.
+Only the upstream merge brings changes to STATUS/decisions; neither file is authored
+by this revision. The PR body and repository settings are unchanged.
+
+### Must-fix dispositions
+
+| Finding / triage | Disposition and concrete change |
+|---|---|
+| M-1 / ADV4-R2-01: subject and human false positives | Accepted. The hook protects the first nonblank/non-comment subject, aborting with a clear diagnostic if it matches; the complete message stays unchanged. Anchored whole-line footer rules preserve technical cursor prose, human Claude/Claudette/Grokowski names, human Google/GitHub-noreply addresses and robot-icon descriptions. Trailer rules use complete known identities or known service/bot emails, not substrings or bare google.com. The earlier claim that the rev-2 hook preserved human trailers was false and is corrected above. |
+| M-2 / ADV4-R2-01: trailer/footer gaps | Accepted. Every `*-by:` key and pairing `*-with:` key is supported, including Assisted-, Generated-, Co-developed-, Authored-, Prompted-, Signed-off- and Helped-by. Creation verbs include Made, Created, Built, Drafted and Crafted; model names include GPT6, Claude3, Claude_Code and the wider families. Quoted trailers, Unicode hyphens, NBSP and markdown-link footers have fixtures. |
+| M-3: malformed input/pattern robustness | Accepted. Strict UTF-8 decode with FB_CROAK precedes output; invalid messages/patterns fail without rewriting. Blank/comment rules are ignored, CRLF rules work, and invalid/empty-string-matching patterns or an empty rule set fail safely. Retained bytes and blanks are preserved, as is the scissors suffix. Committed fixtures and `python3 .githooks/tests/run.py` replace the earlier ad hoc smoke-test evidence. |
+| M-4 / ADV4-R2-03 / triage 2: D-65 | Accepted. NFR-4/5/6/12, ADRs 0001/0003 and Q-N-7 now place simulator execution, self-hosted heavy CI, databases and benchmarks on the separate D-65 target, never the coding container. D-48 hardware is explicitly a provisional sizing assumption, not confirmed target identity. Target hardware/OS/access is a coordinator dependency below. |
+| ADV4-R2-02 / triage 3: REMA/MHHS | Accepted. FR-1.AC2 retains date-effective data-model capability. AC5 tests historical Brexit and commissioned links only; MHHS settlement is deferred to P2 and REMA alternative pricing to P3 under D-44. No hypothetical REMA configuration or retail settlement fixture gates P1. |
+| ADV4-R2-04 / triage 4: M0 security deadlock | Accepted. M0 reviews NFR-12 policy only. M1 provisions the D-65 target runner and executes configuration/access-denial tests before heavy B1 activation; M3 retains service/exposure evidence. Tests use canary credentials and denied socket mounts, not live secrets or a host-escape exploit. Both milestone tables and ADR 0001 agree. |
+| M-5 / triage 5: historic Dunkelflaute | Accepted. FR-17.AC1 uses three complete UTC days, 72-hour mean wind CF <10% and each daily mean demand above the year's 75th percentile of daily means. Daily cycles can qualify. Candidate screening, coverage and selection evidence precede replay; no candidate is claimed found here. No historical match requires explicit Q-N-4 disposition, with synthetic cases labelled. |
+| M-6 / triage 6: gate scope | Accepted. FR-12.AC4, the numeric table preamble, Q-N-4 and M5 explicitly gate perfect-information reconstruction. All P1 as-of metrics are report-only and confer no forecast-validation claim. The owner must adopt/amend this distinction with Q-N-4. |
+| ADV4-R2-05 / triage 7: weak/gameable thresholds | Accepted. Skill ≥0.15 replaces >0. Technology shares must meet both 5 pp absolute and 20% annual energy-relative error, with a separate zero-observed-energy check. Adequacy also limits committed available-capacity error/positive capacity-hours bias, reports reserve headroom and requires controlled de-rating shortage-onset/oracle checks, so zero shortage achieved by excess commitment cannot pass alone. Missing commitment truth blocks that gate. |
+| ADV4-R2-06 / triage 7: BM comparator | Accepted. FR-7/12 and the cost/volume gates compare constraint-only actions with NESO's constraint-cost breakdown, never total BM outturn. Up/offer and down/bid volumes and costs are scored separately; commercial transfer versus estimated economic cost is reconciled. Missing directional/compatible observations remain blocked. Renewable lost RO/CfD subsidy and storage opportunity costs are explicit; no bid replay is introduced. |
+| ADV4-R2-07 / triage 8: LP counterflow/loss sink | Accepted. ADR 0003 uses one signed flow per link/interval, frozen signed breakpoint bounds and an affine loss EQUALITY from the stage-1 selected segment. Neither opposing directional columns nor a loose loss epigraph exists in stage 2; negative prices cannot manufacture counterflow/losses. Stage 2 stays an LP with conditional duals. At most two extra segment/zero-flow LP trials and bounded UC reselection disclose the direction/segment restriction; compare its bias with a small exact MILP oracle after baseline. |
+| ADV4-R2-08 / triage 8: repair non-convergence | Accepted for bounded behaviour/fallback; rejected any claim of guaranteed convergence or permission to accept security slack. ADR 0003 allows initial solve + three UC repair re-solves, detects repeated fingerprints and records cuts/violations. Failure invokes one labelled network-aware commitment recovery MILP (300 s), then a checked fixed-commitment LP, within 900 s total window budget. Unsupported/invalid recovery preserves the last committed boundary and stops failed/partial. Diagnostic elastic slacks never become accepted physical results. |
+
+### Remaining Claude should-fix dispositions
+
+| Finding | Disposition and reason / location |
+|---|---|
+| S-1: time-varying boundary limits | Accepted. FR-3.AC2, FR-21.AC1 and ADR 0003 require NESO day-ahead boundary limits where published, with interval/publication vintage, coverage and labelled ETYS fallback. This is an ingest requirement, not a claim the dataset has already been acquired. |
+| S-2: opportunity costs | Accepted. FR-7.AC2, Q-N-2 and ADR 0003 include dated lost RO/CfD subsidy (including signed CfD effects) and storage energy/water values, with no double counting. |
+| S-3: wrong up/down split | Accepted. FR-12 and the table score up/offer and down/bid cost/volume independently, in addition to gross reporting; missing compatible breakdown is a data block. |
+| S-4: small-share relative errors | Accepted. Both absolute-share and relative-MWh gates apply per technology; observed zero energy has an explicit absolute-energy test. |
+| S-5: cumulative benchmark drift | Accepted. NFR-4.AC3, ADR 0001 and Q-N-11 compare against both main and the frozen last milestone/release with the same >5% wall/>10% RSS thresholds and uncertainty policy; hardware changes need reviewed bridge evidence, not a self-reset. |
+| S-6: Irish 2024 gap/holdout selection | Accepted. Numeric-table data block, Q-N-3/Q-N-4, roadmap and this handoff mark 2024 I-SEM prices blocked pending separately gathered, independently verified data. Both markets' coverage controls the common holdout-year selection before calibration. |
+| S-7: disconnections/materiality | Accepted exclusion of sourced frequency/security disconnections, including LFDD, from adequacy-shortage truth. Retained the NFR-2 false-shortage tolerance rather than adding an unevidenced materiality waiver: a new MW/MWh allowance could hide a real modelling shortage. The owner may amend it in Q-N-4 once the observed-series resolution is known. Two-sided commitment and controlled de-rating checks supplement it. |
+| S-8: GitHub squash commit gap | Accepted. Verified repository API setting COMMIT_MESSAGES on 2026-11-13. ADR 0001 pins it, checks possible title sources, forbids PR_BODY, requires an immediate pre-merge settings/message check and a post-merge main scan, with publication/further merges blocked on a violation. No setting or workflow is changed by this design revision; D-61 remains confined to PR bot text. |
+| S-9: hook activation | Accepted. ADR 0001 and this handoff explicitly require `git config core.hooksPath .githooks` in each clone, followed by the conformance runner and `git config --get core.hooksPath` verification. Shared repository config is not silently changed; revision commits invoke the versioned hook explicitly with `git -c core.hooksPath=.githooks commit`. Coordinator owns rollout to other worktrees/clones. |
+| S-10: model/tools/phrases | Accepted. Patterns/fixtures cover Devin, aider, Windsurf/Codeium, Amazon Q, Jules, DeepSeek, Mistral, Llama, Qwen, Sonnet/Opus/Haiku, o1/o3, `with:`, `with the help of`, and generic whole-line AI/LLM banners. Matching complete identities avoids treating human surnames as a tool. |
+| S-11: freeze-before-tuning evidence | Accepted. FR-12.AC1 requires a committed hashed manifest before the first calibration artifact, ancestor/hash recording by the entry point and future CI ancestry/identity validation. A changed manifest invalidates calibration evidence and needs a new split. |
+| S-12: deterministic rerun limits | Accepted. NFR-1.AC2 and Q-N-6 require deterministic work/node limits with pinned settings, or completion to the required gap certificate. Wall-clock-limited incumbents do not establish fixture reproducibility. |
+
+### Additional adversarial findings
+
+| Finding | Disposition and reason |
+|---|---|
+| ADV4-R2-09: defer all stability proxies | Rejected. D-55 explicitly brings known published voltage/stability restrictions into P1 as proxies. FR-21 requires sourced linear/commitment limits, not nonlinear dynamics or a RoCoF simulation. For positive demand-plus-export, the SNSP ratio limit can be multiplied through to a linear inequality; that is not a dynamic-stability solver. Full AC/dynamics stay P2/P4. |
+| ADV4-R2-10: defer embedded generation | Rejected. Weather-year replay (D-18/D-35) cannot treat historic net GSP demand as unchanged when weather-driven embedded output changes. FR-3 requires a labelled transmission-interface decomposition/reconciliation, not distribution feeder/household DER optimisation or detailed distribution asset registries. P2 distribution scope remains deferred. |
+| ADV4-R2-11: remove mutation proposal | Rejected as a claimed owner-decision contradiction. ADR 0001 already labels mutation policy ASSUMPTION under Q-N-11, requires explicit adoption and restricts PR scope to changed numerical logic; D-28 is a minimum quality bar, not a ban on proposing stronger oracle checks. Runtime is unmeasured and cannot justify deleting the proposal; execution belongs on D-65 and owner baseline adoption can amend it. |
+| ADV4-R2-12: pricing after network repair | Partially accepted for disclosure. ADR 0003 now exports original-national and final-commitment conditional prices plus repair-induced delta. Rejected the assertion that an out-of-merit unit must always set price: a unit at its minimum can have a binding-bound dual instead. Neither fixed-UC proxy is claimed to reproduce auction formation; repair-induced national-price bias remains an explicit limitation subject to the same reconstruction gates. |
+
+### Round 3 verification and coordinator handoff
+
+- The committed runner passes **121 message fixtures**, including both reviews' concrete
+  examples, leading-blank/comment subjects, versioned identities, mixed human/model
+  trailers, Unicode and invalid UTF-8. Additional checks cover blank/comment/CRLF and
+  malformed/empty-string pattern rules, scratch Git commit/merge paths, ISO-8859-1
+  rejection, paths with spaces and temporary-file cleanup.
+- Lightweight structural checks validate stable FR/NFR/AC IDs, decision citations,
+  Q-N aliases, milestone allocation, local Markdown links and `git diff --check`.
+  STATUS and the decisions log have no diff from merged main. No heavy build,
+  database, optimiser, reference solve or benchmark ran in the coding container.
+- Confirm D-65 target-system hardware, OS, access, runner labels and isolation before
+  M1 activation/qualification; D-48 sizing is provisional. Provision the runner and
+  execute NFR-12's access-denial suite before any heavy job. Deploy squash-setting
+  verification and main post-merge scanning with the future CI policy.
+- Activate/verify the versioned hook in each clone as described in S-9. D-58 history
+  cleanup, secret/restricted-data scans and later protection/visibility remain the
+  coordinator's tasks; no historical commits or PR bot summaries are rewritten here.
+- Obtain Q-N-4 owner disposition, including reconstruction versus as-of scope, revised
+  thresholds, daily stress definition and explicit adoption/amendment of engineering
+  defaults in Q-N-1/2/5/6/7/8/9/10/11/12. Resolve Q-N-3 only from verified gaps.
+  Finish and independently verify the separate 2024 Irish-price gathering task before
+  unblocking its gate or freezing a compatible common holdout.
+- ADRs 0001/0003 remain Proposed; segment approximation bias, fallback success,
+  numerical/native conformance, full-network performance and actual accuracy still
+  need post-baseline evidence. Revised-head independent/adversarial approval is
+  pending; historic-head reviews and this disposition report are not merge approval.

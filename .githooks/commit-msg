@@ -33,8 +33,12 @@ for my $pattern (split /\n/, read_utf8($pattern_path)) {
 }
 die "no attribution patterns loaded\n" unless @patterns;
 my @lines = read_utf8($message_path) =~ /[^\n]*\n|[^\n]+$/g;
-if (@lines && grep { $lines[0] =~ $_ } @patterns) {
-    die "commit subject matches attribution policy; edit the subject and retry (message left unchanged)\n";
+for my $subject (@lines) {
+    next if $subject =~ /^\s*$/ || $subject =~ /^#/;
+    if (grep { $subject =~ $_ } @patterns) {
+        die "commit subject matches attribution policy; edit the subject and retry (message left unchanged)\n";
+    }
+    last;
 }
 my @retained;
 my $scissors = 0;

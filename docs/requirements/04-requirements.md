@@ -31,13 +31,13 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 
 ### FR-1: Geography, assets and interconnector boundaries
 - Statement: The system shall represent GB and the all-island Ireland system separately, including interconnections between them and the external boundaries named in D-11.
-- Rationale / source: D-11, D-18, D-26, D-32, D-38.
+- Rationale / source: D-6, D-11, D-12, D-18, D-26, D-32, D-38, D-44.
 - Acceptance criteria:
   - FR-1.AC1: A versioned fixture identifies every bus, generator, demand allocation and interconnector by stable ID and market, validates endpoints/units and contains no unexplained disconnected demand.
-  - FR-1.AC2: Interconnector assets and trading regimes have effective-from/to dates. Backtests include only commissioned assets and the capacity-allocation/coupling regime in force on each date; future links or later rule changes cannot leak into earlier years.
+  - FR-1.AC2: The P1 data model allows effective-from/to dates for assets and operating/trading rules. Backtests use only commissioned assets and the Brexit capacity-allocation/coupling regime in force on each date; future links or later rules cannot leak into earlier years. Date-effective model capability does not require implementing MHHS retail settlement or REMA alternative pricing in P1 (D-44).
   - FR-1.AC3: Each directional interconnector records sending MW, receiving MW and non-negative losses. Receiving MW equals sending MW minus losses; both endpoint balances include the same losses exactly once (NFR-2). A two-market fixture reconciles energy and daily GBP/EUR conversion without double counting.
   - FR-1.AC4: ASSUMPTION: External boundaries use historical flows for reconstruction; scenario flow/price policies must be declared. A daily UTC-effective FX series is exogenous, versioned and valued consistently in a common objective numeraire; no free FX trading variable is allowed (Q-N-1, Q-N-2).
-  - FR-1.AC5: Dated fixture pairs cover Brexit coupling/decoupling, MHHS settlement changes, REMA national-versus-zonal rule status and new-link commissioning (including Viking and Greenlink). Each transition uses sourced effective dates; applying a later asset/rule snapshot to an earlier holdout fails validation. P3 zonal scenarios are never presented as historic P1 rules.
+  - FR-1.AC5: Dated fixture pairs cover Brexit coupling/decoupling and new-link commissioning (including Viking and Greenlink), using sourced effective dates. Applying a later snapshot to an earlier holdout fails validation. MHHS settlement implementation is deferred to P2 and REMA alternative-pricing configurations to P3; neither is a P1 dated-config acceptance fixture.
 - Priority: MUST.
 
 ### FR-2: Network completeness and fidelity declaration
@@ -55,7 +55,7 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Rationale / source: D-14, D-18, D-23, D-26, D-30, D-35, D-44, D-55, D-56, D-57.
 - Acceptance criteria:
   - FR-3.AC1: Every series has units, timezone, source/publication timestamp where available, checksum, licence tag and missing-data mask. Non-leap/leap UTC fixtures contain exactly 17,520/17,568 half-hour intervals with explicit GB/Irish local settlement mappings through both daylight-saving changes.
-  - FR-3.AC2: Inputs explicitly include REMIT unavailability/outage notices, fuel/carbon costs, constraint/curtailment outturn and published operating restrictions, with effective dates and as-of publication/revision timestamps. Unavailable as-of vintages prevent forecast-validation claims.
+  - FR-3.AC2: Inputs explicitly include REMIT unavailability/outage notices, fuel/carbon costs, constraint/curtailment outturn and published operating restrictions, with effective dates and as-of publication/revision timestamps. Backtests ingest time-varying NESO day-ahead boundary constraint limits where available, preserving delivery interval and publication vintage; annual ETYS capabilities are a labelled fallback with scored coverage, never silently substituted. Missing as-of vintages prevent forecast-validation claims.
   - FR-3.AC3: GSP demand identifies underlying demand and distribution-connected wind/solar, represented as weather-driven negative demand at the transmission interface. Fixtures reconcile this decomposition with net outturn and reject double subtraction; uncertain embedded estimates are labelled.
   - FR-3.AC4: Missing/imputed intervals and resampling are reported. Undeclared interpolation and silent future-data use fail validation; weather-year replay varies embedded as well as transmission-connected renewable output.
 - Priority: MUST.
@@ -91,7 +91,7 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Rationale / source: D-15, D-18, D-26, D-38, D-44, D-59.
 - Acceptance criteria:
   - FR-7.AC1: A two-market congested fixture exports national pre-redispatch schedules and final network-feasible schedules with reconciled actions, costs, curtailment and unserved energy, separately labelled GB BM proxy and Ireland balancing proxy.
-  - FR-7.AC2: P1 redispatch is COST-BASED using estimated plant costs to relieve network/proxy limits, not historic bid/offer replay (D-59). Compare its costs AND volumes with definition-matched historic outturn under FR-12.
+  - FR-7.AC2: P1 redispatch is COST-BASED using estimated plant costs to relieve network/proxy limits, not historic bid/offer replay (D-59). Costs include fuel/carbon, dated renewable RO/CfD lost-subsidy opportunity costs (including signed CfD effects) and storage water/energy opportunity values from FR-9, with no double counting. Compare constraint-only costs AND up/offer and down/bid volumes separately with definition-matched historic outturn under FR-12; report settlement transfers separately from estimated economic costs.
   - FR-7.AC3: The dated rule inventory distinguishes GB national scheduling, I-SEM ex-ante DAM/IDM, balancing and imbalance pricing. ASSUMPTION: P1 models a DAM-like scheduling/pricing proxy and cost-based balancing; IDM auction replay and full imbalance settlement are deferred toward D-15 end-state fidelity, not advertised as implemented.
   - FR-7.AC4: GB↔SEM interconnector schedules use the date-effective explicit capacity/intraday trading regime where applicable, not an assumed permanently implicitly coupled auction. Nodal redispatch duals are diagnostic and never relabelled national traded prices.
 - Priority: MUST.
@@ -119,7 +119,7 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Rationale / source: D-15, D-26, D-38, D-41, D-57, D-59.
 - Acceptance criteria:
   - FR-10.AC1: Every series names product, delivery interval, currency, derivation, rule version and validity. ASSUMPTION: GB Market Index and I-SEM DAM are reference products subject to D-57 availability; the former is NOT an auction day-ahead price. No paid feed is assumed.
-  - FR-10.AC2: National prices come from a fixed-UC pricing LP without redispatch network rents. Uniquely priced merit-order, shortage and negative-cost fixtures match analytic marginal prices within 0.01 native currency/MWh. Degenerate prices are flagged with the selected dual convention, not asserted unique.
+  - FR-10.AC2: National prices come from a fixed-UC pricing LP without redispatch network rents. The primary series conditions on final repaired/recovered commitment and signed loss segments (ADR 0003); also export original-national commitment prices and repair-induced deltas, flagging must-run bias. Uniquely priced merit-order, shortage and negative-cost fixtures match analytic marginal prices within 0.01 native currency/MWh. Degenerate prices are flagged with the selected dual convention, not asserted unique.
   - FR-10.AC3: Price-cap/floor and scarcity-penalty policies are explicit. Start/minimum-output fixtures report per-unit revenue versus variable/start/no-load costs and any unrecovered cost; no claim that fixed-LP prices recover non-convex costs or implement uplift is allowed.
   - FR-10.AC4: Daily FX fixtures reconcile native and converted cashflows including midnight transitions and signed prices. A changed exogenous FX input can change dispatch and is disclosed; the test forbids created energy, conversion double counting and an independent currency-arbitrage decision, not genuine economic price differences.
 - Priority: MUST.
@@ -137,10 +137,10 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Statement: The system shall publish a reproducible, held-out historical validation report for both markets' prices and generation mix.
 - Rationale / source: D-18, D-23, D-26, D-33, D-44, D-55, D-57, D-59; roadmap M5 and risk R-8.
 - Acceptance criteria:
-  - FR-12.AC1: Freeze a full historical holdout year, calibration/test split and date-effective asset/rule/input vintages before tuning. Separate each market/product/currency and publish matched coverage and all exclusions; thresholds are the ASSUMPTION table below (Q-N-4).
-  - FR-12.AC2: Report price MAE/RMSE/bias, negative-price and tail errors, skill against previous-week persistence, technology-share/energy errors, constraint costs, redispatch volumes, curtailment and unserved energy. Use free, honestly labelled sources under D-57.
-  - FR-12.AC3: For BM costs/volumes and curtailment, provide a source-definition reconciliation and scored comparable coverage. Missing or incompatible observations are UNVALIDATED, not a pass or permission to drop the metric; no validated-MVP claim until a compatible source or explicit owner scope disposition exists.
-  - FR-12.AC4: Publish perfect-information reconstruction separately from an as-of forecast backtest. Matching PyPSA validates implementation only, not historic BM or market accuracy.
+  - FR-12.AC1: Freeze a full historical holdout year, calibration/test split, products, denominators and date-effective asset/rule/input vintages before tuning. Commit a checksummed holdout manifest before the first calibration run; the calibration entry point records that ancestor commit/hash, and future CI verifies ancestry and artifact identities. Any manifest change invalidates calibration evidence and requires a new frozen split. Separate each market/product/currency, coverage and exclusions; thresholds are the ASSUMPTION table below (Q-N-4).
+  - FR-12.AC2: Report price MAE/RMSE/bias, negative-price and tail errors, skill against previous-week persistence, technology-share/energy errors, BM constraint-only costs and up/offer versus down/bid volumes, curtailment, unserved energy and committed-capacity/headroom errors. Use free, honestly labelled sources under D-57.
+  - FR-12.AC3: For BM constraint costs/volumes and curtailment, reconcile source definitions and scored comparable coverage. GB cost comparisons use NESO's constraint-cost breakdown (for example the constraint component of its balancing-services summaries), never total BM outturn; separately reconcile up/offer and down/bid actions, energy balancing, subsidy transfers and strategic markups. Missing/incompatible observations are UNVALIDATED, not a pass or permission to drop the metric; no validated-MVP claim until compatible evidence or an explicit owner scope disposition exists.
+  - FR-12.AC4: Publish perfect-information reconstruction separately from an as-of forecast backtest. Every gate in the numeric table applies to the perfect-information reconstruction; P1 as-of metrics are report-only and do not carry a forecast-validation claim, pending owner Q-N-4 adoption/amendment. As-of persistence must use only prices published by the decision time. Matching PyPSA validates implementation only, not historic BM or market accuracy.
 - Priority: MUST.
 
 ### FR-13: Identical-input offline reference validation
@@ -188,7 +188,7 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Statement: The system shall support reproducible replay of historical weather extremes using the canonical scenario format.
 - Rationale / source: D-14, D-18, D-19, D-35, D-44.
 - Acceptance criteria:
-  - FR-17.AC1: A sourced weather year identifies at least 72 consecutive hours of GB wind capacity factor below 10% with interval demand above that year’s 90th percentile. ASSUMPTION: if no historical joint event meets this definition, publish a synthetic 72-hour stress case alongside the observed low-wind episode, never label it observed (Q-N-4).
+  - FR-17.AC1: Identify historic candidate episodes from sourced weather years using at least three consecutive complete UTC days: 72-hour mean GB wind capacity factor below 10%, and each day's mean demand above that year's 75th percentile of daily mean demand. Publish candidates, data coverage, capacity/demand definitions and selection before running the stress replay; overnight demand troughs do not disqualify an event. ASSUMPTION: these daily/rolling thresholds require Q-N-4 adoption. No qualifying event is asserted before screening the data; if none exists, report that fact and seek Q-N-4 disposition for a labelled synthetic case alongside the closest observed episode, never present synthetic weather as observed.
   - FR-17.AC2: The interval can run independently with documented initial-state differences. Weather/availability changes, including embedded generation, appear in the diff and manifest.
   - FR-17.AC3: Report deterministic unserved MWh/duration, not probabilistic LOLE/EUE from a single year.
 - Priority: MUST.
@@ -226,10 +226,10 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Statement: The system shall apply dated published voltage/security/stability constraints as explicit P1 proxies alongside DC network equations, without claiming full AC or dynamic simulation.
 - Rationale / source: D-26, D-40, D-44, D-55, D-59.
 - Acceptance criteria:
-  - FR-21.AC1: Each boundary/flowgate, regional minimum-unit, inertia-floor and Irish SNSP/minimum-conventional-unit proxy records source document, effective date range, units, applicability and inference/missing-data status. Unsupported or missing published constraints are declared, never silently disabled.
+  - FR-21.AC1: Each boundary/flowgate, regional minimum-unit, inertia-floor and Irish SNSP/minimum-conventional-unit proxy records source document, effective date range, units, applicability and inference/missing-data status. Boundary MW limits are time-varying from NESO day-ahead constraint limits where published, with interval-level vintage and fallback/missing status; ETYS annual capabilities alone do not establish outage-season accuracy. Unsupported/missing constraints remain declared gaps.
   - FR-21.AC2: A secured-boundary fixture binds before a thermal nameplate limit; an Irish SNSP fixture forces conventional commitment and renewable curtailment. An inertia/minimum-unit fixture changes UC and preserves reserves and loss accounting.
   - FR-21.AC3: Export active/binding proxies, slack, redispatch cost contributions and duals where meaningful. Commitment-MILP rows have no invented shadow price; proxy sensitivity is from a labelled fixed-commitment LP or finite-difference re-solve.
-  - FR-21.AC4: Known violated rows after constraint screening prevent acceptance. A proxy-induced infeasible fixed commitment triggers a documented bounded UC re-solve with added constraints or a failed/partial outcome, not relaxed security limits.
+  - FR-21.AC4: Known violated rows after screening prevent acceptance. Infeasible fixed commitment triggers ADR 0003's bounded UC/redispatch repair and one network-aware commitment recovery attempt; report non-convergence and fallback identity. If recovery cannot produce a fully checked feasible schedule, preserve the last committed boundary and mark failed/partial, never relax security limits or fabricate a complete run.
 - Priority: MUST.
 
 ## Non-functional requirements
@@ -239,7 +239,7 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Rationale / source: D-19, D-20, D-28, D-33, D-35.
 - Acceptance criteria:
   - NFR-1.AC1: The run manifest includes canonical scenario hash, input and model hashes, engine commit, dependency locks, solver/build versions, parameters, seeds, thread counts, platform, pricing method and timestamp policy.
-  - NFR-1.AC2: Two pinned deterministic CPU reruns on the same environment agree within NFR-2 and preserve the same input identity; differing solver/platform settings produce distinct execution identities.
+  - NFR-1.AC2: Two pinned deterministic CPU reruns on the same environment agree within NFR-2 and preserve the same input identity. Reproducibility fixtures use deterministic work/node limits with pinned threads/seed or solve to the required gap certificate; wall-clock-limited incumbents alone cannot establish agreement. Different solver/platform/limit settings produce distinct execution identities.
   - NFR-1.AC3: Bitwise cross-platform/MILP reproducibility is not asserted without Q-N-6 approval.
 - Priority: MUST.
 
@@ -268,18 +268,18 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 
 ### NFR-4: No benchmark regression
 - Statement: A PR shall not merge with a demonstrated benchmark regression relative to the protected-main baseline on matched hardware and workloads.
-- Rationale / source: D-2, D-28, D-43, D-48.
+- Rationale / source: D-2, D-28, D-43, D-48, D-65.
 - Acceptance criteria:
   - NFR-4.AC1: Benchmarks report build/load/solve/export and wall times, peak process-tree RSS, model dimensions/nonzeros and gaps. Paired main/candidate runs use identical hardware, inputs and solver settings.
   - NFR-4.AC2: ASSUMPTION: At least five serial paired repetitions; block if median wall time regresses by more than 5% or RSS by more than 10% AND the bootstrap 95% confidence interval of that ratio excludes 1.0. Record smaller changes as trends. A threshold-exceeding but inconclusive result requires reruns or remains blocking (Q-N-11).
-  - NFR-4.AC3: Reviewed baseline seeds/resets use separate changes; the measured PR cannot rebaseline itself. This proposed noise/effect-size policy needs explicit baseline adoption under D-28, not an assertion that regressions are authorised.
+  - NFR-4.AC3: Apply AC2 to BOTH current protected main and the frozen last milestone/release baseline on matched hardware/workloads, so repeated small regressions cannot evade the same cumulative thresholds. Reviewed seeds/resets are separate changes; the measured PR cannot reset either baseline. A hardware/workload change requires reviewed bridge measurements. This proposed noise/effect-size policy needs explicit adoption under D-28.
 - Priority: MUST.
 
-### NFR-5: CPU performance on the actual owner workstation
-- Statement: The default CPU path shall be measured against a fixed P1 workload on the D-48 Ryzen 9 5900X, 12 cores/24 threads, 128 GB RAM Linux workstation.
-- Rationale / source: D-2, D-18, D-21, D-26, D-29, D-34, D-48.
+### NFR-5: CPU performance on the separate target system
+- Statement: The default CPU path shall be measured against a fixed P1 workload on the separate D-65 target system. Heavy builds, databases, benchmarks and simulator execution never run on the coding container. ASSUMPTION (Q-N-7): D-48's Ryzen 9 5900X, 12 cores/24 threads, 128 GB RAM is only a provisional sizing reference until the owner supplies target-system details; it does not identify the target host.
+- Rationale / source: D-2, D-18, D-21, D-26, D-29, D-34, D-48, D-65.
 - Acceptance criteria:
-  - NFR-5.AC1: Proposed Q-N-5 targets: with one active simulation, 30-minute resolution, 48-hour look-ahead/24-hour advance and UC relative MIP gap at most 0.1% OR absolute gap at most 1 objective-currency unit (plus NFR-2 feasibility), model build/load p95 is at most 30 seconds per window, combined UC/redispatch/pricing p95 at most 300 seconds per window, and a full non-leap year including energy pre-pass, repair and output writing at most 48 hours.
+  - NFR-5.AC1: Proposed Q-N-5 targets on the D-65 target system (hardware/OS recorded under Q-N-7): with one active simulation, 30-minute resolution, 48-hour look-ahead/24-hour advance and UC relative MIP gap at most 0.1% OR absolute gap at most 1 objective-currency unit (plus NFR-2 feasibility), model build/load p95 is at most 30 seconds per window, combined UC/redispatch/pricing p95 at most 300 seconds per window, and a full non-leap year including energy pre-pass, repair/fallback and output writing at most 48 hours. No timing qualification is claimed until the actual target is confirmed.
   - NFR-5.AC2: Peak simulation process-tree RSS is at most the smaller of 96 GiB and 80% of measured system RAM, with no swap dependence.
   - NFR-5.AC3: Report max window time and gap failures as well as p95.
   - NFR-5.AC4: A licensed, frozen full D-32 fixture is required to establish full-network feasibility; reduced-case success cannot satisfy that claim.
@@ -288,9 +288,9 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 
 ### NFR-6: Responsive analytics during a long solve
 - Statement: The UI/API shall remain usable while a weather-year job runs.
-- Rationale / source: D-8, D-18, D-41, D-47, D-48.
+- Rationale / source: D-8, D-18, D-41, D-47, D-48, D-65.
 - Acceptance criteria:
-  - NFR-6.AC1: Proposed Q-N-10 target: at a 1440 × 900 desktop viewport, with one solver job on the reference workstation and a frozen map fixture, cached run status and selected-asset/interval results have p95 API latency at most 2 seconds over 100 requests; timestamp/filter interaction is acknowledged within 200 ms, with loading state for pending data.
+  - NFR-6.AC1: Proposed Q-N-10 target: at a 1440 × 900 desktop viewport, with one solver job on the separate D-65 target system and a frozen map fixture, cached run status and selected-asset/interval results have p95 API latency at most 2 seconds over 100 requests; timestamp/filter interaction is acknowledged within 200 ms, with loading state for pending data. Record the actual server/client hardware and network; the coding container is never the simulation/reference host.
   - NFR-6.AC2: The fixture records feature counts, result volume, browser and network conditions.
   - NFR-6.AC3: Map level-of-detail may change rendering, never the numerical network.
   - NFR-6.AC4: No whole-year all-node payload is required for first render.
@@ -348,10 +348,10 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Priority: MUST.
 
 ### NFR-12: Protected execution and secret handling
-- Statement: CI and optional solver integration shall protect credentials, licensed binaries and the self-hosted workstation from untrusted PR execution.
-- Rationale / source: D-17, D-22, D-28, D-43.
+- Statement: CI and optional solver integration shall protect credentials, licensed binaries and the separate D-65 target runner from untrusted PR execution.
+- Rationale / source: D-17, D-22, D-28, D-43, D-65.
 - Acceptance criteria:
-  - NFR-12.AC1: Negative tests reject an unauthorised SHA, a fork PR on the self-hosted runner, licence/SSH-secret reads, host/container escape via a Docker socket mount and a stale review. No pull_request_target job executes PR code; no licence secrets or tokens enter result manifests.
+  - NFR-12.AC1: At M1 runner activation, before the first heavy B1 job, negative tests on the D-65 target reject unauthorised SHAs, fork dispatch, reads of canary licence/SSH credentials, Docker-socket mounts and stale review evidence. Test access denial without real secrets or a host-escape exploit; inspect the rootless execution configuration. No pull_request_target job executes PR code; no licence secrets or tokens enter manifests. M0 requires policy review only, not executable penetration/runner evidence.
   - NFR-12.AC2: Trusted exact-SHA jobs run as an unprivileged account in ephemeral rootless containers with no Docker socket or host credentials. The limited runner token is the only host credential; jobs cannot read it. Enabling a GPU adapter requires actual device isolation/toolkit verification and its applicable CI gate.
   - NFR-12.AC3: P1 application access defaults to localhost/private VPN without public endpoints; Q-L-2/Q-L-3 must be resolved before external exposure. Missing REQUIRED runners block only their applicable profile, never silently become a CPU GPU-pass.
 - Priority: MUST.
@@ -364,11 +364,11 @@ A MUST spanning stages is not complete until its final evidence exists.
 
 | Milestone | Requirement allocation | Exit evidence |
 |---|---|---|
-| M0 — governance/bootstrap | NFR-3, NFR-8, NFR-10, NFR-12; FR-18 contract | Adopted ADRs, versioned hook and applicable documentation gates; no application code until coordinator baseline |
+| M0 — governance/bootstrap | NFR-3, NFR-8, NFR-10; FR-18 contract; NFR-12 policy only | Adopted ADRs, versioned hook and documentation gates; security design review only. No operational penetration/runner tests or application code before coordinator baseline |
 | M0.5 — data feasibility | FR-2, FR-3, FR-19 (D-31 only) | Hashed provenance/coverage inventory including all DNO 132 kV; explicit R-12 gaps and research/commercial tags |
-| M1 — ingest/network | FR-1–FR-5, FR-19, FR-21 inputs; NFR-1–NFR-2 foundations | Dated assets/rules/calendar, embedded generation and lossy boundary fixtures; model identities |
+| M1 — ingest/network and runner activation | FR-1–FR-5, FR-19, FR-21 inputs; NFR-1–NFR-2 foundations; NFR-12.AC1/AC2 runner evidence | Separate D-65 target provisioned and access-denial/isolation tests passed before first heavy B1 job; dated assets/rules/calendar, embedded generation/loss fixtures and identities |
 | M2a — schedules | FR-6, FR-9, FR-11, FR-18; NFR-2, NFR-5, NFR-7, NFR-9 | Long-horizon energy pre-pass then two-market UC with reserves/commitment proxies; rolling-state/cancellation tests |
-| M2b — constraints | FR-7–FR-8, FR-21; NFR-4 | Fixed-commitment DC cost-based redispatch, full-row feasibility checks and bounded UC repair |
+| M2b — constraints | FR-7–FR-8, FR-21; NFR-4 | Fixed-commitment DC cost-based redispatch, signed interconnector loss-segment checks, full-row feasibility and bounded UC repair/recovery |
 | M2c — prices/reference | FR-10, FR-13; NFR-2, NFR-4–NFR-5 | National pricing LP, independent UC/network reference fixtures and full-network CPU timing; no PyPSA BM claim |
 | M3 — service/results | FR-4, FR-11, FR-15–FR-16; NFR-1, NFR-6, NFR-9–NFR-10, NFR-12 | Shared SDK/CLI/API contracts, worker isolation, retention and pinned-input archival |
 | M4 — map/analytics | FR-14, FR-20; NFR-6 | E2E/accessibility flows, visible fidelity/validity and responsive comparison |
@@ -382,21 +382,33 @@ full D-60 network coverage; completing an early reduced fixture is not release.
 ASSUMPTION (Q-N-4, alias OI-4): These are business acceptance proposals for owner
 approval, not measured accuracy or new decisions. Freeze year/products/denominators
 before tuning; score GB and I-SEM separately with native currency and dated assets.
+Every table row gates the **perfect-information reconstruction**. As-of backtest
+metrics use the same definitions for reporting only in P1; none is an as-of pass gate.
+Owner Q-N-4 must explicitly adopt/amend this distinction. The reconstruction uses
+realised inputs and cannot claim predictive skill merely by passing persistence.
 Use S = mean absolute observed price (not signed mean); require S > 0. Report absolute
-metrics too. Missing/zero denominators yield unvalidated metrics, never automatic passes.
+metrics too. Missing/zero denominators yield unvalidated metrics, never automatic passes; the
+explicit zero-observed-technology absolute-energy check below is a separate test.
 
 | Metric | Proposed acceptance gate |
 |---|---|
 | Price coverage | At least 99% of eligible intervals per market/product; disclose excluded and tail intervals |
-| Price error | MAE / S ≤ 15%; RMSE / S ≤ 30%; absolute bias / S ≤ 5% |
-| Price baseline skill | 1 − MAE(model) / MAE(previous-week same-interval persistence) > 0 on identical matched intervals; zero baseline error requires an explicit owner disposition |
-| Generation mix | Annual technology-share absolute error ≤ 5 percentage points per technology; mean daily sum of absolute technology-MWh errors / observed daily total ≤ 15% |
-| BM/constraint cost | Per market, monthly absolute cost errors summed / sum of absolute observed monthly costs ≤ 25%; annual absolute bias ≤ 15% of that denominator |
-| Redispatch volume | Monthly absolute errors summed / observed annual gross up-plus-down MWh ≤ 20%; annual absolute volume bias ≤ 10% |
+| Price error | MAE / S ≤ 15%; RMSE / S ≤ 30%; absolute bias / S ≤ 5%, on the predeclared FR-10 final-commitment national proxy; original-national prices are additional diagnostics, never selected after observing which passes |
+| Price baseline skill | 1 − MAE(model) / MAE(previous-week same-interval persistence) ≥ 0.15 on identical matched intervals; zero baseline error requires an explicit owner disposition. This is a reconstruction quality margin, not forecast evidence |
+| Generation mix | Annual technology-share absolute error ≤ 5 percentage points AND annual technology-MWh relative error ≤ 20% per technology, including small shares; mean daily sum of absolute technology-MWh errors / observed daily total ≤ 15%. Zero observed technology energy requires zero model energy within NFR-2 energy tolerance, not division by zero |
+| BM constraint cost only | Per market and separately for up/offer and down/bid where source breakdown permits, monthly absolute cost errors summed / sum of absolute observed monthly constraint costs ≤ 25%; annual absolute bias ≤ 15% of that denominator. GB comparator: NESO constraint-cost breakdown, never total BM outturn; incompatible/missing directional cost breakdown is blocked pending reconciliation |
+| Constraint redispatch volume | Score up/offer and down/bid constraint actions SEPARATELY: monthly absolute MWh errors summed / observed annual directional MWh ≤ 20%; annual absolute directional bias ≤ 10%. Gross up-plus-down is additional reporting and cannot hide the wrong split; total energy-balancing volume is excluded |
 | Curtailment | Monthly absolute MWh errors summed / observed annual curtailed MWh ≤ 20%; annual absolute energy bias ≤ 10% |
 | BM/curtailment coverage | Definition-matched observations for all 12 months and ≥99% of eligible source intervals, or ≥99% of eligible source records for genuinely monthly-only sources; gaps in either cost OR volume block that validation claim |
-| Unserved energy | Zero false-shortage intervals on the held-out observed-adequate set at NFR-2 tolerance; if observed shortage exists, event total MWh error ≤ 10% and duration error ≤ one model interval per event |
-| Stress/tails | Publish errors on top/bottom 1% observed-price intervals and FR-17 stress cases even when aggregate gates pass; never exclude them to pass |
+| Adequacy and over-commitment | Zero false-shortage intervals on the observed-adequate set at NFR-2 tolerance; observed adequacy shortages require event MWh error ≤ 10% and duration error ≤ one interval. Exclude documented frequency/security-driven disconnections (including LFDD) from adequacy shortage truth and disclose them. ALSO require sum of absolute daily mean committed dispatchable available-MW errors / sum of observed daily mean committed available MW ≤ 15%, and annual positive capacity-hours bias ≤ 10% of matched observed capacity-hours; report reserve-headroom errors alongside sourced unit online/availability, never infer online status solely from zero output. Missing evidence blocks this gate. Controlled de-rating/demand-increase fixtures must reproduce an independent oracle's shortage onset/MWh within NFR-2 and never decrease shortage when capacity falls or demand rises; conservative over-commitment cannot substitute for correct shortage detection |
+| Stress/tails | Publish reconstruction errors on top/bottom 1% observed-price intervals and FR-17 observed stress cases even when aggregate gates pass; publish synthetic de-rating sensitivity separately, without a probabilistic LOLE claim; never exclude tails to pass |
+
+**Known data block:** The proposed 2024 I-SEM DAM price coverage/error/skill/tail
+gates are BLOCKED until 2024 Irish prices from the separate data-gathering task
+are gathered and independently verified. Available Irish prices for 2018–2020 do
+not qualify a 2024 holdout. Select a common full holdout year only after checking
+both markets' price, constraint, volume and curtailment coverage; any different year
+or product requires a new frozen manifest and Q-N-4 disposition before calibration.
 
 Cost/volume signs, constraint versus energy-balancing actions and settlement versus
 production-cost definitions require an explicit reconciliation. Compare against
@@ -409,7 +421,9 @@ metric as unvalidated and raise Q-N-3/Q-N-4 before any validated-MVP release.
 The canonical register is questionnaire section N (Q-N-1–Q-N-12); OI-1–OI-12 remain
 aliases, not renumbered or deleted history. Only **two owner questions** remain for
 this baseline: Q-N-4 (accept/edit accuracy gates) and conditional Q-N-3 (dispose of
-verified data gaps). D-58, D-59, D-60 and D-61 settle publicity, BM fidelity, all-132-kV
+verified data gaps). D-65 target-system hardware/OS/access details (Q-N-7) are
+pending operational information before provisioning, not permission to use the coding
+container or a new scope decision. D-58, D-59, D-60 and D-61 settle publicity, BM fidelity, all-132-kV
 scope and the bot-summary policy respectively; do not ask them again.
 
 ASSUMPTION: Q-N-1/2/5/6/7/8/9/10/11/12 are proposed engineering defaults, not owner

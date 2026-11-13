@@ -59,11 +59,18 @@ with tempfile.TemporaryDirectory(prefix='message policy ') as directory:
     git('config', 'commit.gpgsign', 'false')
     for merge in [False, True]:
         if merge:
-            (repo / '.git/MERGE_HEAD').write_bytes(git('rev-parse', 'HEAD').stdout)
+            base = git('rev-parse', 'HEAD').stdout.decode().strip()
+            git('checkout', '-q', '-b', 'merge-source')
+            git('commit', '--allow-empty', '-m', 'test: source side')
+            git('checkout', '-q', '-b', 'merge-destination', base)
+            git('commit', '--allow-empty', '-m', 'test: destination side')
+            git('merge', '--no-ff', '--no-commit', 'merge-source')
         message.write_text('fix: preserve human trailers\n\nGenerated with GPT6\nCo-authored-by: Jane Doe <jane@google.com>\n')
         git('-c', 'commit.cleanup=verbatim', 'commit', '--allow-empty', '-F', str(message))
         committed = git('log', '-1', '--format=%B').stdout
         assert b'Generated with' not in committed and b'Jane Doe' in committed
+        if merge:
+            assert len(git('rev-list', '--parents', '-n', '1', 'HEAD').stdout.split()) == 3
     message.write_text('Generated with GPT6\n\nBody\n')
     assert git('commit', '--allow-empty', '-F', str(message), check=False).returncode != 0
     git('config', 'i18n.commitEncoding', 'ISO-8859-1')

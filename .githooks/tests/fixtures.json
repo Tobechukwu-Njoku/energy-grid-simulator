@@ -753,5 +753,105 @@
     "input": "fix: preserve blanks\n\n\n",
     "expected": "fix: preserve blanks\n\n\n",
     "exit": 0
+  },
+  {
+    "name": "model-version-107",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Claude Sonnet 4.5\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-108",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Claude Sonnet 4.5 <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-109",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Claude Opus 5.5\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-110",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Claude Opus 5.5 <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-111",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with GPT-6.1 Sol\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-112",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: GPT-6.1 Sol <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-113",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Gemini Flash 3.8\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-114",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Gemini Flash 3.8 <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-115",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Amazon Q Developer\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-116",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Amazon Q Developer <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-117",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nGenerated with Cursor Code Editor\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "model-version-118",
+    "source": "claude M-2/S-10 model-name variants",
+    "input": "fix: versioned identity\n\nAssisted-by: Cursor Code Editor <model@example.org>\n",
+    "expected": "fix: versioned identity\n\n",
+    "exit": 0
+  },
+  {
+    "name": "leading-subject-119",
+    "source": "claude M-1 subject preservation",
+    "input": "\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "expected": "\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "leading-subject-120",
+    "source": "claude M-1 subject preservation",
+    "input": "# commit instructions\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "expected": "# commit instructions\n\nMade with ChatGPT\n\nKeep this body.\n",
+    "exit": 1,
+    "stderr": "commit subject matches attribution policy"
   }
 ]

@@ -2,7 +2,7 @@
 
 - **Status:** Proposed; not performance-qualified and not permission to write application code.
 - **Date:** 2026-11-13
-- **Linked decisions:** D-1, D-2, D-16, D-18–D-21, D-26, D-28–D-29, D-31–D-32, D-35, D-38, D-43–D-44, D-48, D-55–D-57, D-59–D-60.
+- **Linked decisions:** D-1, D-2, D-16, D-18–D-21, D-26, D-28–D-29, D-31–D-32, D-35, D-38, D-43–D-44, D-48, D-55–D-57, D-59–D-60, D-65.
 - **Related requirements:** FR-1–FR-13, FR-18, FR-21; NFR-1–NFR-5, NFR-7–NFR-12.
 - **Dependencies:** ADR 0001 governance; ADR 0002 network/data decisions await D-31. Storage remains ADR 0004's deferred responsibility.
 
@@ -27,10 +27,10 @@ questions; this ADR cannot lower their fidelity or declare throughput without ev
 
 | Stage | Formulation and retained evidence |
 |---|---|
-| 0 — long-horizon energy | Annual/seasonal copper-plate LP without commitment binaries, including storage/hydro inflow/energy limits and directional interconnector losses. Derive dated boundary SoC targets or water values; record approximations and residuals. |
-| 1 — national schedules | Coupled GB/I-SEM copper-plate UC MILP, with min up/down, ramp/start costs, availability, market reserves, energy targets and commitment-type regional minimum-unit/inertia/SNSP proxies. Export pre-network schedules. |
-| 2 — cost-based actions | Full-network DC redispatch LP with stage-1 commitment fixed, directional lossy interconnector injections, secured boundary/flowgate limits, reserves and applicable published proxies. Minimise estimated incremental operating cost relative to the national schedule, plus explicit curtailment/shortage penalties. Export actions/costs, not historic bid acceptance. |
-| 3 — national prices | Continuous national pricing LP fixing the stage-1 UC decisions, same costs/reserves and labelled scarcity policy. Reconcile marginal prices and unrecovered non-convex costs; stage-2 nodal/proxy duals remain diagnostic. |
+| 0 — long-horizon energy | Annual/seasonal copper-plate LP without commitment binaries, including storage/hydro inflow/energy limits and declared continuous interconnector loss approximations (frozen signed segments; report sensitivity). Derive dated boundary SoC targets or water values; record approximations and residuals. |
+| 1 — national schedules | Coupled GB/I-SEM copper-plate UC MILP, with min up/down, ramp/start costs, availability, market reserves, energy targets, commitment-type regional minimum-unit/inertia/SNSP proxies and interconnector direction/loss-segment selection. Export pre-network schedules. |
+| 2 — cost-based actions | Full-network DC redispatch LP with stage-1 commitment fixed, signed-flow affine-segment lossy interconnector injections, secured boundary/flowgate limits, reserves and applicable published proxies. Minimise estimated incremental operating cost relative to the national schedule, including dated renewable lost RO/CfD subsidy and storage opportunity values, plus explicit curtailment/shortage penalties (FR-7.AC2). Export actions/costs, not historic bid acceptance. |
+| 3 — national prices | Continuous national pricing LP fixing the final stage-1 UC decisions and signed loss segments, same costs/reserves and labelled scarcity policy. Reconcile marginal prices and unrecovered non-convex costs; stage-2 nodal/proxy duals remain diagnostic. |
 
 The pre-pass is an energy signal, not an annual globally optimal UC certificate.
 Annual targets can be unreachable in a short window; represent a declared target band,
@@ -39,13 +39,35 @@ minimum up/down and security constraints are never softened silently to hit targ
 A long low-wind event crossing the rolling boundary must not benefit from emptying
 storage beyond the look-ahead or from a cost-free restart.
 
-Fixed commitment can make redispatch infeasible. Identify violated rows, feed a
-regional commitment requirement or valid feasibility cut to stage 1, and re-solve UC
-then redispatch. ASSUMPTION: limit to three repair iterations per window, then mark
-failed/partial with diagnostics; never drop the proxy or present the unsolved schedule
-as valid. A future fast-start-only MILP requires explicit capability/equivalence tests;
-it is not an automatic relaxation of this contract. Save the revised commitment used
-for final schedules and re-run its pricing LP; distinguish original and repaired stages.
+Fixed commitment can make redispatch infeasible. ASSUMPTION (Q-N-5): permit the
+initial UC/redispatch attempt plus at most THREE UC repair re-solves per window.
+Retain cumulative valid cuts and record commitment/segment fingerprints; a repeated
+fingerprint or unchanged violation ends repair early instead of oscillating. An
+elastic diagnostic LP may identify conflicting rows and marginal violations, but its
+security slacks are DIAGNOSTIC ONLY and cannot enter accepted results. A cut derived
+from a dual infeasibility certificate must state its validity domain (fixed commitment/
+loss segment and common row conventions); otherwise use a sourced regional commitment
+requirement or an exact no-good cut for the failed integer assignment, not a claimed
+global Benders cut. There is no convergence or global-optimality guarantee.
+
+On exhaustion/non-convergence, report the cause, residuals, attempted commitments,
+cuts and time, then fall back ONCE to a separately labelled network-aware commitment
+recovery MILP for that window. Retain all active secured/proxy rows, intertemporal
+states and full-network screening checks; freeze recovered commitment/segments and
+rerun stage 2 as an LP. This recovery MILP is not silently inserted into the ordinary
+LP stage or scheduled as an unbounded new loop. ASSUMPTION (Q-N-5): one 300-second
+recovery attempt and a 900-second total wall-clock window budget across ordinary
+solves, repairs, segment trials, recovery and pricing, with early termination when
+budget is exhausted; include all of it in NFR-5 timing. If unsupported, timed out
+without a feasible incumbent or still invalid, preserve the last fully checked
+committed boundary and stop failed/partial. Never reuse an earlier window's schedule
+as if it solved the current one, soften security or commit unsolved intervals.
+
+Save both original national and repaired/recovered commitments, their pricing LPs
+and the reason for the difference. Stage 3's reported national proxy is conditional
+on the final commitment, with original-national prices and the repair-induced delta
+exported alongside it. Neither is asserted to replicate exchange price formation;
+network-driven must-run effects and unrecovered costs remain explicit limitations.
 
 This decomposition avoids a monolithic branch-flow UC MILP. It does NOT guarantee
 that national commitment is globally network-optimal; report repair counts, incremental
@@ -56,8 +78,10 @@ counts are asserted before the data inventory. Benchmark the actual D-60 full gr
 
 Each proxy has a source document/version/hash, effective dates, geography, units,
 coefficient derivation and active/missing status. Published secured boundary transfer
-limits become flowgates over signed branch flows; minimum online-unit/inertia floors
-and the dated Irish SNSP convention enter UC where needed. Do not invent an SNSP
+limits become flowgates over signed branch flows. Backtests use time-varying NESO
+day-ahead constraint limits where published, with delivery/publication vintage,
+source coverage and labelled ETYS annual fallbacks (FR-3/FR-21). Minimum online-unit/
+inertia floors and the dated Irish SNSP convention enter UC where needed. Do not invent an SNSP
 number or use a permanently fixed proxy for every backtest year. Missing evidence
 is a declared data gap (FR-21), not an implicit disabled limit.
 
@@ -67,13 +91,33 @@ fixed-commitment LP sensitivity or finite-difference UC re-solve, never a MILP s
 price. Proxy security approximates published restrictions; it does not certify full AC,
 reactive power, exhaustive contingencies or dynamic stability.
 
-Directional HVDC/interconnector variables distinguish sending and receiving MW with
-receiving = sending − non-negative losses. Endpoint nodal balances account for loss
-once, even though internal AC DC equations are lossless. Use sourced piecewise loss
-curves or an explicit tested approximation; prevent simultaneous opposite-direction
-flows from manufacturing negative-price revenue or energy. A continuous relaxation
-is permitted only when its no-counterflow property is checked; otherwise use a
-supported direction formulation and declare any stage-2 integrality explicitly.
+ASSUMPTION (Q-N-1/Q-N-5): Stage 2 uses ONE signed interconnector flow f per link/
+interval, not two independently non-negative directional columns. Stage 1's MILP
+selects a direction and segment from the sourced piecewise sending-end loss curve.
+Freeze those choices for stage 2: bound f to that signed breakpoint interval and
+set loss l = a*f + b by EQUALITY on the chosen affine segment. Store a distinct zero/
+off point where applicable. A loss epigraph l ≥ curve(f) is forbidden: negative
+prices could otherwise increase fictitious losses without changing actual flow.
+The receiving endpoint gets sending MW minus l; endpoint balance withdraws loss
+exactly once, at the sending side, with l ≥ 0 and sending ≥ l. Validate the same
+sourced curve independently after solving. There are no opposite-direction columns,
+no stage-2 direction binaries and no artificial loss sink. LP sensitivities are
+conditional on these frozen choices, not derivatives across a segment switch.
+
+This restriction trades unrestricted direction/segment optimisation for a continuous
+redispatch LP with physically consistent losses at negative prices. It can miss a
+cheaper opposite direction; disclose that approximation and compare against an exact
+small direction/segment MILP oracle. If a segment bound binds, permit at most TWO
+additional candidate LP solves per window, evaluating a deterministic adjacent-segment/
+zero-flow candidate set selected by reduced costs and worst violation. Each candidate
+has fixed signed bounds and a loss equality; accept only a fully feasible candidate.
+An infeasible sign/segment selection is fed to bounded UC repair/recovery so stage 1
+can reselect it. Candidate count and wall time share the common window budget; never
+silently free the loss variable or use simultaneous counterflow as a fallback.
+Stage 0 freezes declared reference-flow segments as an energy approximation and
+reports their sensitivity; stage 1 may use direction/segment binaries since it is
+already a MILP. Test both directions, zero flow, segment joins, negative prices,
+minimum generation and subsidy-driven curtailment to detect fictitious loss disposal.
 
 Report native GBP/EUR prices/ledgers, but convert the joint objective into a declared
 numeraire with D-38 daily exogenous FX and effective timezone. No FX trading variable,
@@ -198,10 +242,17 @@ link unavailable SDKs. Optional integration terms are reviewed independently of 
 wrapper's source licence and D-56 dataset tags.
 
 After baseline, qualify small/medium/full inventory windows and an annual 30-minute
-run on D-48's Ryzen 5900X/128 GB Linux host. Record assembly/load/solve/export/p95/max,
-process-tree RSS, window dimensions/nonzeros, gaps and repair counts. NFR-5 proposes
+run on the separate D-65 target system, never the coding container. Its hardware/OS
+are not yet supplied. ASSUMPTION (Q-N-7): D-48's Ryzen 5900X/128 GB Linux sizing is
+provisional only; record the actual target identity before qualification. Record
+assembly/load/solve/export/p95/max,
+process-tree RSS, window dimensions/nonzeros, gaps, segment trials, repair counts and
+non-convergence/recovery outcomes. Heavy builds, databases and performance CI run
+only on that separate target runner (ADR 0001), with no coding-container fallback.
+NFR-5 proposes
 48 h look-ahead/24 h advance, 30 s build/load p95, 300 s combined stage solve p95 and
-48 h annual elapsed time including pre-pass/output, with no assumed upgrade. Report
+48 h annual elapsed time including pre-pass/output, with no assumed upgrade or
+confirmed target specification. Report
 peak RSS against the smaller of 96 GiB or 80% measured RAM. These are proposals,
 not measurements; reduced cases cannot qualify the full-network claim.
 
