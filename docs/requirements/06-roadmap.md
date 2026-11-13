@@ -46,7 +46,11 @@ committed restricted raw files, and does not waive pre-commercial clearance.
 M2a–c are parts of M2, not independently shippable reduced MVPs. M5 cannot be passed
 with incompatible or unavailable BM/curtailment observations labelled as success.
 
-ASSUMPTION (Q-N-4): The 2024 I-SEM price gate remains BLOCKED pending separately
-gathered, verified Irish prices. Select/freeze a common year only after checking
+D-66 accepts the reconstruction gates. The 2024 I-SEM prices are gathered and
+independently verified (merged PR #18); acquisition is no longer blocked. See
+[coverage and remaining limits](../../spikes/data-gathering/semo-2024/COVERAGE.md):
+imbalance timezone, IDC interval identities, missing observations and commercial
+reuse designation remain open, and the archives stay research-only. Availability
+does not establish an accuracy pass. Select/freeze a common year only after checking
 both markets' inputs; this sequencing does not waive an accuracy gate. Target-runner
 specifications are pending D-65 owner details (Q-N-7), not inferred from D-48.

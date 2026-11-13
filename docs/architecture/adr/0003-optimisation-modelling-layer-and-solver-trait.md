@@ -272,8 +272,10 @@ pre-pass/rolling/repair approximation, worker IPC and sparse update/basis integr
 must all be tested. Full-network data/parameters and definition-compatible historic
 BM/curtailment evidence remain release risks, not reasons to claim reduced success.
 
-Only Q-N-4 (accuracy acceptance) and conditional Q-N-3 (verified gaps) need owner
-answers now. Engineering defaults need explicit baseline adoption. Actual optional
+D-66 accepts Q-N-4 accuracy gates; D-71 answers Q-N-3 with full all-GB 132 kV
+scope and evidenced-gap escalation; D-70 settles numerical reproducibility, not
+bit-identical schedules. Remaining engineering details need explicit baseline
+adoption. Actual optional
 GPU/licence inventory is informational; do not reopen D-59 or D-60. Acceptance of
 this Proposed ADR specifies architecture and a post-baseline qualification plan,
 not successful benchmarks, a data/storage choice or permission to implement early.

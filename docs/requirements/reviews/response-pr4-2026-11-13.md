@@ -41,7 +41,7 @@ names an owner/implementation dependency. Compound findings are split explicitly
 | C-11: unavailable private-plan enforcement/shared identity | Accepted; rejected a new Pro-upgrade question because D-58 already chooses publicity | ADR 0001 uses one merge-gates status, strict up-to-date main and no merge queue/approving-review requirement; pre-publicity procedure is labelled discipline, not branch protection. Deployment remains coordinator-owned. |
 | C-12: unavailable provider attestor | Accepted | ADR 0001 review evidence specifies role/provider/head/verdict fields, current-tree binding and attested shared-identity limitations; no external App or unprovable cryptographic identity gate. |
 | C-13: disproportionate mandatory GPU isolation | Accepted | ADR 0001 B0/B1/B2 profiles, rootless unprivileged runner and relevant-feature GPU applicability; NFR-7.AC5/NFR-12 align. Actual GPU setup is deferred and cannot block CPU-only P1. |
-| C-14: hosted-minute waste | Accepted | ADR 0001 runner section puts heavy Linux work on D-48, caches native builds, schedules macOS checks and requires them on native/build changes. Current billing must be verified at activation; no stale minute quota is asserted. |
+| C-14: hosted-minute waste | Accepted | ADR 0001 runner section puts heavy Linux work on D-48, caches native builds, schedules macOS checks and requires them on native/build changes. Current billing must be verified at activation; no stale minute quota is asserted. Superseded target identity: see round-3 M-4 / D-65; D-48 is provisional sizing only. |
 | C-15: unversioned/partial attribution controls | Accepted for versioned hook/shared patterns and range/metadata/diff checks; rejected removing/disabling bot summaries under D-61 | `.githooks/commit-msg`, shared regex, ADR 0001 attribution section and NFR-3.AC4; enable with `git config core.hooksPath .githooks`. CI remains a specified future rejection check, not claimed deployed. |
 | C-16: trivial-test/collusion controls missing | Accepted | ADR 0001 reference-integrity section requires fixture provenance, external ownership or explicit oracle-change sign-off, deliberate perturbation and zero unexplained surviving/timed-out changed-core mutants. |
 | C-17: review-role conflict | Accepted; resolved by D-54 rather than a new owner question | NFR-3 and ADR 0001 use artifact-to-role validation with docs/process/team.md as authority; review evidence and adversarial triage are separate checks. |
@@ -75,7 +75,7 @@ names an owner/implementation dependency. Compound findings are split explicitly
 
 | Finding | Disposition and reason | Fix / remaining dependency |
 |---|---|---|
-| ADV-1: hardware versus aim-high | Accepted, already R-14 | NFR-5/7 and ADR 0003 qualify CPU on D-48 actual host; no uninstalled upgrade or GPU performance assumed. |
+| ADV-1: hardware versus aim-high | Accepted, already R-14 | NFR-5/7 and ADR 0003 qualify CPU on D-48 actual host; no uninstalled upgrade or GPU performance assumed. Superseded target identity: see round-3 M-4 / D-65; qualification uses the separate target system, not the coding container. |
 | ADV-2: review deadlock | Accepted, resolved D-54 | NFR-3, ADR 0001 role matrix; no new owner question. |
 | ADV-3: full-network rights/availability | Accepted data-risk concern; rejected treating uncertain commercial rights as an absolute research blocker after D-56 | FR-2/19 and Q-N-3 require actual topology/parameter evidence and research-only tagging. Licence clearance remains pre-commercial; ODbL/share-alike still excluded. |
 | ADV-4: GB 132 kV split | Accepted clarification; rejected suggested scope reduction under D-60 | FR-2.AC1 and M0.5/M1 explicitly include all DNO LTDS areas. |
@@ -85,7 +85,7 @@ names an owner/implementation dependency. Compound findings are split explicitly
 | ADV-8: collusion/trivial tests | Accepted | ADR 0001 fixture independence, provenance and mutation policy; role evidence alone is not scientific assurance. |
 | ADV-9: I-SEM/coupling misrepresentation | Accepted | FR-7.AC3/4 dated DAM/IDM/balancing/imbalance inventory, explicit proxy/deferred fields and date-effective GB↔SEM capacity regime. |
 | ADV-10: market/asset changes | Accepted | FR-1.AC2/5, FR-3 and FR-12 require vintage-correct Brexit/MHHS/REMA/link commissioning fixtures and holdout. |
-| ADV-11: Redis/Timescale terms | Accepted need for verified terms; rejected any automatic Redis ban or Valkey switch | NFR-8/10, Q-N-8 and ADR 0001 retain PostgreSQL 18 + Redis and separately inventory deployment obligations. Verified catalogue informs review; substitution only by owner decision, storage ADR deferred. |
+| ADV-11: Redis/Timescale terms | Accepted need for verified terms; owner choice now D-67 | D-67 replaces the former Redis-retention policy: PostgreSQL 18 + Valkey is the baseline, Redis remains a compatible shared-protocol alternative, and P1 dispatch uses PostgreSQL. NFR-8/10, Q-N-8 and ADR 0001 agree; deployment obligations still require review. |
 | ADV-12: REMIT/curtailment inputs | Accepted | FR-3.AC2 explicitly requires outage/unavailability, curtailment/constraints, publication/revision and effective timestamps. |
 
 ## Original PR #4 review — all 12 findings reconciled
@@ -146,12 +146,12 @@ upstream high-level HiGHS API was inspected, not executed or performance-qualifi
 
 Unresolved issues handed to the coordinator:
 
-1. Obtain owner Q-N-4 disposition and explicitly adopt/amend engineering assumptions;
-   resolve conditional Q-N-3 only from verified spike/full-DNO/Irish parameter gaps.
+1. Apply D-66/D-70/D-71 answers to Q-N-4/Q-N-6/Q-N-3 and explicitly adopt/amend
+   remaining engineering assumptions; escalate only verified data/parameter gaps.
 2. Confirm a compatible free holdout dataset for BOTH BM costs/volumes, curtailment
    and adequacy; missing evidence blocks the corresponding validated-MVP claim. The
-   2024 I-SEM price gate is BLOCKED until separately gathered Irish prices are
-   verified; current 2018–2020 prices do not fill it. Check both markets before
+   2024 I-SEM prices are now gathered and verified (merged PR #18); acquisition is
+   no longer blocked. Check the remaining COVERAGE.md limits and both markets before
    freezing the holdout year (Q-N-3/Q-N-4).
 3. ADR 0002 remains dependent on the data spike; ADR 0004/storage is not selected.
    No requirements-baseline or implementation permission is implied by this revision.
@@ -203,7 +203,7 @@ the P1 Q-N register when resolving the questionnaire append conflict.
 | S-3: wrong up/down split | Accepted. FR-12 and the table score up/offer and down/bid cost/volume independently, in addition to gross reporting; missing compatible breakdown is a data block. |
 | S-4: small-share relative errors | Accepted. Both absolute-share and relative-MWh gates apply per technology; observed zero energy has an explicit absolute-energy test. |
 | S-5: cumulative benchmark drift | Accepted. NFR-4.AC3, ADR 0001 and Q-N-11 compare against both main and the frozen last milestone/release with the same >5% wall/>10% RSS thresholds and uncertainty policy; hardware changes need reviewed bridge evidence, not a self-reset. |
-| S-6: Irish 2024 gap/holdout selection | Accepted. Numeric-table data block, Q-N-3/Q-N-4, roadmap and this handoff mark 2024 I-SEM prices blocked pending separately gathered, independently verified data. Both markets' coverage controls the common holdout-year selection before calibration. |
+| S-6: Irish 2024 gap/holdout selection | Accepted; acquisition block resolved by merged PR #18. Numeric-table data note, Q-N-3/Q-N-4, roadmap and this handoff now point to verified 2024 prices and COVERAGE.md limits: imbalance timezone, IDC identities, missing observations and commercial reuse designation remain open. Both markets’ coverage controls the common holdout-year selection before calibration; no accuracy pass is claimed. |
 | S-7: disconnections/materiality | Accepted exclusion of sourced frequency/security disconnections, including LFDD, from adequacy-shortage truth. Retained the NFR-2 false-shortage tolerance rather than adding an unevidenced materiality waiver: a new MW/MWh allowance could hide a real modelling shortage. The owner may amend it in Q-N-4 once the observed-series resolution is known. Two-sided commitment and controlled de-rating checks supplement it. |
 | S-8: GitHub squash commit gap | Accepted. Verified repository API setting COMMIT_MESSAGES on 2026-11-13. ADR 0001 pins it, checks possible title sources, forbids PR_BODY, requires an immediate pre-merge settings/message check and a post-merge main scan, with publication/further merges blocked on a violation. No setting or workflow is changed by this design revision; D-61 remains confined to PR bot text. |
 | S-9: hook activation | Accepted. ADR 0001 and this handoff explicitly require `git config core.hooksPath .githooks` in each clone, followed by the conformance runner and `git config --get core.hooksPath` verification. Shared repository config is not silently changed; revision commits invoke the versioned hook explicitly with `git -c core.hooksPath=.githooks commit`. Coordinator owns rollout to other worktrees/clones. |
@@ -238,12 +238,26 @@ the P1 Q-N register when resolving the questionnaire append conflict.
 - Activate/verify the versioned hook in each clone as described in S-9. D-58 history
   cleanup, secret/restricted-data scans and later protection/visibility remain the
   coordinator's tasks; no historical commits or PR bot summaries are rewritten here.
-- Obtain Q-N-4 owner disposition, including reconstruction versus as-of scope, revised
-  thresholds, daily stress definition and explicit adoption/amendment of engineering
-  defaults in Q-N-1/2/5/6/7/8/9/10/11/12. Resolve Q-N-3 only from verified gaps.
-  Finish and independently verify the separate 2024 Irish-price gathering task before
-  unblocking its gate or freezing a compatible common holdout.
+- D-66 accepts Q-N-4 reconstruction gates and the daily stress screen; D-70 answers
+  Q-N-6 reproducibility/labels; D-71 answers Q-N-3 with full all-132-kV scope and
+  evidenced-gap escalation. D-67 selects Valkey and P1 PostgreSQL dispatch.
+  Adopt/amend only the remaining engineering details at baseline. The 2024 I-SEM
+  prices are gathered and independently verified (merged PR #18); before freezing a
+  compatible common holdout, apply the remaining limits in
+  [COVERAGE.md](../../../spikes/data-gathering/semo-2024/COVERAGE.md), especially
+  imbalance timezone confirmation and IDC interval identities. Research-only tags,
+  missing observations and reuse designation remain; availability is not validation.
 - ADRs 0001/0003 remain Proposed; segment approximation bias, fallback success,
   numerical/native conformance, full-network performance and actual accuracy still
   need post-baseline evidence. Revised-head independent/adversarial approval is
   pending; historic-head reviews and this disposition report are not merge approval.
+
+### Owner-answer reconciliation (2026-11-13)
+
+D-66/D-67/D-70/D-71 supersede earlier pending-owner and Redis-retention statements
+in the dated rounds above. Q-N-3/Q-N-4/Q-N-6 are answered; remaining engineering
+details still require baseline adoption. Merged PR #18 resolves 2024 price
+acquisition, not the documented calibration/reuse limitations. The unchanged
+latest hook revision passes `.githooks/tests/run.py`: **130 fixtures** plus
+pattern-file, encoding and Git commit/merge checks. STATUS and the decisions log
+are inherited from main without edits.

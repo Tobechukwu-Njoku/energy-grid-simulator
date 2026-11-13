@@ -12,8 +12,9 @@ P3 alternative pricing/2030 scenarios, or P4 dynamics/multi-tenancy into P1. Pre
 capability is demonstrated by a dated asset snapshot; historical validation additionally
 needs the assets and information available in the historical test period.
 
-Every requirement cites owner decisions. Its implementation detail and numeric criteria
-are **proposals**, not additional owner decisions. `MUST` means necessary for acceptance
+Every requirement cites owner decisions. D-66 accepts the reconstruction validation
+bar; other implementation detail and numeric criteria remain **proposals** unless
+explicitly decided. `MUST` means necessary for acceptance
 of this proposed P1 baseline; `SHOULD` means a documented exception may be proposed to
 the owner, not silently omitted. No requirement below authorises a scope reduction.
 
@@ -135,12 +136,12 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 
 ### FR-12: Historical GB and I-SEM accuracy backtest
 - Statement: The system shall publish a reproducible, held-out historical validation report for both markets' prices and generation mix.
-- Rationale / source: D-18, D-23, D-26, D-33, D-44, D-55, D-57, D-59; roadmap M5 and risk R-8.
+- Rationale / source: D-18, D-23, D-26, D-33, D-44, D-55, D-57, D-59, D-66, D-70; roadmap M5 and risk R-8.
 - Acceptance criteria:
-  - FR-12.AC1: Freeze a full historical holdout year, calibration/test split, products, denominators and date-effective asset/rule/input vintages before tuning. Commit a checksummed holdout manifest before the first calibration run; the calibration entry point records that ancestor commit/hash, and future CI verifies ancestry and artifact identities. Any manifest change invalidates calibration evidence and requires a new frozen split. Separate each market/product/currency, coverage and exclusions; thresholds are the ASSUMPTION table below (Q-N-4).
+  - FR-12.AC1: Freeze a full historical holdout year, calibration/test split, products, denominators and date-effective asset/rule/input vintages before tuning. Commit a checksummed holdout manifest before the first calibration run; the calibration entry point records that ancestor commit/hash, and future CI verifies ancestry and artifact identities. Any manifest change invalidates calibration evidence and requires a new frozen split. Separate each market/product/currency, coverage and exclusions; D-66 accepts the table below (Q-N-4). Tighten after the first measured run, not during calibration of a frozen split.
   - FR-12.AC2: Report price MAE/RMSE/bias, negative-price and tail errors, skill against previous-week persistence, technology-share/energy errors, BM constraint-only costs and up/offer versus down/bid volumes, curtailment, unserved energy and committed-capacity/headroom errors. Use free, honestly labelled sources under D-57.
   - FR-12.AC3: For BM constraint costs/volumes and curtailment, reconcile source definitions and scored comparable coverage. GB cost comparisons use NESO's constraint-cost breakdown (for example the constraint component of its balancing-services summaries), never total BM outturn; separately reconcile up/offer and down/bid actions, energy balancing, subsidy transfers and strategic markups. Missing/incompatible observations are UNVALIDATED, not a pass or permission to drop the metric; no validated-MVP claim until compatible evidence or an explicit owner scope disposition exists.
-  - FR-12.AC4: Publish perfect-information reconstruction separately from an as-of forecast backtest. Every gate in the numeric table applies to the perfect-information reconstruction; P1 as-of metrics are report-only and do not carry a forecast-validation claim, pending owner Q-N-4 adoption/amendment. As-of persistence must use only prices published by the decision time. Matching PyPSA validates implementation only, not historic BM or market accuracy.
+  - FR-12.AC4: Publish perfect-information reconstruction separately from an as-of forecast backtest. Every gate in the numeric table applies to the perfect-information reconstruction (D-66); P1 as-of metrics are report-only and do not carry a forecast-validation claim. Historic runs are labelled reconstruction unless publication times are proven (D-70). As-of persistence must use only prices published by the decision time. Matching PyPSA validates implementation only, not historic BM or market accuracy.
 - Priority: MUST.
 
 ### FR-13: Identical-input offline reference validation
@@ -186,9 +187,9 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 
 ### FR-17: Deterministic extreme-weather scenarios
 - Statement: The system shall support reproducible replay of historical weather extremes using the canonical scenario format.
-- Rationale / source: D-14, D-18, D-19, D-35, D-44.
+- Rationale / source: D-14, D-18, D-19, D-35, D-44, D-66.
 - Acceptance criteria:
-  - FR-17.AC1: Identify historic candidate episodes from sourced weather years using at least three consecutive complete UTC days: 72-hour mean GB wind capacity factor below 10%, and each day's mean demand above that year's 75th percentile of daily mean demand. Publish candidates, data coverage, capacity/demand definitions and selection before running the stress replay; overnight demand troughs do not disqualify an event. ASSUMPTION: these daily/rolling thresholds require Q-N-4 adoption. No qualifying event is asserted before screening the data; if none exists, report that fact and seek Q-N-4 disposition for a labelled synthetic case alongside the closest observed episode, never present synthetic weather as observed.
+  - FR-17.AC1: Identify historic candidate episodes from sourced weather years using at least three consecutive complete UTC days: 72-hour mean GB wind capacity factor below 10%, and each day’s mean demand above that year’s 75th percentile of daily mean demand. Publish candidates, data coverage, capacity/demand definitions and selection before running the stress replay; overnight demand troughs do not disqualify an event. D-66 accepts these daily/rolling thresholds. No qualifying event is asserted before screening the data; if none exists, report that fact and seek a specific owner disposition for a labelled synthetic case alongside the closest observed episode, never present synthetic weather as observed.
   - FR-17.AC2: The interval can run independently with documented initial-state differences. Weather/availability changes, including embedded generation, appear in the diff and manifest.
   - FR-17.AC3: Report deterministic unserved MWh/duration, not probabilistic LOLE/EUE from a single year.
 - Priority: MUST.
@@ -236,11 +237,11 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 
 ### NFR-1: Reproducible run identity
 - Statement: The system shall make each accepted result traceable to immutable scenario, data, engine, modelling and solver identities.
-- Rationale / source: D-19, D-20, D-28, D-33, D-35.
+- Rationale / source: D-19, D-20, D-28, D-33, D-35, D-70.
 - Acceptance criteria:
   - NFR-1.AC1: The run manifest includes canonical scenario hash, input and model hashes, engine commit, dependency locks, solver/build versions, parameters, seeds, thread counts, platform, pricing method and timestamp policy.
   - NFR-1.AC2: Two pinned deterministic CPU reruns on the same environment agree within NFR-2 and preserve the same input identity. Reproducibility fixtures use deterministic work/node limits with pinned threads/seed or solve to the required gap certificate; wall-clock-limited incumbents alone cannot establish agreement. Different solver/platform/limit settings produce distinct execution identities.
-  - NFR-1.AC3: Bitwise cross-platform/MILP reproducibility is not asserted without Q-N-6 approval.
+  - NFR-1.AC3: Reproducibility is numerical within stated solver tolerances recorded in run provenance, not bit-identical schedules (D-70).
 - Priority: MUST.
 
 ### NFR-2: Numerical correctness and reference tolerances
@@ -309,13 +310,13 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 
 ### NFR-8: Licence-clean production dependency closure
 - Statement: Production deliverables shall have an explicitly approved dependency and runtime-service licence inventory compatible with the intended future commercial service.
-- Rationale / source: D-1, D-3, D-16, D-17, D-28, D-30.
+- Rationale / source: D-1, D-3, D-16, D-17, D-28, D-30, D-67.
 - Rationale detail: Software copyleft, native redistribution and dataset permissions are different obligations; neither a blanket ban on all GPL/AGPL use nor a wrapper's licence establishes the entire deployment's rights.
 - Acceptance criteria:
   - NFR-8.AC1: CI checks locked Rust dependencies and advisories; separately inventories native solver/CUDA binaries, TypeScript dependencies, container images and service licences that `cargo-deny` cannot see.
   - NFR-8.AC2: Unreviewed/disallowed licences or unapproved advisories block.
   - NFR-8.AC3: Offline validators are isolated from production packaging.
-  - NFR-8.AC4: The exact allow-list and Redis/native/commercial deployment terms require Q-N-8 review; no Valkey substitution is authorised by this draft.
+  - NFR-8.AC4: The exact allow-list and Valkey/native/commercial deployment terms require Q-N-8 review. D-67 selects Valkey (BSD-3) as the service baseline; any compatible Redis alternative still requires review of its deployment terms.
 - Priority: MUST.
 
 ### NFR-9: Diagnostic and incomplete-result integrity
@@ -329,13 +330,13 @@ ADR 0002 and ADR 0004 remain pending the D-31 data spike.
 - Priority: MUST.
 
 ### NFR-10: Runtime language and infrastructure boundaries
-- Statement: Production numerical modelling and backend code shall be Rust, with a TypeScript web frontend and PostgreSQL 18 plus Redis infrastructure.
-- Rationale / source: D-3, D-10, D-16, D-19, D-20.
+- Statement: Production numerical modelling and backend code shall be Rust, with a TypeScript web frontend and PostgreSQL 18 plus Valkey infrastructure.
+- Rationale / source: D-3, D-10, D-16, D-19, D-20, D-67.
 - Acceptance criteria:
   - NFR-10.AC1: The production dependency graph contains no Python/Julia modelling engine or subprocess; those languages appear only in pinned offline validation.
   - NFR-10.AC2: Native solver libraries are isolated behind Rust FFI/adapters under D-16 rather than rewritten to achieve literal pure Rust.
   - NFR-10.AC3: Default CPU startup does not require CUDA.
-  - NFR-10.AC4: PostgreSQL/Redis are retained; their detailed storage/job roles are not settled here and ADR 0004 remains deferred.
+  - NFR-10.AC4: PostgreSQL 18 + Valkey is the baseline; clients use only the shared Redis protocol, with Redis a compatible alternative. P1 job dispatch uses PostgreSQL (D-67); remaining storage details belong to proposed ADR 0004.
 - Priority: MUST.
 
 ### NFR-11: Reviewable scientific method and fidelity limits
@@ -377,20 +378,20 @@ A MUST spanning stages is not complete until its final evidence exists.
 All 21 FRs and 12 NFRs are allocated above. P1 release requires every MUST, including
 full D-60 network coverage; completing an early reduced fixture is not release.
 
-## Proposed numeric backtest accuracy thresholds
+## Accepted numeric backtest accuracy thresholds (D-66)
 
-ASSUMPTION (Q-N-4, alias OI-4): These are business acceptance proposals for owner
-approval, not measured accuracy or new decisions. Freeze year/products/denominators
+D-66 (Q-N-4, alias OI-4) accepts these business acceptance gates, not measured
+accuracy or a requirements baseline. Freeze year/products/denominators
 before tuning; score GB and I-SEM separately with native currency and dated assets.
 Every table row gates the **perfect-information reconstruction**. As-of backtest
 metrics use the same definitions for reporting only in P1; none is an as-of pass gate.
-Owner Q-N-4 must explicitly adopt/amend this distinction. The reconstruction uses
+D-66 accepts this distinction. Tighten after the first measured run. The reconstruction uses
 realised inputs and cannot claim predictive skill merely by passing persistence.
 Use S = mean absolute observed price (not signed mean); require S > 0. Report absolute
 metrics too. Missing/zero denominators yield unvalidated metrics, never automatic passes; the
 explicit zero-observed-technology absolute-energy check below is a separate test.
 
-| Metric | Proposed acceptance gate |
+| Metric | Accepted validation gate (D-66) |
 |---|---|
 | Price coverage | At least 99% of eligible intervals per market/product; disclose excluded and tail intervals |
 | Price error | MAE / S ≤ 15%; RMSE / S ≤ 30%; absolute bias / S ≤ 5%, on the predeclared FR-10 final-commitment national proxy; original-national prices are additional diagnostics, never selected after observing which passes |
@@ -403,10 +404,13 @@ explicit zero-observed-technology absolute-energy check below is a separate test
 | Adequacy and over-commitment | Zero false-shortage intervals on the observed-adequate set at NFR-2 tolerance; observed adequacy shortages require event MWh error ≤ 10% and duration error ≤ one interval. Exclude documented frequency/security-driven disconnections (including LFDD) from adequacy shortage truth and disclose them. ALSO require sum of absolute daily mean committed dispatchable available-MW errors / sum of observed daily mean committed available MW ≤ 15%, and annual positive capacity-hours bias ≤ 10% of matched observed capacity-hours; report reserve-headroom errors alongside sourced unit online/availability, never infer online status solely from zero output. Missing evidence blocks this gate. Controlled de-rating/demand-increase fixtures must reproduce an independent oracle's shortage onset/MWh within NFR-2 and never decrease shortage when capacity falls or demand rises; conservative over-commitment cannot substitute for correct shortage detection |
 | Stress/tails | Publish reconstruction errors on top/bottom 1% observed-price intervals and FR-17 observed stress cases even when aggregate gates pass; publish synthetic de-rating sensitivity separately, without a probabilistic LOLE claim; never exclude tails to pass |
 
-**Known data block:** The proposed 2024 I-SEM DAM price coverage/error/skill/tail
-gates are BLOCKED until 2024 Irish prices from the separate data-gathering task
-are gathered and independently verified. Available Irish prices for 2018–2020 do
-not qualify a 2024 holdout. Select a common full holdout year only after checking
+**Data availability:** 2024 I-SEM prices are gathered and independently verified
+(merged PR #18); the Irish price acquisition gate is no longer blocked. The
+[coverage report](../../spikes/data-gathering/semo-2024/COVERAGE.md) confirms full
+UTC-year DAM coverage but leaves imbalance timezone confirmation, IDC interval
+identities, missing imbalance observations and commercial reuse designation open.
+Archives remain research-only (D-56); availability is not an accuracy pass or a
+complete calibration dataset. Select a common full holdout year only after checking
 both markets' price, constraint, volume and curtailment coverage; any different year
 or product requires a new frozen manifest and Q-N-4 disposition before calibration.
 
@@ -419,23 +423,25 @@ metric as unvalidated and raise Q-N-3/Q-N-4 before any validated-MVP release.
 ## Owner queue and engineering defaults
 
 The canonical register is questionnaire section N (Q-N-1–Q-N-12); OI-1–OI-12 remain
-aliases, not renumbered or deleted history. Only **two owner questions** remain for
-this baseline: Q-N-4 (accept/edit accuracy gates) and conditional Q-N-3 (dispose of
-verified data gaps). D-65 target-system hardware/OS/access details (Q-N-7) are
+aliases, not renumbered or deleted history. Q-N-3, Q-N-4 and Q-N-6 are answered by
+D-71, D-66 and D-70 respectively; D-67 settles Valkey and P1 PostgreSQL dispatch.
+Escalate only evidenced data gaps under D-71, not the settled full-132-kV scope.
+D-65 target-system hardware/OS/access details (Q-N-7) are
 pending operational information before provisioning, not permission to use the coding
 container or a new scope decision. D-58, D-59, D-60 and D-61 settle publicity, BM fidelity, all-132-kV
 scope and the bot-summary policy respectively; do not ask them again.
 
-ASSUMPTION: Q-N-1/2/5/6/7/8/9/10/11/12 are proposed engineering defaults, not owner
-answers. Their concrete policies appear here and in ADRs 0001/0003; baseline adoption
+ASSUMPTION: Q-N-1/2/5/7/9/10/11/12 and the undecided engineering details of Q-N-6/8
+remain proposed defaults, not additional owner answers. Their concrete policies
+appear here and in ADRs 0001/0003; baseline adoption
 must accept/amend them explicitly. Actual GPU/licence inventory is informational and
 non-blocking for CPU P1. Licence substitution or external exposure still needs a
 separate future owner decision if a verified conflict is found.
 
 ## Baseline acceptance checklist
 
-The coordinator may propose acceptance after Q-N-4 disposition, D-31 feasibility/gap
-handoff (Q-N-3 if needed), explicit adoption/amendment of engineering assumptions,
+The coordinator may propose acceptance after applying D-66/D-70/D-71, D-31 feasibility/gap
+handoff (escalating evidenced gaps only), explicit adoption/amendment of engineering assumptions,
 and accepted ADRs 0001–0003. No optimisation spike, application code, storage choice,
 branch-protection claim or benchmark success is authorised by this draft. ADR 0004
 and data-model ADR 0002 await the spike. STATUS and decisions log remain coordinator-owned.

@@ -50,8 +50,10 @@ in individually reviewed solver-* adapters. CPU defaults never enable CUDA/licen
 
 Reuse mature solvers, cargo-nextest, cargo-deny, cargo-mutants and native build caches;
 do not implement a new optimisation framework. Native libraries are permitted under
-D-16; no Python/Julia runtime model dependency. PostgreSQL 18 and Redis remain the
-baseline; service roles/TimescaleDB adoption are not decided here (ADR 0004 deferred).
+D-16; no Python/Julia runtime model dependency. PostgreSQL 18 + Valkey is the baseline
+(D-67). Clients use only the shared Redis protocol, keeping Redis a compatible
+alternative; P1 job dispatch uses PostgreSQL. Remaining storage details/TimescaleDB
+adoption belong to proposed ADR 0004.
 Software/service terms and dataset permissions are reviewed separately.
 
 ## Bootstrap profiles and transitions
