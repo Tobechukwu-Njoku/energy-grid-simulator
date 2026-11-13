@@ -17,4 +17,4 @@ pub use capability::{
     LicenceRequirement, SolverBackend,
 };
 pub use gap::{Gap, ObjectiveSense, UnknownGap, mip_gap};
-pub use status::SolveStatus;
+pub use status::{IncumbentState, OutcomeError, SolveOutcome, SolveStatus};

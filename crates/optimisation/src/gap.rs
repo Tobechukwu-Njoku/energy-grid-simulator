@@ -28,6 +28,8 @@ pub enum UnknownGap {
     NonFinite,
     /// The bound is on the wrong side of the incumbent for the objective sense.
     IncompatibleBound,
+    /// The inputs are finite but the derived absolute gap or ratio overflowed.
+    Overflow,
 }
 
 /// A computed or unknown MIP gap.
@@ -77,10 +79,12 @@ pub fn mip_gap(
         return Gap::Unknown(UnknownGap::IncompatibleBound);
     }
     let absolute = (incumbent - bound).abs();
-    Gap::Known {
-        absolute,
-        ratio: absolute / currency_unit.max(incumbent.abs()),
+    let ratio = absolute / currency_unit.max(incumbent.abs());
+    // R8: finite inputs can still overflow; a non-finite gap is never Known.
+    if !(absolute.is_finite() && ratio.is_finite()) {
+        return Gap::Unknown(UnknownGap::Overflow);
     }
+    Gap::Known { absolute, ratio }
 }
 
 #[cfg(test)]
@@ -178,6 +182,32 @@ mod tests {
                 Gap::Unknown(UnknownGap::NonFinite)
             );
         }
+    }
+
+    // R8: derived values that overflow are Unknown, never Known.
+    #[test]
+    fn r8_absolute_gap_overflow_is_unknown() {
+        assert_eq!(
+            mip_gap(MIN, Some(f64::MAX), Some(-f64::MAX), 1.0, 0.0),
+            Gap::Unknown(UnknownGap::Overflow)
+        );
+        assert_eq!(
+            mip_gap(MAX, Some(-f64::MAX), Some(f64::MAX), 1.0, 0.0),
+            Gap::Unknown(UnknownGap::Overflow)
+        );
+    }
+
+    #[test]
+    fn r8_ratio_overflow_is_unknown() {
+        let tiny = f64::MIN_POSITIVE / 8.0;
+        assert_eq!(
+            mip_gap(MIN, Some(0.0), Some(-1.0), tiny, 0.0),
+            Gap::Unknown(UnknownGap::Overflow)
+        );
+        assert_eq!(
+            mip_gap(MAX, Some(0.0), Some(1.0), tiny, 0.0),
+            Gap::Unknown(UnknownGap::Overflow)
+        );
     }
 
     #[test]
