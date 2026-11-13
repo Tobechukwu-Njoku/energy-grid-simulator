@@ -1,0 +1,13 @@
+# Paths whose ADDED LINES are exempt from the attribution-policy scan (ADR 0001).
+# Commit messages, PR titles and PR bodies are never exempt.
+# Only policy explanations and pattern/fixture literals belong here. Changing this
+# file is a policy change: CI reads it from the base branch, not from the PR.
+# Patterns use fnmatch syntax; `*` also matches `/`.
+AGENTS.md
+docs/process/*
+docs/requirements/02-questionnaire.md
+docs/requirements/03-decisions-log.md
+docs/requirements/reviews/*
+docs/architecture/adr/0001-repo-layout-and-ci-gates.md
+.githooks/attribution-patterns.regex
+.githooks/tests/fixtures.json
