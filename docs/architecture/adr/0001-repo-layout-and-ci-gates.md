@@ -2,7 +2,7 @@
 
 - **Status:** Accepted 2026-11-13 (D-72). Performance figures remain to be qualified on the D-65 target system.
 - **Date:** 2026-11-13
-- **Linked decisions:** D-3, D-8, D-16, D-17, D-19, D-20, D-22, D-28, D-29, D-31, D-43, D-48, D-51–D-54, D-56, D-58, D-61, D-62, D-65.
+- **Linked decisions:** D-3, D-8, D-16, D-17, D-19, D-20, D-22, D-28, D-29, D-31, D-43, D-48, D-51–D-54, D-56, D-58, D-61, D-62, D-65, D-73, D-74.
 - **Related requirements:** FR-4, FR-13–FR-19; NFR-1–NFR-4, NFR-7–NFR-12.
 
 ## Context and authority
@@ -260,3 +260,49 @@ coordinator's responsibilities, not edits made by this revision.
 
 References identify implementation specifications, not evidence that those controls
 are deployed in this repository. Verify pinned tooling and plan capabilities at activation.
+
+## Addendum — 2026-11-13: trusted gates and owner approval (D-74, PR #23 revision 3)
+
+This addendum records how the M0 implementation meets this ADR after the PR #23
+reviews (F1, F2; ADV23R-08). It adds no decision beyond D-73 and D-74.
+
+- **Trusted entry point.** `independent-review` and `policy-approval` run from
+  `.github/workflows/trusted-gates.yml` on `main` via `pull_request_target`. That
+  workflow builds `main`'s xtask in a checkout of `main` and fetches the pull-request
+  head only as Git objects; it never checks out, builds or runs pull-request code,
+  holds no secrets and has a read-only token. "Do not use pull_request_target to run
+  PR code" above still holds. Both gates compare against the current tip of `main`.
+- **Pull-request jobs.** Build, test, cargo-deny and the xtask policy jobs read their
+  policy from the current tip of `main` and fail closed when `main` has no policy.
+  Their workflow and action files are defined by the pull request, but they are
+  protected paths: the trusted `policy-approval` gate fails for any change to them
+  without the owner's exact-head approval, and rejects a pull-request job that
+  reuses a trusted gate's name.
+- **Bootstrap.** The only exception to failing closed is the first B0 activation
+  described above: an exact head SHA the coordinator attests on `main` in
+  `docs/process/ci-bootstrap.toml` (`seed_sha = "<40 hex>"`). An absent policy is
+  never a fallback.
+- **Owner approval (D-74).** Agents push and open pull requests from a separate
+  machine account (`agent_account` in `xtask/policy/repository.toml`; placeholder
+  until created). The owner approves from `Tobechukwu-Njoku`; an APPROVED review on
+  the exact head is the policy-approval and code-owner evidence. For policy approval
+  this replaces "a shared owner identity cannot approve its own PR" above; required
+  status checks remain the merge gate. A policy change opened by the owner cannot
+  pass, and the gate says so.
+- **Review evidence.** The role/vendor matrix of D-28, D-51, D-53 and D-54 is the
+  trusted file `xtask/policy/review.toml`. Every adversarial finding needs a closing
+  disposition in a current triage record (format in `docs/requirements/REVIEW-BRIEF.md`).
+
+Residual risks, not closed by code:
+
+1. Until `trusted-gates.yml` is on `main`, no CI result for the bootstrap pull request
+   is independent of it; the coordinator's manual exact-SHA check is the control.
+2. Pull-request jobs are trustworthy only while branch protection requires the
+   trusted gates and `merge-gates`. Configuring that is an owner action; no
+   repository setting is changed by this addendum.
+3. GitHub may show a spoofed status beside a trusted one of the same name. The
+   trusted gate fails in that case, but the coordinator confirms that the passing
+   checks come from the `pull_request_target` run of `trusted-gates.yml`.
+4. `pull_request_target` does not run on review events: after approving, the owner
+   re-runs the trusted-gates run. A compromised owner or machine-account token
+   defeats these controls.

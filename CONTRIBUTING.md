@@ -54,14 +54,21 @@ on the separate target system (D-65).
   Allow-list or exception changes need independent review and the policy owner's
   approval (NFR-8, `.github/CODEOWNERS`).
 - **No Python or Julia** in the production dependency graph (NFR-10).
-- **Workflows:** SHA-pinned actions, read-only token, no `pull_request_target`
+- **Workflows:** SHA-pinned actions, read-only token, no `pull_request_target` outside the
+  trusted gates, and event values reach scripts as `"$VAR"`, never `${{ env.VAR }}`
   ([CI security policy](docs/security/ci-runner-policy.md)).
 - **Data:** never commit raw `research-only` data; commit download scripts only (D-56).
   Every provenance manifest tags each dataset `open-commercial` or `research-only`.
 - **Policy paths** (`.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
-  `Cargo.toml`, `rust-toolchain.toml`, `docs/security/`) need the policy owner's approval.
+  `Cargo.toml`, `rust-toolchain.toml`, `docs/security/`) need the policy owner's APPROVED
+  review on the exact head. Agents push and open pull requests from the machine account
+  in `xtask/policy/repository.toml` (`agent_account`, D-74); the owner cannot approve a
+  pull request they opened, so an owner-opened policy change cannot pass.
+- **Unsafe code:** every crate root outside `crates/solver-*` starts with
+  `#![forbid(unsafe_code)]`.
 
 Checks to require on `main` (branch protection is configured by the owner; it is not
 on yet): `merge-gates` (all automated gates, listing the ones not yet applicable),
-`independent-review` and `policy-approval` (both in `review-gates.yml`). The last two fail
-until the review evidence or owner approval exists for the current head.
+`independent-review` and `policy-approval` (both in `trusted-gates.yml`, which runs from
+`main` and never runs pull-request code). The last two fail until the review evidence,
+triage or owner approval exists for the current head; re-run them after it lands.

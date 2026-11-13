@@ -37,6 +37,14 @@ enforcement findings require correction and exact-head re-review. Evidence and
 R1–R8 / ADV23-01..18 dispositions:
 [revision-2 report](reviews/gpt-2026-11-13-pr23-r2.md). PR #23 was not modified.
 
+**PR #23 revision 3 (implementation, 2026-11-13):** F1–F9 and ADV23R-01..09 addressed with
+mapped regression tests (finding→test table in the PR body). Trusted gates now run from
+`main` (`trusted-gates.yml`); PR jobs fail closed until `main` holds policy. **Coordinator
+action before CI can pass:** commit `docs/process/ci-bootstrap.toml` with
+`seed_sha = "<final PR #23 head>"` to `main` and re-run CI; then GPT re-review, Gemini
+adversarial re-check and a triage record for every adversarial finding (format in
+REVIEW-BRIEF.md). The D-74 machine account (`egs-bot` placeholder) is still to be created.
+
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
 

@@ -38,9 +38,28 @@ reports from `main`, never from the pull request. A code review counts only if i
     - Reviewed head: `<full 40-character commit SHA>`
     - Verdict: **approve**   (or approved, merge-ready; anything else blocks)
 
-The providers must differ, the reviewed SHA must be a commit of the pull request, and no
-path the pull request changes (other than review reports) may differ between that commit
-and the current head. Adversarial reports (file name containing `adversarial`) must cite a
-full commit SHA of the pull request. After a report lands on `main`, re-run the gate by
-pushing or editing the pull request. Triage of adversarial findings is still confirmed by
-the coordinator.
+The gate runs from `main` (`trusted-gates.yml`) and checks, against the trusted matrix
+`xtask/policy/review.toml`:
+
+- **Independent review:** the author and reviewer vendors differ (vendors, not model
+  names: two Anthropic models do not count) and the role pair is allowed, for example
+  `code generation / Anthropic` reviewed by `independent code review / OpenAI`.
+  Gemini never supplies independent review.
+- **Adversarial review:** at least one report with `Reviewer role/provider: adversarial
+  review / Google` cites a commit of the pull request. Every adversarial report on the
+  pull request (by that role or a file name containing `adversarial`) must be triaged.
+  Finding IDs are the first token of `###` (or deeper) headings, such as `ADV23R-01`.
+- **Triage record** (GPT or coordinator, D-53), first 40 lines:
+
+      - Triager role/provider: triage / OpenAI
+      - Triaged report: `docs/requirements/reviews/<adversarial report>.md`
+      - Reviewed head: `<full 40-character commit SHA>`
+
+  and a table with one row per finding: `| ADV23R-01 | fixed | reason |`. Closing
+  dispositions are fixed, rejected, deferred, duplicate and not-applicable; anything
+  else (for example `accepted`) leaves the finding open.
+- **Currentness:** the reviewed SHA (and the triage SHA) must be a commit of the pull
+  request, and no tree entry the pull request owns (contents or file mode) may differ
+  between it and the current head, other than review reports.
+
+After a report lands on `main`, re-run the trusted-gates run of the pull request.

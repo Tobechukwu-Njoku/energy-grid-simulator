@@ -22,33 +22,45 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
 `cargo xtask policy` parses every workflow and local action as YAML and fails the
 `policy` job if any of these breaks:
 
-1. Only allow-listed triggers (`pull_request`, `pull_request_review`, `push`); never
-   `pull_request_target` or `workflow_run`. PR code runs with a read-only token and no secrets.
+1. Only allow-listed triggers (`pull_request`, `push`); never `workflow_run`.
+   `pull_request_target` is allowed only in `trusted-gates.yml`, listed as trusted in
+   `xtask/policy/gates.toml`; its jobs may not set a checkout `ref` or `repository`,
+   use a local action or a cache. PR code runs with a read-only token and no secrets.
 2. An explicit top-level `permissions:` block; every workflow and job permission is `read`
    or `none`, in block or flow (`{contents: write}`) form. Any write scope needs a
    separately reviewed exception in this document.
 3. Every third-party action is pinned to a full 40-character commit SHA; the tag goes in a
    comment. Updating a pin is a reviewed policy change.
 4. `actions/checkout` always sets `persist-credentials: false`.
-5. A `run:` script contains only allow-listed `${{ }}` expressions (`env.*`, `runner.*`);
-   every event value reaches a script through `env:` or the event file. Scripts never
-   run Python (D-73). No YAML aliases, `RUSTFLAGS` or rustc wrapper.
+5. A `run:` script contains only allow-listed `${{ }}` expressions (`runner.temp`,
+   `runner.os`). Every event value reaches a script as a shell variable set in `env:`
+   (`"$TITLE"`), never as `${{ env.TITLE }}`, which pastes the value into the script
+   text (F5). Scripts never run Python (D-73). No YAML aliases, `RUSTFLAGS` or rustc
+   wrapper; Cargo config files may hold only `[alias]`.
 6. No `secrets.*` other than `GITHUB_TOKEN`, no `secrets: inherit`; only the hosted
    labels `ubuntu-24.04` and `macos-15` before M1; no `container:` or `services:`.
-7. **Trusted policy.** Every policy job checks out the base revision
-   (`.github/actions/trusted-policy`) and runs that revision's `xtask` with its policy
-   files (`xtask/policy/`, `.githooks/attribution-patterns.regex`) against the PR
-   checkout; cargo-deny reads the base `deny.toml`. A PR therefore cannot weaken the
-   rules applied to itself. The trusted gate graph (`xtask/policy/gates.toml`) requires
-   every gate job, unconditional, and `merge-gates` to depend on all of them.
-   Bootstrap: when the base has no `xtask` yet (the M0 seed PR), the PR's own copy runs
-   with a warning; that seed is reviewed independently.
-8. **Policy changes.** `.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
+7. **Trusted gates.** `independent-review` and `policy-approval` run from `main`
+   (`.github/workflows/trusted-gates.yml`, `pull_request_target`). They build `main`'s
+   xtask in a checkout of `main`, fetch the PR head only as Git data, and never check
+   out, build or run PR code. Both compare against the current tip of `main`.
+8. **Trusted policy for PR jobs.** Every policy job loads the current tip of `main`
+   (`.github/actions/trusted-policy/load.sh`), not the event's base, and runs that
+   tree's `xtask` with its policy files (`xtask/policy/`,
+   `.githooks/attribution-patterns.regex`) against the PR checkout; cargo-deny reads
+   `main`'s `deny.toml`. If `main` has no xtask policy the job **fails closed**. The one
+   exception is the bootstrap seed: the exact head SHA the coordinator attests on
+   `main` in `docs/process/ci-bootstrap.toml` as `seed_sha = "<40 hex>"`.
+9. **Policy changes.** `.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
    `Cargo.toml`, `rust-toolchain.toml` and `docs/security/` are owned by the policy owner
-   in `.github/CODEOWNERS`. The `policy-approval` check fails until the owner approves
-   the exact head. A pull-request workflow is itself defined by the PR, so these checks
-   rely on branch protection requiring `merge-gates`, `independent-review` and
-   `policy-approval` by name, plus code-owner review; the owner configures that.
+   in `.github/CODEOWNERS` (checked with GitHub's last-match rule). The trusted
+   `policy-approval` gate fails until the owner's latest review is APPROVED on the exact
+   head, then needs a re-run. Agents open PRs from the machine account named
+   `agent_account` in `xtask/policy/repository.toml` (D-74); a policy PR opened by the
+   owner cannot pass because GitHub forbids self-approval. Because workflow and action
+   files are protected, a PR cannot change what its jobs run without that approval,
+   and a PR job reusing a trusted gate name fails the gate. Branch protection should
+   require `merge-gates`, `independent-review` and `policy-approval`; the owner
+   configures that. Residual risks are listed in ADR 0001's 2026-11-13 addendum.
 
 No caches are written by M0 workflows. If caching is added, PR jobs may only read caches
 written by trusted `main` runs, and caches are keyed by toolchain, platform, lockfile and flags.
