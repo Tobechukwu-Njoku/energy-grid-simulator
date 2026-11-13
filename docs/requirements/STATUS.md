@@ -31,6 +31,12 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision-2 review:** exact head `b38db0675fa3b2eb6a05600fc6fb22d85e0dd8cd`
+re-reviewed; verdict **must-fix**. All 81 submitted tests pass, but nine remaining
+enforcement findings require correction and exact-head re-review. Evidence and
+R1–R8 / ADV23-01..18 dispositions:
+[revision-2 report](reviews/gpt-2026-11-13-pr23-r2.md). PR #23 was not modified.
+
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
 
