@@ -8,6 +8,8 @@
 //! Nothing here relaxes a request: a MILP request to an LP-only or unavailable
 //! backend is an error, never a silent LP solve or a fallback to another solver.
 
+#![forbid(unsafe_code)]
+
 mod capability;
 mod gap;
 mod status;

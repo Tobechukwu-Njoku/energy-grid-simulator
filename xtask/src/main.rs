@@ -1,5 +1,7 @@
 //! `cargo xtask <check>`: repository policy checks and CI gates (D-73).
 
+#![forbid(unsafe_code)]
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 

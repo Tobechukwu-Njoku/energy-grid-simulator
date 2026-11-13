@@ -1,5 +1,7 @@
 //! End-to-end attribution scans over scratch repositories (R2, R3, R4, R1).
 
+#![forbid(unsafe_code)]
+
 mod common;
 
 use common::{Repo, TempDir, footer, root, trailer};

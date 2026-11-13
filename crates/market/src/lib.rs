@@ -2,3 +2,5 @@
 //! losses/FX policy (ADR 0006).
 //!
 //! Skeleton crate (M0). Market modules arrive in M2a.
+
+#![forbid(unsafe_code)]

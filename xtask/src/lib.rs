@@ -3,6 +3,8 @@
 //! Run `cargo xtask help`. In CI every check runs from the trusted base
 //! revision (`--policy`) against the pull-request checkout (`--repo`).
 
+#![forbid(unsafe_code)]
+
 pub mod attribution;
 pub mod docs;
 pub mod repository;

@@ -2,3 +2,5 @@
 //! (ADR 0003 stages 0 and 1).
 //!
 //! Skeleton crate (M0). Implementation arrives in M2a.
+
+#![forbid(unsafe_code)]

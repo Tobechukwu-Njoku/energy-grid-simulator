@@ -4,6 +4,8 @@
 //! the identity and classification types other crates need to compile their
 //! contracts; network records and revisions follow in M1.
 
+#![forbid(unsafe_code)]
+
 use std::fmt;
 use std::str::FromStr;
 

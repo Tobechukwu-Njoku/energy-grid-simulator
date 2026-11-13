@@ -3,6 +3,8 @@
 //! M0 provides only `egs solvers`, which lists each solver backend's declared
 //! capabilities, requirements and availability (FR-18.AC3).
 
+#![forbid(unsafe_code)]
+
 use std::process::ExitCode;
 
 use egs_optimisation::{Availability, Feature, SolverBackend};

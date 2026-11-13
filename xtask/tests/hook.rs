@@ -1,6 +1,8 @@
 //! The shell+Perl commit-msg hook, tested from Rust with the shared fixtures
 //! (`.githooks/tests/fixtures.json`), plus hook/CI parity.
 
+#![forbid(unsafe_code)]
+
 mod common;
 
 use std::path::Path;

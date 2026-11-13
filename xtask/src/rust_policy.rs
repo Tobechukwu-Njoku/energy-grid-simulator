@@ -1,15 +1,21 @@
 //! Rust source and manifest policy (ADR 0001, NFR-10).
 //!
-//! - `unsafe-scope`: outside `crates/solver-*`, no attribute anywhere lowers
-//!   the `unsafe_code` lint. Files are parsed with `syn`, so multiline,
-//!   `cfg_attr`, nested and macro-generated attributes are all seen
-//!   (R5, ADV23-03, ADV23-05). Unparseable Rust fails the check.
+//! - `unsafe-scope`: outside `crates/solver-*`, every crate root (library,
+//!   binaries, tests, examples, benches and build scripts, as Cargo selects
+//!   them) starts with `#![forbid(unsafe_code)]`. A `forbid` cannot be lowered
+//!   later, so the compiler rejects any opt-out, including one assembled by a
+//!   macro from a parameter (F4). As defence in depth, no attribute anywhere
+//!   lowers the lint by name; files are parsed with `syn`, so multiline,
+//!   `cfg_attr`, nested and macro-body attributes are seen (R5, ADV23-03,
+//!   ADV23-05). Unparseable Rust fails the check.
 //! - `manifests`: the workspace keeps `unsafe_code` at deny/forbid; every
 //!   package inherits workspace lints and nothing else (ADV23-06); every package
-//!   inherits the workspace licence (ADV23-13); Cargo config cannot add lint
-//!   flags.
-//! - `native-runtimes`: no build script or `#[link]` names a Python or Julia
-//!   library (ADV23-12).
+//!   inherits the workspace licence (ADV23-13); a Cargo configuration file
+//!   (`config` or `config.toml` in any `.cargo/` directory) may hold only
+//!   `[alias]` entries (ADV23R-06).
+//! - `native-runtimes`: no build script (the one Cargo selects, including a
+//!   custom `build = "..."` path, F7) and no `link` attribute, conditional
+//!   or not, names a Python or Julia library (ADV23-12).
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use quote::ToTokens as _;
@@ -17,6 +23,8 @@ use syn::ext::IdentExt as _;
 use syn::spanned::Spanned as _;
 use syn::visit::Visit;
 use toml_edit::{DocumentMut, Item};
+
+use std::collections::BTreeSet;
 
 use crate::util::{Ctx, Finding, tracked};
 
@@ -50,6 +58,29 @@ pub fn lowers_unsafe(tokens: TokenStream) -> bool {
                 }
             }
             TokenTree::Group(group) if lowers_unsafe(group.stream()) => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Whether a token stream holds a `link(...)` group naming a Python or Julia
+/// library at any depth, e.g. inside `cfg_attr` or a macro body (F7).
+#[must_use]
+pub fn links_runtime(tokens: TokenStream) -> bool {
+    let trees: Vec<TokenTree> = tokens.into_iter().collect();
+    for (index, tree) in trees.iter().enumerate() {
+        match tree {
+            TokenTree::Ident(ident) => {
+                if ident.unraw() == "link"
+                    && let Some(TokenTree::Group(group)) = trees.get(index + 1)
+                    && group.delimiter() == Delimiter::Parenthesis
+                    && names_runtime(&group.stream().to_string())
+                {
+                    return true;
+                }
+            }
+            TokenTree::Group(group) if links_runtime(group.stream()) => return true,
             _ => {}
         }
     }
@@ -95,7 +126,9 @@ impl<'ast> Visit<'ast> for Scan<'_> {
                 "unsafe_code may only be lowered in crates/solver-* adapters",
             );
         }
-        if attribute.path().is_ident("link") && names_runtime(&tokens.to_string()) {
+        if (attribute.path().is_ident("link") && names_runtime(&tokens.to_string()))
+            || links_runtime(tokens)
+        {
             self.flag(
                 line,
                 "linking a Python or Julia runtime is forbidden (NFR-10)",
@@ -109,6 +142,12 @@ impl<'ast> Visit<'ast> for Scan<'_> {
             self.flag(
                 mac.span().start().line,
                 "macro body lowers unsafe_code outside crates/solver-*",
+            );
+        }
+        if links_runtime(mac.tokens.clone()) {
+            self.flag(
+                mac.span().start().line,
+                "macro body links a Python or Julia runtime (NFR-10)",
             );
         }
         if self.build_script && names_runtime(&mac.tokens.to_string()) {
@@ -134,9 +173,19 @@ fn quote_attr(attribute: &syn::Attribute) -> TokenStream {
     attribute.meta.to_token_stream()
 }
 
-/// Scans one Rust file.
+/// Scans one Rust file; a file named `build.rs` is treated as a build script.
 #[must_use]
 pub fn scan_rust(path: &str, source: &str) -> Vec<Finding> {
+    scan_rust_as(
+        path,
+        source,
+        path == "build.rs" || path.ends_with("/build.rs"),
+    )
+}
+
+/// Scans one Rust file, stating whether Cargo uses it as a build script (F7).
+#[must_use]
+pub fn scan_rust_as(path: &str, source: &str, build_script: bool) -> Vec<Finding> {
     let file = match syn::parse_file(source) {
         Ok(file) => file,
         Err(error) => {
@@ -149,12 +198,119 @@ pub fn scan_rust(path: &str, source: &str) -> Vec<Finding> {
     };
     let mut scan = Scan {
         path,
-        build_script: path == "build.rs" || path.ends_with("/build.rs"),
+        build_script,
         check_unsafe: !in_solver_adapter(path),
         findings: Vec::new(),
     };
     scan.visit_file(&file);
     scan.findings
+}
+
+/// Whether a parsed file starts with a top-level `#![forbid(unsafe_code)]`
+/// (not inside `cfg_attr`, which a configuration could switch off).
+#[must_use]
+pub fn forbids_unsafe(file: &syn::File) -> bool {
+    file.attrs.iter().any(|attribute| {
+        matches!(attribute.style, syn::AttrStyle::Inner(_))
+            && attribute.path().is_ident("forbid")
+            && matches!(&attribute.meta, syn::Meta::List(list) if names_unsafe(list.tokens.clone()))
+    })
+}
+
+/// Checks that a crate root forbids unsafe code (F4).
+#[must_use]
+pub fn check_crate_root(path: &str, source: &str) -> Vec<Finding> {
+    match syn::parse_file(source) {
+        Ok(file) if forbids_unsafe(&file) => Vec::new(),
+        Ok(_) => vec![Finding::at(
+            path,
+            Some(1),
+            "crate root outside crates/solver-* must start with #![forbid(unsafe_code)] (ADR 0001)",
+        )],
+        Err(_) => Vec::new(), // scan_rust reports the parse failure
+    }
+}
+
+/// Rust targets of one package, as Cargo selects them: explicit target
+/// paths plus the conventional auto-discovered files. Returns (crate roots,
+/// build scripts), repository-relative.
+#[must_use]
+pub fn package_targets(
+    manifest_path: &str,
+    document: &DocumentMut,
+    tracked: &BTreeSet<String>,
+) -> (BTreeSet<String>, BTreeSet<String>) {
+    let mut roots = BTreeSet::new();
+    let mut build = BTreeSet::new();
+    let Some(package) = document.get("package") else {
+        return (roots, build);
+    };
+    let dir = manifest_path
+        .rsplit_once('/')
+        .map_or(String::new(), |(dir, _)| format!("{dir}/"));
+    let join = |relative: &str| normalise_path(&format!("{dir}{relative}"));
+    match package.get("build") {
+        Some(item) if item.as_bool() == Some(false) => {}
+        Some(item) if item.as_str().is_some() => {
+            build.insert(join(item.as_str().unwrap_or_default()));
+        }
+        _ => {
+            let default = join("build.rs");
+            if tracked.contains(&default) || package.get("build").is_some() {
+                build.insert(default);
+            }
+        }
+    }
+    for key in ["lib", "bin", "test", "example", "bench"] {
+        let tables: Vec<&dyn toml_edit::TableLike> = match document.get(key) {
+            Some(Item::ArrayOfTables(array)) => array
+                .iter()
+                .map(|table| table as &dyn toml_edit::TableLike)
+                .collect(),
+            Some(item) => item.as_table_like().into_iter().collect(),
+            None => Vec::new(),
+        };
+        for table in tables {
+            if let Some(path) = table.get("path").and_then(Item::as_str) {
+                roots.insert(join(path));
+            }
+        }
+    }
+    for file in tracked {
+        let Some(relative) = file.strip_prefix(&dir) else {
+            continue;
+        };
+        let parts: Vec<&str> = relative.split('/').collect();
+        let root = match parts.as_slice() {
+            ["src", "lib.rs" | "main.rs"] => true,
+            ["src", "bin", name] | ["tests" | "examples" | "benches", name] => {
+                name.ends_with(".rs")
+            }
+            ["src", "bin", _, "main.rs"] | ["tests" | "examples" | "benches", _, "main.rs"] => true,
+            _ => false,
+        };
+        if root {
+            roots.insert(file.clone());
+        }
+    }
+    for script in &build {
+        roots.insert(script.clone());
+    }
+    (roots, build)
+}
+
+fn normalise_path(path: &str) -> String {
+    let mut parts: Vec<&str> = Vec::new();
+    for part in path.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop();
+            }
+            other => parts.push(other),
+        }
+    }
+    parts.join("/")
 }
 
 /// Runs `unsafe-scope` and `native-runtimes` over tracked Rust files.
@@ -163,14 +319,41 @@ pub fn scan_rust(path: &str, source: &str) -> Vec<Finding> {
 ///
 /// Fails if Git or file reads fail.
 pub fn check_sources(ctx: &Ctx) -> Result<Vec<Finding>, String> {
+    let files: BTreeSet<String> = tracked(&ctx.repo)?.into_iter().collect();
+    let mut roots = BTreeSet::new();
+    let mut build_scripts = BTreeSet::new();
+    for manifest in files
+        .iter()
+        .filter(|path| in_scope(path) && (*path == "Cargo.toml" || path.ends_with("/Cargo.toml")))
+    {
+        let text = std::fs::read_to_string(ctx.repo.join(manifest))
+            .map_err(|error| format!("{manifest}: {error}"))?;
+        if let Ok(document) = text.parse::<DocumentMut>() {
+            let (crate_roots, scripts) = package_targets(manifest, &document, &files);
+            roots.extend(crate_roots);
+            build_scripts.extend(scripts);
+        }
+    }
     let mut findings = Vec::new();
-    for path in tracked(&ctx.repo)? {
-        if !path.ends_with(".rs") || !in_scope(&path) {
+    for path in &build_scripts {
+        if !files.contains(path) {
+            findings.push(Finding::at(
+                path,
+                None,
+                "build script selected by Cargo.toml is not a tracked file",
+            ));
+        }
+    }
+    for path in &files {
+        if !path.ends_with(".rs") || !in_scope(path) {
             continue;
         }
-        let source = std::fs::read_to_string(ctx.repo.join(&path))
+        let source = std::fs::read_to_string(ctx.repo.join(path))
             .map_err(|error| format!("{path}: {error}"))?;
-        findings.extend(scan_rust(&path, &source));
+        findings.extend(scan_rust_as(path, &source, build_scripts.contains(path)));
+        if roots.contains(path) && !in_solver_adapter(path) {
+            findings.extend(check_crate_root(path, &source));
+        }
     }
     Ok(findings)
 }
@@ -254,28 +437,46 @@ pub fn check_package_manifest(path: &str, document: &DocumentMut) -> Vec<Finding
     findings
 }
 
-/// Checks Cargo configuration files for lint-changing flags.
+/// Cargo configuration tables a repository file may set. Everything else
+/// (`build`, `target`, `env`, `unstable`, `source`, `net`, `http`, ...) can
+/// change flags, wrappers, linkers or sources and is rejected (ADV23R-06).
+const CARGO_CONFIG_ALLOWED: &[&str] = &["alias"];
+
+/// Checks a Cargo configuration file: only `[alias]` entries are allowed.
 #[must_use]
 pub fn check_cargo_config(path: &str, text: &str) -> Vec<Finding> {
-    let lower = text.to_ascii_lowercase();
-    if [
-        "unsafe_code",
-        "cap-lints",
-        "rustflags",
-        "rustc-wrapper",
-        "rustc =",
-    ]
-    .iter()
-    .any(|needle| lower.contains(needle))
-    {
-        vec![Finding::at(
-            path,
-            None,
-            "Cargo config may not set rustflags, a rustc wrapper or lint levels",
-        )]
-    } else {
-        Vec::new()
-    }
+    let document: DocumentMut = match text.parse() {
+        Ok(document) => document,
+        Err(error) => {
+            return vec![Finding::at(
+                path,
+                None,
+                format!("invalid Cargo config TOML: {error}"),
+            )];
+        }
+    };
+    document
+        .iter()
+        .filter(|(key, _)| !CARGO_CONFIG_ALLOWED.contains(key))
+        .map(|(key, _)| {
+            Finding::at(
+                path,
+                None,
+                format!(
+                    "Cargo config may only define [alias]; `{key}` can change rustflags, wrappers, linkers or lint levels"
+                ),
+            )
+        })
+        .collect()
+}
+
+/// Whether `path` is a Cargo configuration file Cargo would load:
+/// `config` or `config.toml` directly inside a `.cargo` directory.
+#[must_use]
+pub fn is_cargo_config(path: &str) -> bool {
+    let mut parts = path.rsplit('/');
+    let name = parts.next().unwrap_or_default();
+    (name == "config" || name == "config.toml") && parts.next() == Some(".cargo")
 }
 
 /// Runs the manifest checks.
@@ -297,8 +498,7 @@ pub fn check_manifests(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             continue;
         }
         let file_name = path.rsplit('/').next().unwrap_or(&path);
-        let is_cargo_config =
-            path.contains(".cargo/") && (file_name == "config" || file_name == "config.toml");
+        let is_cargo_config = is_cargo_config(&path);
         if file_name != "Cargo.toml" && !is_cargo_config {
             continue;
         }
