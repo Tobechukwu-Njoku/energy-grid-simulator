@@ -6,7 +6,9 @@
     "10m_u_component_of_wind",
     "10m_v_component_of_wind",
     "2m_temperature",
-    "surface_solar_radiation_downwards"
+    "surface_solar_radiation_downwards",
+    "total_precipitation",
+    "total_sky_direct_solar_radiation_at_surface"
   ],
   "year": ["2024"],
   "month": ["01"],
@@ -23,5 +25,5 @@
   ],
   "data_format": "netcdf",
   "download_format": "unarchived",
-  "area": [61, -12, 48, 3]
+  "area": [61, -12, 48, 10]
 }

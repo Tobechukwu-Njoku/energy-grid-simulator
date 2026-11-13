@@ -11,8 +11,8 @@ esac
 mkdir -p raw samples
 while IFS="$(printf '\t')" read -r clearance name url; do
     case "$clearance" in ""|\#*) continue ;; esac
-    if [ "$clearance" = inspect-only ] && [ "$include_uncleared" = false ]; then
-        printf 'SKIP uncleared inspection source: %s\n' "$name"
+    if [ "$clearance" = research-only ] && [ "$include_uncleared" = false ]; then
+        printf 'SKIP research-only source: %s\n' "$name"
         continue
     fi
     printf '%s: %s\n' "$clearance" "$name"
@@ -20,3 +20,4 @@ while IFS="$(printf '\t')" read -r clearance name url; do
         "$url" --output "raw/$name.part"
     mv "raw/$name.part" "raw/$name"
 done < sources.tsv
+python3 verify_hashes.py

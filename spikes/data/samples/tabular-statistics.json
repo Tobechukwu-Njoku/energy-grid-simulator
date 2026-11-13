@@ -89,6 +89,13 @@
       "Unchanged": 17
     }
   },
+  "nged-three-winding-transformers.csv": {
+    "rows": 69,
+    "status_counts": {
+      "Unchanged": 67,
+      "Updated": 2
+    }
+  },
   "bmunits.json": {
     "rows": 3134
   },

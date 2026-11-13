@@ -98,6 +98,7 @@
   "ireland_winter_peak_2024": {
     "case": "TYTFS2024_studyfiles/TYTFS2024_WP2024_V33.raw",
     "bus_records": 2025,
+    "transformer_graph_representation": "physical-terminal connectivity projection; not an electrical equivalent",
     "bus_voltage_counts": {
       "38.0000": 278,
       "110.0000": 456,

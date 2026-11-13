@@ -90,11 +90,11 @@ all_edges = [(int(row[0]), int(row[1])) for row in branches]
 active_edges = [(int(row[0]), int(row[1])) for row in branches if int(row[13]) == 1]
 for record in transformers:
     terminals = [int(value) for value in record[:3] if int(value) != 0]
-    transformer_edges = [(terminals[0], other) for other in terminals[1:]]
-    all_edges.extend(transformer_edges)
+    terminal_connectivity_edges = [(terminals[0], other) for other in terminals[1:]]
+    all_edges.extend(terminal_connectivity_edges)
     status = int(record[11])
     if status == 1:
-        active_edges.extend(transformer_edges)
+        active_edges.extend(terminal_connectivity_edges)
     elif status in {2, 3, 4} and len(terminals) == 3:
         disconnected_winding = {2: 1, 3: 2, 4: 0}[status]
         live_terminals = [node for index, node in enumerate(terminals) if index != disconnected_winding]
@@ -104,6 +104,7 @@ missing = {node for edge in all_edges for node in edge} - buses.keys()
 target_buses = {number for number, row in buses.items() if float(row[2]) in {400, 380, 275, 220, 110}}
 active_target_buses = target_buses & active_buses
 ireland = {"case": member, "bus_records": len(buses),
+           "transformer_graph_representation": "physical-terminal connectivity projection; not an electrical equivalent",
            "bus_voltage_counts": dict(collections.Counter(row[2].strip() for row in buses.values())),
            "bus_type_counts": dict(collections.Counter(row[3].strip() for row in buses.values())),
            "ac_branch_records": len(branches), "in_service_ac_branches": sum(int(row[13]) == 1 for row in branches),
