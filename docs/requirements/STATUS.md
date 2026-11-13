@@ -31,6 +31,14 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision-3 review:** exact head `b2173e28f8f232366ffe6a27d5e787fd2adfc39c`
+re-reviewed; verdict **must-fix**. All 111 submitted tests pass. The original
+F1–F9 / ADV23R-01..09 inputs are addressed (D-74 account/approval activation
+remains operational), but four independent probes expose remaining unsafe-lint,
+Cargo-target, review-currentness and CODEOWNERS gaps. Do not attest this head as
+the trusted policy seed. Evidence and finding-by-finding regression assessment:
+[revision-3 report](reviews/gpt-2026-11-13-pr23-r3.md). PR #23 was not modified.
+
 **PR #23 revision-2 review:** exact head `b38db0675fa3b2eb6a05600fc6fb22d85e0dd8cd`
 re-reviewed; verdict **must-fix**. All 81 submitted tests pass, but nine remaining
 enforcement findings require correction and exact-head re-review. Evidence and
