@@ -1,8 +1,13 @@
 # Trusted repository policy (D-56, D-73, ADR 0001). Read from the base branch in CI.
 # Changing it needs the policy owner's review (.github/CODEOWNERS, policy-approval).
 
-# GitHub login whose approval protected-path changes need.
+# GitHub login whose approval protected-path changes need (D-74).
 policy_owner = "Tobechukwu-Njoku"
+
+# Separate GitHub machine account agents push and open pull requests from (D-74),
+# so the owner can approve them. ASSUMPTION: placeholder name until the owner
+# creates the account; change it here when it exists.
+agent_account = "egs-bot"
 
 # Paths whose change is a policy change. Keep in step with .github/CODEOWNERS.
 protected_paths = [
@@ -23,12 +28,39 @@ workspace_licence = "LicenseRef-EGS-Unreleased"
 # D-73: Python only in spikes/ and offline reference validators.
 python_allowed = ["spikes/", "tools/reference-validators/"]
 
-# D-56 data gate. Files with these extensions may exist only under the
-# open-commercial sample paths or as listed provenance/metadata files.
+# D-56 data gate. A tracked file with one of these extensions must be either an
+# exact path in data_metadata_files (provenance, fixtures, aggregates), or a file
+# under open_commercial_data whose name (or sample_sources alias) has an
+# open-commercial record in a provenance manifest or sources.tsv (F9).
 data_extensions = [
-    ".csv", ".tsv", ".parquet", ".feather", ".arrow", ".xlsx", ".xls", ".zip", ".gz",
-    ".bz2", ".xz", ".7z", ".tar", ".nc", ".grib", ".grib2", ".grb", ".h5", ".hdf5",
-    ".raw", ".rawx", ".sav", ".sqlite", ".db", ".dbf", ".shp", ".pbf", ".osm", ".geojson",
+    ".csv", ".tsv", ".parquet", ".feather", ".arrow", ".xlsx", ".xls", ".ods", ".zip",
+    ".gz", ".bz2", ".xz", ".7z", ".tar", ".nc", ".cdf", ".grib", ".grib2", ".grb", ".h5",
+    ".hdf5", ".mat", ".m", ".npy", ".npz", ".pkl", ".pickle", ".json", ".jsonl",
+    ".ndjson", ".xml", ".raw", ".rawx", ".sav", ".dyr", ".epc", ".sqlite", ".db",
+    ".dbf", ".shp", ".gpkg", ".kml", ".kmz", ".pbf", ".osm", ".geojson", ".pdf",
 ]
-open_commercial_data = ["spikes/data/samples/*.csv"]
-data_metadata_files = ["spikes/data/sources.tsv"]
+open_commercial_data = ["spikes/data/samples/*"]
+# Exact paths of provenance records, test fixtures and non-reconstructive
+# aggregates that carry a data extension but are not datasets.
+data_metadata_files = [
+    ".githooks/tests/fixtures.json",
+    "spikes/data/sources.tsv",
+    "spikes/data/era5-request-2024-01.json",
+    "spikes/data/samples/download-manifest.json",
+    "spikes/data/samples/network-statistics.json",
+    "spikes/data/samples/tabular-statistics.json",
+    "spikes/data-gathering/elexon/verification-2026-11-13.json",
+    "spikes/data-gathering/elexon/verification-supplement-2026-11-13.json",
+]
+
+# Synthetic, non-working example keys quoted in review reports. Each names one
+# exact line of one file by the Git blob hash of the line text (so this file does
+# not repeat the key); never a wildcard.
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-13-pr23-r2.md"
+line_blob = "d38e78289d703f77d3083278ff71cd146aecb5c2"
+reason = "ADV23R-09 reproduction input; a synthetic hexadecimal sequence, not a credential"
+
+# Committed sample name -> the provenance record (sources.tsv local-name) it was cut from.
+[sample_sources]
+"spikes/data/samples/generation-2024.csv" = "generation-mix.csv"

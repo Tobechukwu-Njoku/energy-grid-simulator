@@ -265,3 +265,70 @@ fn repository_passes_its_own_policy() {
         Vec::<String>::new()
     );
 }
+
+const MANIFEST: &str = "[[datasets]]\nname = \"demand\"\nfilename = \"demand.csv\"\nlicence_status = \"open-commercial\"\nlicence = \"NESO Open Data Licence\"\n";
+
+// F9: every committed sample resolves to an open-commercial provenance record.
+#[test]
+fn f9_unregistered_sample_is_rejected() {
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write("spikes/data/samples/unregistered.csv", "a,b\n1,2\n");
+    repo.commit("data: sample");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert_eq!(found.len(), 1, "{:?}", files(&found));
+    assert_eq!(
+        found[0].file.as_deref(),
+        Some("spikes/data/samples/unregistered.csv")
+    );
+
+    // Registered as open-commercial: accepted.
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write("spikes/data/samples/demand.csv", "a,b\n1,2\n");
+    repo.commit("data: sample");
+    assert!(
+        repository::provenance(&ctx(&repo))
+            .expect("provenance")
+            .is_empty()
+    );
+
+    // Registered as research-only (sources.tsv): rejected.
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write(
+        "spikes/data/sources.tsv",
+        "# clearance\tlocal-name\turl\nresearch-only\tflows.json\thttps://example.org/f\n",
+    );
+    repo.write("spikes/data/samples/flows.json", "{}\n");
+    repo.commit("data: sample");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert!(
+        found.iter().any(|f| f.message.contains("research-only")),
+        "{:?}",
+        files(&found)
+    );
+}
+
+// F8: a narrower CODEOWNERS rule cannot take a protected file from the owner.
+#[test]
+fn f8_codeowners_override_is_rejected_end_to_end() {
+    let repo = Repo::new();
+    let codeowners = std::fs::read_to_string(root().join(".github/CODEOWNERS")).expect("read");
+    repo.write(".github/CODEOWNERS", &codeowners);
+    repo.write("xtask/src/lib.rs", "//! x\n");
+    repo.commit("chore: owners");
+    assert!(
+        repository::codeowners(&ctx(&repo))
+            .expect("owners")
+            .is_empty()
+    );
+    repo.write(
+        ".github/CODEOWNERS",
+        &format!("{codeowners}/xtask/src/lib.rs @someone\n"),
+    );
+    repo.commit("chore: override");
+    let found = repository::codeowners(&ctx(&repo)).expect("owners");
+    assert_eq!(found.len(), 1, "{:?}", files(&found));
+    assert!(found[0].message.contains("xtask/src/lib.rs"));
+}

@@ -5,13 +5,18 @@
 //! - `provenance` (D-56, ADR 0001 `provenance/secrets/data`, ADV23-04): every
 //!   dataset in a provenance manifest is tagged `open-commercial` or
 //!   `research-only`; share-alike data is never used; research-only files are
-//!   never committed; data files exist only under allow-listed open-commercial
-//!   sample paths; no secrets, key files or `raw/` directories are tracked.
-//! - `codeowners`: every protected policy path is owned by the policy owner.
+//!   never committed; data files exist only under allow-listed sample paths
+//!   AND each one resolves to an explicit open-commercial provenance record
+//!   (F9); no secrets, key files or `raw/` directories are tracked.
+//! - `codeowners`: under GitHub's CODEOWNERS rules (last matching rule wins,
+//!   invalid lines are skipped), every protected policy path is owned by the
+//!   policy owner (F8).
+
+use std::collections::{BTreeMap, BTreeSet};
 
 use toml_edit::{DocumentMut, Item};
 
-use crate::util::{Ctx, Finding, glob_match, string_array, tracked};
+use crate::util::{Ctx, Finding, git_command, glob_match, is_sha, string_array, tracked};
 
 /// Trusted repository policy.
 pub const POLICY: &str = "xtask/policy/repository.toml";
@@ -101,15 +106,33 @@ fn mentions_share_alike(text: &str) -> bool {
             .any(|word| word == "osm")
 }
 
+/// Manifest keys naming a dataset's files: a string or an array of strings
+/// (ADV23R-09).
+const FILE_KEYS: &[&str] = &[
+    "filename",
+    "file",
+    "files",
+    "relative_path",
+    "local_name",
+    "path",
+    "paths",
+];
+
 /// Datasets declared by one manifest: (name, status, file names, licence text).
 fn manifest_datasets(document: &DocumentMut) -> Vec<(String, Option<String>, Vec<String>, String)> {
     let mut found = Vec::new();
     let describe = |name: String, table: &dyn toml_edit::TableLike| {
         let field = |key: &str| table.get(key).and_then(Item::as_str).map(str::to_owned);
-        let files = ["filename", "relative_path", "local_name"]
-            .iter()
-            .filter_map(|key| field(key))
-            .collect();
+        let mut files = Vec::new();
+        for key in FILE_KEYS {
+            match table.get(key) {
+                Some(item) if item.as_str().is_some() => {
+                    files.push(item.as_str().unwrap_or_default().to_owned());
+                }
+                Some(item) => files.extend(string_array(item)),
+                None => {}
+            }
+        }
         let licence = ["licence", "licence_name", "license", "license_name"]
             .iter()
             .filter_map(|key| field(key))
@@ -145,6 +168,19 @@ fn manifest_datasets(document: &DocumentMut) -> Vec<(String, Option<String>, Vec
 /// Checks one provenance manifest; returns findings and research-only file names.
 #[must_use]
 pub fn check_manifest(path: &str, text: &str) -> (Vec<Finding>, Vec<String>) {
+    let (findings, records) = manifest_records(path, text);
+    let restricted = records
+        .into_iter()
+        .filter(|(status, _)| status == "research-only")
+        .map(|(_, file)| file)
+        .collect();
+    (findings, restricted)
+}
+
+/// Checks one provenance manifest; returns findings and every
+/// (licence status, file name) record it declares.
+#[must_use]
+pub fn manifest_records(path: &str, text: &str) -> (Vec<Finding>, Vec<(String, String)>) {
     let mut findings = Vec::new();
     let mut restricted = Vec::new();
     let document: DocumentMut = match text.parse() {
@@ -167,9 +203,7 @@ pub fn check_manifest(path: &str, text: &str) -> (Vec<Finding>, Vec<String>) {
     for (name, status, files, licence) in datasets {
         match status.as_deref() {
             Some(status) if STATUSES.contains(&status) => {
-                if status == "research-only" {
-                    restricted.extend(files);
-                }
+                restricted.extend(files.into_iter().map(|file| (status.to_owned(), file)));
             }
             Some(other) => findings.push(Finding::at(path, None, format!("dataset {name}: licence_status `{other}` must be open-commercial or research-only (D-56)"))),
             None => findings.push(Finding::at(path, None, format!("dataset {name}: missing licence_status (D-56)"))),
@@ -188,8 +222,22 @@ pub fn check_manifest(path: &str, text: &str) -> (Vec<Finding>, Vec<String>) {
 }
 
 /// Checks a `sources.tsv` provenance table: (clearance, local-name, url).
+/// Returns findings and research-only local names.
 #[must_use]
 pub fn check_sources_table(path: &str, text: &str) -> (Vec<Finding>, Vec<String>) {
+    let (findings, records) = sources_records(path, text);
+    let restricted = records
+        .into_iter()
+        .filter(|(status, _)| status == "research-only")
+        .map(|(_, file)| file)
+        .collect();
+    (findings, restricted)
+}
+
+/// Checks a `sources.tsv` table; returns findings and (clearance, local-name)
+/// records.
+#[must_use]
+pub fn sources_records(path: &str, text: &str) -> (Vec<Finding>, Vec<(String, String)>) {
     let mut findings = Vec::new();
     let mut restricted = Vec::new();
     for (index, line) in text.lines().enumerate() {
@@ -207,10 +255,8 @@ pub fn check_sources_table(path: &str, text: &str) -> (Vec<Finding>, Vec<String>
                 ),
             ));
         }
-        if clearance == "research-only"
-            && let Some(name) = cells.get(1)
-        {
-            restricted.push((*name).to_owned());
+        if let Some(name) = cells.get(1) {
+            restricted.push((clearance.to_owned(), (*name).to_owned()));
         }
         if mentions_share_alike(line) {
             findings.push(Finding::at(
@@ -228,6 +274,8 @@ struct SecretRule {
     prefix: &'static str,
     min_tail: usize,
     tail: fn(char) -> bool,
+    /// The tail must mix letters and digits (generic prefixes such as `sk-`).
+    mixed: bool,
 }
 
 fn token_char(c: char) -> bool {
@@ -244,84 +292,210 @@ const SECRET_RULES: &[SecretRule] = &[
         prefix: "AKIA",
         min_tail: 16,
         tail: upper_digit,
+        mixed: false,
     },
     SecretRule {
         name: "AWS access key",
         prefix: "ASIA",
         min_tail: 16,
         tail: upper_digit,
+        mixed: false,
     },
     SecretRule {
         name: "GitHub token",
         prefix: "ghp_",
         min_tail: 36,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "GitHub token",
         prefix: "gho_",
         min_tail: 36,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "GitHub token",
         prefix: "ghu_",
         min_tail: 36,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "GitHub token",
         prefix: "ghs_",
         min_tail: 36,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "GitHub token",
         prefix: "ghr_",
         min_tail: 36,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "GitHub token",
         prefix: "github_pat_",
         min_tail: 40,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "Slack token",
         prefix: "xoxb-",
         min_tail: 20,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "Slack token",
         prefix: "xoxp-",
         min_tail: 20,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "Google API key",
         prefix: "AIza",
         min_tail: 35,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "OpenAI-style key",
         prefix: "sk-proj-",
         min_tail: 32,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "Anthropic-style key",
         prefix: "sk-ant-",
         min_tail: 32,
         tail: token_char,
+        mixed: false,
     },
     SecretRule {
         name: "Stripe key",
         prefix: "sk_live_",
         min_tail: 20,
         tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "OpenAI-style key",
+        prefix: "sk-",
+        min_tail: 32,
+        tail: token_char,
+        mixed: true,
+    },
+    SecretRule {
+        name: "Slack token",
+        prefix: "xoxa-",
+        min_tail: 20,
+        tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "Slack token",
+        prefix: "xoxr-",
+        min_tail: 20,
+        tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "Slack token",
+        prefix: "xapp-",
+        min_tail: 20,
+        tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "Slack webhook",
+        prefix: "hooks.slack.com/services/T",
+        min_tail: 20,
+        tail: |c| token_char(c) || c == '/',
+        mixed: false,
+    },
+    SecretRule {
+        name: "GitLab token",
+        prefix: "glpat-",
+        min_tail: 20,
+        tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "Hugging Face token",
+        prefix: "hf_",
+        min_tail: 30,
+        tail: token_char,
+        mixed: true,
+    },
+    SecretRule {
+        name: "npm token",
+        prefix: "npm_",
+        min_tail: 36,
+        tail: token_char,
+        mixed: true,
+    },
+    SecretRule {
+        name: "PyPI token",
+        prefix: "pypi-AgE",
+        min_tail: 50,
+        tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "Stripe key",
+        prefix: "rk_live_",
+        min_tail: 20,
+        tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "Google OAuth token",
+        prefix: "ya29.",
+        min_tail: 30,
+        tail: |c| token_char(c) || c == '.',
+        mixed: true,
+    },
+    SecretRule {
+        name: "SendGrid key",
+        prefix: "SG.",
+        min_tail: 60,
+        tail: |c| token_char(c) || c == '.',
+        mixed: true,
+    },
+    SecretRule {
+        name: "Groq key",
+        prefix: "gsk_",
+        min_tail: 40,
+        tail: token_char,
+        mixed: true,
+    },
+    SecretRule {
+        name: "xAI key",
+        prefix: "xai-",
+        min_tail: 40,
+        tail: token_char,
+        mixed: true,
+    },
+    SecretRule {
+        name: "DigitalOcean token",
+        prefix: "dop_v1_",
+        min_tail: 64,
+        tail: token_char,
+        mixed: false,
+    },
+    SecretRule {
+        name: "Azure storage key",
+        prefix: "AccountKey=",
+        min_tail: 40,
+        tail: |c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='),
+        mixed: true,
     },
 ];
 
@@ -341,7 +515,11 @@ pub fn scan_secrets(path: &str, text: &str) -> Vec<Finding> {
                 "private key material must not be committed",
             ));
         }
+        let mut reported = false;
         for rule in SECRET_RULES {
+            if reported {
+                break;
+            }
             let mut rest = line;
             while let Some(position) = rest.find(rule.prefix) {
                 let before_ok = position == 0
@@ -350,12 +528,16 @@ pub fn scan_secrets(path: &str, text: &str) -> Vec<Finding> {
                     .chars()
                     .take_while(|c| (rule.tail)(*c))
                     .collect();
-                if before_ok && tail.len() >= rule.min_tail {
+                let mixed_ok = !rule.mixed
+                    || (tail.chars().any(|c| c.is_ascii_digit())
+                        && tail.chars().any(|c| c.is_ascii_alphabetic()));
+                if before_ok && tail.len() >= rule.min_tail && mixed_ok {
                     findings.push(Finding::at(
                         path,
                         Some(index + 1),
                         format!("possible {} committed", rule.name),
                     ));
+                    reported = true;
                     break;
                 }
                 rest = &rest[position + rule.prefix.len()..];
@@ -387,17 +569,40 @@ const KEY_EXTENSIONS: &[&str] = &[
     ".ovpn",
 ];
 
-/// Checks tracked paths for data and key files.
+/// Checks tracked paths for data and key files. `records` are the
+/// (licence status, file) entries of every provenance manifest and sources
+/// table. A data file is allowed only as an exact listed metadata/fixture
+/// path, or under a sample path AND registered as open-commercial (F9).
 #[must_use]
 pub fn check_paths(
     paths: &[String],
     document: &DocumentMut,
-    restricted: &[String],
+    records: &[(String, String)],
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
     let data_extensions = string_array(&document["data_extensions"]);
     let sample_paths = string_array(&document["open_commercial_data"]);
     let metadata = string_array(&document["data_metadata_files"]);
+    let aliases: BTreeMap<String, String> = document
+        .get("sample_sources")
+        .and_then(Item::as_table_like)
+        .map(|table| {
+            table
+                .iter()
+                .filter_map(|(key, value)| Some((key.to_owned(), value.as_str()?.to_owned())))
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut registry: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for (status, file) in records {
+        let base = file.rsplit('/').next().unwrap_or(file);
+        if !base.is_empty() {
+            registry
+                .entry(base.to_owned())
+                .or_default()
+                .insert(status.clone());
+        }
+    }
     for path in paths {
         let name = path.rsplit('/').next().unwrap_or(path);
         let lower = name.to_ascii_lowercase();
@@ -418,30 +623,91 @@ pub fn check_paths(
                 "key, licence or credential file must not be committed",
             ));
         }
-        if restricted.iter().any(|file| {
-            let base = file.rsplit('/').next().unwrap_or(file);
-            !base.is_empty() && base == name
-        }) {
+        let listed_metadata = metadata.iter().any(|file| file == path);
+        let source = aliases.get(path).map_or(name, String::as_str);
+        let statuses = registry.get(source);
+        if !listed_metadata && statuses.is_some_and(|s| s.contains("research-only")) {
             findings.push(Finding::at(
                 path,
                 None,
-                "research-only dataset file is committed (D-56)",
+                format!(
+                    "research-only dataset file is committed (D-56; provenance record {source})"
+                ),
             ));
         }
         let is_data = data_extensions
             .iter()
             .any(|ext| lower.ends_with(ext.as_str()));
-        let allowed = sample_paths.iter().any(|glob| glob_match(glob, path))
-            || metadata.iter().any(|file| file == path);
-        if is_data && !allowed {
+        if !is_data || listed_metadata {
+            continue;
+        }
+        if !sample_paths.iter().any(|glob| glob_match(glob, path)) {
             findings.push(Finding::at(
                 path,
                 None,
                 "data file outside the allow-listed open-commercial sample paths (D-56)",
             ));
+        } else if !statuses.is_some_and(|s| s.contains("open-commercial")) {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!(
+                    "data sample has no open-commercial provenance record for {source} (D-56); register it in a manifest or sources.tsv"
+                ),
+            ));
         }
     }
     findings
+}
+
+/// Git blob hash of one line's text, used to name an exempt line without
+/// repeating its content.
+fn line_blob(repo: &std::path::Path, text: &str) -> String {
+    use std::io::Write as _;
+    let child = git_command(repo)
+        .args(["hash-object", "--stdin"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn();
+    let Ok(mut child) = child else {
+        return String::new();
+    };
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(text.as_bytes());
+    }
+    child
+        .wait_with_output()
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+        .unwrap_or_default()
+}
+
+/// Synthetic example keys quoted in review reports: each names one exact
+/// line of one file, with a reason (trusted policy; no wildcards).
+fn load_secret_exemptions(document: &DocumentMut) -> Result<Vec<(String, String)>, String> {
+    let mut found = Vec::new();
+    if let Some(tables) = document
+        .get("secret_exemption")
+        .and_then(Item::as_array_of_tables)
+    {
+        for table in tables {
+            let field = |key: &str| table.get(key).and_then(Item::as_str).map(str::to_owned);
+            match (field("path"), field("line_blob"), field("reason")) {
+                (Some(path), Some(blob), Some(reason))
+                    if !path.contains(['*', '?', '['])
+                        && is_sha(&blob)
+                        && !reason.trim().is_empty() =>
+                {
+                    found.push((path, blob));
+                }
+                _ => {
+                    return Err(format!(
+                        "{POLICY}: every secret_exemption needs one exact path, line_blob and reason"
+                    ));
+                }
+            }
+        }
+    }
+    Ok(found)
 }
 
 /// Runs the provenance, secrets and raw-data gate.
@@ -453,8 +719,9 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let document = policy(ctx)?;
     let paths = tracked(&ctx.repo)?;
     let mut findings = Vec::new();
-    let mut restricted = Vec::new();
+    let mut records = Vec::new();
     let mut manifests = 0;
+    let secret_exemptions = load_secret_exemptions(&document)?;
     for path in &paths {
         let name = path.rsplit('/').next().unwrap_or(path);
         let bytes =
@@ -462,23 +729,33 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
         let text = String::from_utf8_lossy(&bytes);
         if name == "manifest.toml" {
             manifests += 1;
-            let (found, files) = check_manifest(path, &text);
+            let (found, entries) = manifest_records(path, &text);
             findings.extend(found);
-            restricted.extend(files);
+            records.extend(entries);
         }
         if name == "sources.tsv" {
-            let (found, files) = check_sources_table(path, &text);
+            let (found, entries) = sources_records(path, &text);
             findings.extend(found);
-            restricted.extend(files);
+            records.extend(entries);
         }
-        findings.extend(scan_secrets(path, &text));
+        let lines: Vec<&str> = text.lines().collect();
+        findings.extend(scan_secrets(path, &text).into_iter().filter(|finding| {
+            let content = finding
+                .line
+                .and_then(|line| lines.get(line - 1))
+                .copied()
+                .unwrap_or_default();
+            !secret_exemptions
+                .iter()
+                .any(|(file, blob)| file == path && line_blob(&ctx.repo, content) == *blob)
+        }));
     }
     if manifests == 0 {
         findings.push(Finding::general(
             "no provenance manifest found; the gate would be vacuous",
         ));
     }
-    findings.extend(check_paths(&paths, &document, &restricted));
+    findings.extend(check_paths(&paths, &document, &records));
     Ok(findings)
 }
 
@@ -486,7 +763,7 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
 ///
 /// # Errors
 ///
-/// Fails if the trusted policy cannot be read.
+/// Fails if Git or the trusted policy cannot be read.
 pub fn codeowners(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let document = policy(ctx)?;
     let owner = document
@@ -495,39 +772,161 @@ pub fn codeowners(ctx: &Ctx) -> Result<Vec<Finding>, String> {
         .ok_or("trusted policy: policy_owner missing")?;
     let protected = string_array(&document["protected_paths"]);
     let text = std::fs::read_to_string(ctx.repo.join(".github/CODEOWNERS")).unwrap_or_default();
-    Ok(check_codeowners(&text, owner, &protected))
+    let paths = tracked(&ctx.repo)?;
+    Ok(check_codeowners_paths(&text, owner, &protected, &paths))
 }
 
-/// Pure CODEOWNERS comparison.
+/// One parsed CODEOWNERS rule.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwnerRule {
+    /// The path pattern as written.
+    pub pattern: String,
+    /// Owner handles or e-mail addresses (empty clears ownership).
+    pub owners: Vec<String>,
+}
+
+fn valid_owner(token: &str) -> bool {
+    let name_ok = |name: &str| {
+        !name.is_empty()
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    };
+    if let Some(handle) = token.strip_prefix('@') {
+        return match handle.split_once('/') {
+            Some((org, team)) => name_ok(org) && name_ok(team),
+            None => name_ok(handle),
+        };
+    }
+    token
+        .split_once('@')
+        .is_some_and(|(local, domain)| !local.is_empty() && domain.contains('.'))
+}
+
+/// Parses CODEOWNERS like GitHub: `#` starts a comment (also after a rule),
+/// a line with unsupported syntax or an invalid owner is skipped and
+/// reported (F8).
 #[must_use]
-pub fn check_codeowners(text: &str, owner: &str, protected: &[String]) -> Vec<Finding> {
-    let handle = format!("@{owner}");
-    let rules: Vec<(String, bool)> = text
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .filter_map(|line| {
-            let mut parts = line.split_whitespace();
-            let pattern = parts.next()?.trim_start_matches('/').to_owned();
-            Some((pattern, parts.any(|o| o.eq_ignore_ascii_case(&handle))))
-        })
-        .collect();
+pub fn parse_codeowners(text: &str) -> (Vec<OwnerRule>, Vec<Finding>) {
+    let mut rules = Vec::new();
     let mut findings = Vec::new();
-    for path in protected {
-        let wanted = path.trim_start_matches('/');
+    for (index, raw) in text.lines().enumerate() {
+        let line = raw.split_once('#').map_or(raw, |(code, _)| code).trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut tokens = line.split_whitespace();
+        let pattern = tokens.next().unwrap_or_default().to_owned();
+        let owners: Vec<String> = tokens.map(str::to_owned).collect();
+        let bad_pattern = pattern.starts_with('!') || pattern.contains(['[', ']', '\\']);
+        let bad_owner = owners.iter().find(|owner| !valid_owner(owner));
+        if bad_pattern || bad_owner.is_some() {
+            findings.push(Finding::at(
+                ".github/CODEOWNERS",
+                Some(index + 1),
+                format!(
+                    "invalid CODEOWNERS line is ignored by GitHub: {}",
+                    bad_owner.map_or("unsupported pattern syntax", String::as_str)
+                ),
+            ));
+            continue;
+        }
+        rules.push(OwnerRule { pattern, owners });
+    }
+    (rules, findings)
+}
+
+/// Whether a CODEOWNERS pattern matches a repository path (gitignore-style:
+/// a leading or inner `/` anchors to the root, otherwise any component
+/// matches; a trailing `/` matches directories only; a match on a
+/// directory covers everything below it, except after a final `/*`).
+#[must_use]
+pub fn codeowners_match(pattern: &str, path: &str) -> bool {
+    if pattern == "*" || pattern == "**" {
+        return true;
+    }
+    let (anchored, body) = match pattern.strip_prefix('/') {
+        Some(rest) => (true, rest),
+        None => (pattern.trim_end_matches('/').contains('/'), pattern),
+    };
+    let directory_only = body.ends_with('/');
+    let body = body.trim_end_matches('/');
+    if body.is_empty() {
+        return false;
+    }
+    let final_star = body.rsplit('/').next() == Some("*");
+    let components: Vec<&str> = path.split('/').collect();
+    for end in 1..=components.len() {
+        let is_path = end == components.len();
+        if (is_path && directory_only) || (!is_path && final_star) {
+            continue;
+        }
+        let matched = if anchored {
+            glob_match(body, &components[..end].join("/"))
+        } else {
+            glob_match(body, components[end - 1])
+        };
+        if matched {
+            return true;
+        }
+    }
+    false
+}
+
+/// CODEOWNERS check over the protected policy paths and every tracked file
+/// under them: the last matching valid rule must name the owner (F8).
+#[must_use]
+pub fn check_codeowners_paths(
+    text: &str,
+    owner: &str,
+    protected: &[String],
+    tracked: &[String],
+) -> Vec<Finding> {
+    let handle = format!("@{owner}");
+    let (rules, mut findings) = parse_codeowners(text);
+    let mut probes = BTreeSet::new();
+    for pattern in protected {
+        let bare = pattern.trim_start_matches('/');
+        if bare.ends_with('/') {
+            probes.insert(format!("{bare}CODEOWNERS-probe"));
+        } else {
+            probes.insert(bare.to_owned());
+        }
+        for path in tracked {
+            if glob_match(bare, path) {
+                probes.insert(path.clone());
+            }
+        }
+    }
+    for path in probes {
         let last = rules
             .iter()
             .rev()
-            .find(|(pattern, _)| pattern == wanted || pattern == "*");
-        if !matches!(last, Some((_, true))) {
+            .find(|rule| codeowners_match(&rule.pattern, &path));
+        let owned = last.is_some_and(|rule| {
+            rule.owners
+                .iter()
+                .any(|candidate| candidate.eq_ignore_ascii_case(&handle))
+        });
+        if !owned {
+            let shown = path.trim_end_matches("CODEOWNERS-probe");
             findings.push(Finding::at(
                 ".github/CODEOWNERS",
                 None,
-                format!("{wanted} must be owned by {handle}"),
+                format!(
+                    "{shown} must be owned by {handle} (effective rule: {})",
+                    last.map_or("none", |rule| rule.pattern.as_str())
+                ),
             ));
         }
     }
     findings
+}
+
+/// Pure CODEOWNERS comparison for the protected patterns alone.
+#[must_use]
+pub fn check_codeowners(text: &str, owner: &str, protected: &[String]) -> Vec<Finding> {
+    check_codeowners_paths(text, owner, protected, &[])
 }
 
 #[cfg(test)]
@@ -599,7 +998,10 @@ mod tests {
     #[test]
     fn adv23_04_data_files_and_secrets() {
         let document: DocumentMut = "data_extensions = [\".csv\", \".xlsx\", \".zip\"]\nopen_commercial_data = [\"spikes/data/samples/*.csv\"]\ndata_metadata_files = [\"spikes/data/sources.tsv\"]\n".parse().expect("toml");
-        let restricted = paths(&["etys.xlsx"]);
+        let records = vec![
+            ("research-only".to_owned(), "etys.xlsx".to_owned()),
+            ("open-commercial".to_owned(), "a.csv".to_owned()),
+        ];
         let found = check_paths(
             &paths(&[
                 "spikes/data/samples/a.csv",
@@ -611,7 +1013,7 @@ mod tests {
                 ".env.example",
             ]),
             &document,
-            &restricted,
+            &records,
         );
         let messages: Vec<&str> = found
             .iter()
@@ -663,5 +1065,129 @@ mod tests {
             .len(),
             1
         );
+    }
+    // ADV23R-09: generic OpenAI-style and other key formats.
+    #[test]
+    fn adv23r_09_more_key_formats_are_detected() {
+        let tail = "abcdef1234567890abcdef1234567890abcdef12345678";
+        for key in [
+            ["s", "k-", tail].concat(),
+            ["s", "k-svcacct-", tail].concat(),
+            ["gl", "pat-", &tail[..24]].concat(),
+            ["h", "f_", &tail[..34]].concat(),
+            ["np", "m_", &tail[..36]].concat(),
+            ["xo", "xa-", &tail[..24]].concat(),
+            ["gs", "k_", tail].concat(),
+            ["Account", "Key=", tail].concat(),
+        ] {
+            let found = scan_secrets("f", &format!("key = \"{key}\""));
+            assert_eq!(found.len(), 1, "missed: {key}");
+        }
+        for text in [
+            "risk-assessment-of-the-new-transmission-boundary-model",
+            "task-abcdefghijklmnopqrstuvwxyzabcdefghij",
+            "--sk-some-long-kebab-case-identifier-without-digits",
+        ] {
+            assert!(scan_secrets("f", text).is_empty(), "false positive: {text}");
+        }
+    }
+
+    // ADV23R-09: array-valued and alternative manifest file keys.
+    #[test]
+    fn adv23r_09_manifest_file_arrays_are_read() {
+        for files in [
+            "files = [\"restricted_grid.json\", \"other.csv\"]",
+            "file = \"restricted_grid.json\"",
+            "paths = [\"sub/restricted_grid.json\"]",
+            "path = \"restricted_grid.json\"",
+        ] {
+            let text = format!(
+                "[[datasets]]\nname = \"r\"\nlicence_status = \"research-only\"\n{files}\n"
+            );
+            let (found, restricted) = check_manifest("m.toml", &text);
+            assert!(found.is_empty(), "{found:?}");
+            assert!(
+                restricted
+                    .iter()
+                    .any(|f| f.ends_with("restricted_grid.json")),
+                "{files}: {restricted:?}"
+            );
+        }
+    }
+
+    // ADV23R-09: grid and market exchange formats count as data.
+    #[test]
+    fn adv23r_09_more_data_extensions_are_gated() {
+        let document: DocumentMut = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/repository.toml"),
+        )
+        .expect("policy")
+        .parse()
+        .expect("toml");
+        for path in [
+            "data/case.mat",
+            "data/ieee14.cdf",
+            "data/case9.m",
+            "data/api-dump.json",
+            "data/flows.xml",
+            "data/grid.npz",
+        ] {
+            let found = check_paths(&paths(&[path]), &document, &[]);
+            assert_eq!(found.len(), 1, "{path}: {found:?}");
+        }
+    }
+
+    // F8: effective (last matching) CODEOWNERS rule decides ownership.
+    #[test]
+    fn f8_codeowners_overrides_are_rejected() {
+        let protected = paths(&["/xtask/", "/deny.toml"]);
+        let tracked = paths(&["xtask/src/lib.rs", "xtask/Cargo.toml", "deny.toml"]);
+        let check = |text: &str| check_codeowners_paths(text, "Owner", &protected, &tracked);
+        assert!(check("/xtask/ @Owner\n/deny.toml @Owner\n").is_empty());
+        assert!(check("* @Owner\n").is_empty());
+        for text in [
+            "/xtask/ @Owner\n/deny.toml @Owner\n/xtask/src/lib.rs @someone\n",
+            "/xtask/ @Owner\n/deny.toml @Owner\n*.rs @someone\n",
+            "/xtask/ @Owner\n/deny.toml @Owner\n/xtask/src/ @someone\n",
+            "/xtask/ @Owner\n/deny.toml @Owner\nsrc/ @someone\n",
+            "/xtask/ @Owner\n/deny.toml @Owner\n/xtask/src/*\n",
+            "/xtask/ @Owner\n/deny.toml @Owner\nCargo.toml @someone\n",
+            "/xtask/ @Owner\n/deny.toml # @Owner\n",
+            "/xtask/ @Owner\n/deny.toml @Owner\n* @someone\n",
+        ] {
+            assert!(!check(text).is_empty(), "accepted: {text}");
+        }
+        // An invalid line is skipped by GitHub, so it cannot grant ownership.
+        let invalid = check("/xtask/ @Owner\n/deny.toml Owner\n");
+        assert!(invalid.len() >= 2, "{invalid:?}");
+        // `docs/*` does not reach nested files; a later narrower owner rule restores.
+        let star = check("/xtask/ @Owner\n/deny.toml @Owner\n/xtask/* @someone\n");
+        assert_eq!(star.len(), 2, "direct children only: {star:?}");
+        assert!(star.iter().all(|f| !f.message.contains("src/lib.rs")));
+        assert!(check("* @someone\n/xtask/ @Owner\n/deny.toml @Owner\n").is_empty());
+    }
+
+    #[test]
+    fn codeowners_matching_follows_github_rules() {
+        for (pattern, path, expected) in [
+            ("/xtask/", "xtask/src/lib.rs", true),
+            ("/xtask/", "a/xtask/src/lib.rs", false),
+            ("xtask/", "a/xtask/src/lib.rs", true),
+            ("/xtask", "xtask/src/lib.rs", true),
+            ("*.rs", "a/b/c.rs", true),
+            ("/docs/*", "docs/a.md", true),
+            ("/docs/*", "docs/a/b.md", false),
+            ("docs/**/x.md", "docs/a/b/x.md", true),
+            ("/deny.toml", "deny.toml", true),
+            ("/deny.toml", "x/deny.toml", false),
+            ("deny.toml", "x/deny.toml", true),
+            ("/xtask/", "xtask", false),
+        ] {
+            assert_eq!(
+                codeowners_match(pattern, path),
+                expected,
+                "{pattern} {path}"
+            );
+        }
     }
 }
