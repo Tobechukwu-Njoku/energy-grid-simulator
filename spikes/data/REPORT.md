@@ -1,14 +1,21 @@
 # D-31 data spike: GB + all-island Ireland inputs and R-12 verdict
 
-**Checked:** 12 November 2026. **Historic backtest year:** 2024 (leap year).
-**Verdict on R-12: PARTIALLY.** A substantial electrical model is technically
-obtainable, but a **complete, commercially cleared, present-day GB + all-island
-network has not been demonstrated**. Do not close R-12 or treat D-32 as delivered.
+**Checked:** 12 November 2026; revised 13 November 2026 against D-55–D-60.
+**Historic backtest year:** 2024 (leap year).
+**Verdict on R-12 under D-56: RESEARCH CAN PROCEED; COVERAGE PARTIAL.** Publicly
+downloadable ETYS and EirGrid/SONI cases may be used for non-commercial research,
+tagged `research-only`, with only download scripts/provenance committed, never
+raw restricted records or derived network exports. Commercial clearance is
+**not a research-ingest gate**: it is tracked in
+[TODO-pre-commercial.md](../../docs/requirements/TODO-pre-commercial.md), PC-1–PC-5.
+A complete, date-reconciled, electrically validated GB + all-island network has
+not been demonstrated. Do not close R-12 or treat D-32/D-60 as delivered.
 
 This is an independent primary-source inspection, not a synthesis of the parallel
-Gemini catalogues. Work started from `main` at `8b70c67`; no earlier data-spike
-branch or artefacts were reused. Only this directory and `.gitignore` change.
-Requirements remain unbaselined; no application code or owner decision is added.
+catalogue work. The original inspection started from `main` at `8b70c67`;
+the revision merges main and links subsequent gathering without claiming to have
+re-audited those archives. Requirements remain unbaselined; no application code
+or owner decision is added. STATUS and the decision log receive no authored edits.
 
 ## 1. Executive finding
 
@@ -25,7 +32,8 @@ Three different problems must not be conflated:
    general website terms restrict commercial exploitation. EirGrid's disclaimer
    restricts public/commercial use without express permission, and the joint
    TYTFS PDF reserves reproduction rights. Neither network is cleared for the
-   proposed commercial database. No restricted network records are committed.
+   proposed commercial database, but **D-56 permits research use now**. No
+   restricted network records are committed; commercial clearance remains PC-1/PC-2.
 3. **Full and current coverage is unproven.** ETYS is principally a transmission
    owner dataset: England/Wales DNO-owned 132-kV circuits require additional LTDS
    models. **NGED provides an important permissive exception:** its LTDS tables
@@ -38,13 +46,15 @@ The cleared part of the time-series problem is much better: **all 17,568 half-ho
 of 2024 GB demand and fuel-mix data were downloaded and inspected**. Elexon BM
 bids/offers/acceptances are publicly accessible and commercially reusable under
 its BMRS licence. Genuine GB day-ahead auction prices and I-SEM day-ahead prices
-remain separate access/licensing tasks. ERA5 is commercially reusable under the
+remain distinct products under D-57; the ENTSO-E route below needs an owner token.
+ERA5 is commercially reusable under the
 **CC-BY-4.0 licence currently attached to the CDS dataset**, but no authenticated
-  weather-year retrieval was completed in this spike.
+weather-year retrieval was completed in this spike.
 
 **Combined permissively cleared full-network model achieved: none.** Candidate
 network statistics below are feasibility measurements, not a reusable licensed
 GB+IE network, an operational topology, or a power-flow validation result.
+This commercial finding does not negate the D-56 research go-ahead.
 
 ## 2. Licence evidence and admissibility
 
@@ -53,6 +63,36 @@ affirmative dataset-specific grant was established; it is **not** permission.
 All raw downloads are ignored. No OSM/ODbL or other share-alike dataset was used,
 including for connectivity checks. A portal-wide licence was never silently
 applied to unrelated publication downloads.
+
+D-56 is the owner's research policy, **not a new licence grant** or permission to
+redistribute restricted source data. `open-commercial` identifies an established
+commercial-use grant; `research-only` identifies sources without that clearance.
+Only scripts, URLs, hashes and non-reconstructive aggregate findings are committed
+for the latter. Share-alike remains excluded. Ofgem's "presumed open" publication
+duty does not itself license ETYS Appendix B (adversarial triage ADV5-1).
+
+### Provenance manifest example
+
+The actual `samples/download-manifest.json` records bytes, SHA-256, source URL,
+`licence_status` and dataset/metadata role for each downloaded source. Legal and
+discovery metadata is conservatively `research-only`, not silently relicensed.
+This actual ETYS fingerprint illustrates the classification; its raw file stays
+ignored locally (bulk gathering uses `~/energy-data/raw`, outside git):
+
+```json
+{
+  "file": "etys-2025-appendix-b.xlsx",
+  "bytes": 1237005,
+  "sha256": "d5cacf238292e8c78af989a5ee3a0c9bd8619acc6e6e67f451d6b44c71fa5e0c",
+  "source_url": "https://www.neso.energy/document/383936/download",
+  "licence_status": "research-only",
+  "source_role": "dataset"
+}
+```
+
+ETYS's pre-commercial clearance item is **PC-1**; retain the publication edition,
+licence evidence and retrieval timestamp in the eventual ingest provenance too.
+No token belongs in a manifest, URL committed to git, log, or report.
 
 ### Positive commercial-use clauses, checked on official pages
 
@@ -187,12 +227,17 @@ Important interpretation limits:
   present**; the owner's Ireland 400/220/110 list needs explicit clarification.
 - Many of the remaining buses are generation terminals, 38/33-kV network detail,
   or equivalents. Neither 2,025 nor 547 is a count of physical substations.
-  A voltage-induced subgraph is a diagnostic, not a Kron-reduced equivalent.
+  A voltage-induced subgraph is a diagnostic, not a Kron-reduced equivalent;
+  it drops connecting voltage levels and is sensitive to the terminal projection.
 - The one-off parser preserves the 4-/5-line distinction between two-/three-winding
-  transformer records. Three-winding devices become two graph edges, not three
-  independent transformers. Status 4 disconnects winding 1; its other two
-  windings remain connected. Two bus-type-4 records are excluded from the live
-  graph. DC data and electrical admittance calculations are not evaluated.
+  transformer records. Its **connectivity-only terminal projection** connects
+  each device's live terminals without adding internal star buses. This preserves
+  connected components among physical buses, not impedances, paths or cut-sets.
+  Status 4 disconnects winding 1; the other two windings remain connected.
+  An electrical model instead needs a neutral/star bus, winding impedances,
+  taps and base conversions. No projected edge is a physical branch or a
+  power-flow input. Two bus-type-4 records are excluded from the live graph.
+  DC data and electrical admittance calculations are not evaluated.
 - RAW includes R/X/B, thermal ratings, transformer data, load and generator
   records, so technical assembly is credible. **132 zero rating-A entries are
   not zero capacity**: determine unlimited/unspecified/equivalent meanings and
@@ -210,7 +255,17 @@ Downloaded files contain **22,516 circuit/switch records**, **22,590 node record
 and **2,705 two-winding-transformer records**. Of the circuit table's **4,183
 132-kV records**, **1,138 are circuits**, **1,183 circuit breakers** and **1,862
 disconnectors**. All 1,138 circuit rows have populated R1/X1/B1 and winter/summer
-rating fields. Their unit interpretation still needs the LTDS specification.
+rating fields. All five fields parse as **finite numbers**, rejecting missing,
+whitespace, arbitrary text, NaN and infinity; the regenerated count remains 1,138.
+Their unit interpretation still needs the LTDS specification.
+
+The revision also downloads **Table 2b: 69 three-winding transformer records**
+(67 Unchanged, 2 Updated; 11,279 bytes), but does not claim those records form a
+validated electrical model. The **DSA095** sharing assessment (25,166 bytes),
+approved 2 December 2025, recommends **Open** with an amber residual security risk
+and generic mitigation advice; it specifies no concrete row-level redaction or
+completeness guarantee. The tabular publication is being superseded by CIM;
+prefer the CIM for a new regional ingest and verify profiles/effective dates.
 
 This is real evidence against a blanket claim that England/Wales 132-kV electrical
 data is unavailable. It is **not** a validated present-day model: tables include
@@ -288,18 +343,145 @@ The successful URLs are in `sources.tsv`. Failed probes are not data samples:
 404/error JSON, empty listings and blocked HTML were not counted as coverage.
 This spike **does not claim a complete 2024 BM/price/Irish-flow archive**.
 
+### ENTSO-E Transparency Platform — required inputs, access and licence
+
+For D-57, investigate **2024 I-SEM day-ahead clearing prices**, not imbalance
+prices or MID. Request Energy Prices (TR 12.1.d), `documentType=A44`, with
+`in_Domain=out_Domain=10Y1001A1001A59C`. The official
+[area/EIC list](https://transparencyplatform.zendesk.com/hc/en-us/articles/15885757676308-Area-List-with-Energy-Identification-Code-EIC)
+identifies this as `BZN|IE(SEM)` (all-island SEM, not Ireland-only geography).
+For interconnectors, request **physical flows** (TR 12.1.g, `A11`) separately
+from **scheduled commercial exchanges** (`A09`, relevant contract/market type).
+Resolve the correct border or interconnector EICs, both directions and effective
+dates: zone-aggregated exchanges do not guarantee individual-cable flows.
+Greenlink's later operation must not be invented for the 2024 backtest.
+
+The [REST API](https://web-api.tp.entsoe.eu/api) requires a personal
+`securityToken`. The official
+[token instructions](https://transparencyplatform.zendesk.com/hc/en-us/articles/12845911031188-How-to-get-security-token)
+require a registered/verified platform account, an email to
+`transparency@entsoe.eu` with subject `RESTful API access`, approval, and token
+generation under My Account. **Needs owner token**: none was supplied, no account
+was created and no authenticated series was downloaded. PR #11 records the same
+blocker. Do not commit credentials or make a token-bearing example URL.
+
+An A44 request needs the above document/domain parameters plus UTC `periodStart`
+and `periodEnd`; for a complete UTC 2024 year use the half-open range
+`202401010000`–`202501010000`, chunked to the API's query limits, not an end time
+of 31 December 23:00 that drops the last hour. Parse XML acknowledgements and
+TimeSeries/Period resolution, positions, currency and units, and trim returned
+market-day windows explicitly. Establish coverage, duplicates, revisions and
+missing intervals rather than calling HTTP 200 or a regulatory duty proof of a
+complete archive. Preserve EUR/MWh and distinguish UTC from I-SEM trading days.
+
+**Licence verified, scope qualified:** the official
+[Legal Terms and Conditions](https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions)
+links the **18 October 2023 list of data available for free re-use**. That list
+incorporates **CC-BY-4.0**: listed data may be copied, redistributed and adapted
+for any purpose with source credit, licence reference and changes indicated.
+It includes energy prices (TR 12.1.d), scheduled commercial exchanges
+(TR 12.1.f) and physical flows (TR 12.1.g). **It is not a platform-wide grant**:
+exceptions include data provided by IFA and Nemo Link, selected BritNed items,
+and specified countries/data items. I-SEM energy prices have no named exception
+in this list; `open-commercial` is appropriate when the retrieved series matches
+that scope. Check primary provider and article for each flow; excluded or
+uncertain series remain `research-only` under D-56, with clearance under PC-5.
+The public API documentation establishes a route, **not measured 2024 coverage**.
+Keep ENTSO-E terms/list version and the actual provider in provenance; no
+SEMOpx publication is relicensed merely because similar data is on ENTSO-E.
+
+### Data-quality traps — required M1 checks, not completed ingest tests
+
+- **Clock-change days:** GB settlement dates 31 March 2024 and 27 October 2024
+  have **46 and 50** half-hours, respectively. Period numbers run consecutively
+  1–46 / 1–50, not spring gaps in an assumed 1–48 sequence. The yearly total is
+  `364 × 48 + 46 + 50 = 17,568`. Join by settlement date/period with the published
+  Europe/London calendar and a unique UTC interval; repeated autumn local times
+  need their offset/fold. Test midnight, both transition days, leap day and
+  half-open query boundaries. I-SEM trading days and ENTSO-E XML intervals need
+  their own definitions rather than a copied GB calendar.
+- **BM unit ID changes:** a current BM-unit lookup cannot reconstruct the 2024
+  fleet. Retain both Elexon and national-grid IDs, provider aliases, registration
+  and effective dates, re-registrations, closures and aggregation changes. Build
+  a versioned plant → unit → BMU/SEM resource → network-node mapping; GSP group
+  is not a bus. Flag unmatched/ambiguous IDs instead of silently dropping output.
+- **MID versus day-ahead (D-57):** label MID as **Market Index Price** with
+  provider, volume, currency and period; label system prices as **imbalance**.
+  Neither becomes a day-ahead auction observation by shifting a timestamp. Keep
+  negative and zero-volume observations, documenting the latter's interpretation.
+  Use free historical DAM where available; paid auction feeds require an owner
+  finding that cost is minuscule, not a new unrestricted procurement assumption.
+- **REMIT duplicate revisions:** keep message/event ID, revision/version,
+  publication time, effective outage interval and cancellation/status fields.
+  Deduplicate identical deliveries, not distinct revisions. A latest-valid
+  view supports ex-post availability; an as-of-publication view prevents
+  look-ahead in forecasts. Never sum all revisions as separate outages or treat
+  an annual publication-time export as all outages effective in that year.
+- **ETYS versus actual topology:** planning base year and future change sheets
+  do not define an observed operational snapshot. Keep ownership, study year,
+  commissioning/retirement dates and switch/outage states; join every DNO's
+  132-kV model and reconcile ETYS GSPs (D-60). Preserve parallel circuits;
+  site-name collapsing is not an approved bus equivalence. Compare a separately
+  dated 2024 case with backtests, not a 2025/26 plan relabelled as actual 2024.
+- **Settlement vintages and BOA overlaps:** pin source/retrieval time and the
+  available settlement-run/revision identifiers rather than assuming all API
+  outturns are final. Preserve successive BOA trajectories and supersession;
+  integrate piecewise MW against FPN/pair baselines without double-counting
+  overlapping acceptances. These are validation observations for **cost-based
+  redispatch (D-59)**, not a decision to replay historical submitted bids/offers.
+- **Units and electrical semantics:** distinguish LTDS Ω/µS or percentage bases,
+  ETYS % on 100 MVA, PSS/E per-unit/winding bases, and ratings in A versus MVA.
+  Convert amperes only with the applicable voltage/convention; zero rating need
+  not mean zero capacity. Three-winding electrical models need star equivalents,
+  not the connectivity-only projection used here. For flows distinguish MW/MWh,
+  schedules/physical measurement, direction/losses and GBP/EUR (D-38).
+
+### Subsequent inventory and gathered archives — handoff, not re-verification
+
+- **[PR #10: DNO 132-kV inventory](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/10)**,
+  `docs/research/dno-132kv-inventory.md`, inventories all 14 DNO licence areas.
+  Use it to close each England/Wales coverage row under D-60; Scottish 132 kV is
+  transmission (SSEN Transmission/SPT), not missing DNO data. Its licence/access
+  claims remain subject to independent verification; neither all 14 areas nor
+  all portal-published electrical models are declared open by this report.
+- **[PR #11: network/IE gathering](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/11)**,
+  `spikes/data-gathering/network-ie/{COVERAGE.md,manifest.toml,fetch.py}`, reports
+  30 files (~120 MB) including network publications, registers, constraint data
+  and SEMOpx lookback material under `~/energy-data/raw`. Check the lookback's
+  actual price columns/date coverage before calling it a complete I-SEM DAM
+  archive. Its correction labels ETYS publications `research-only`, not OGL;
+  NESO portal licences still require dataset-level checks. ENTSO-E needs a token.
+- **[PR #12: Elexon 2024 gathering](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/12)**,
+  `spikes/data-gathering/elexon/{COVERAGE.md,manifest.toml,fetch.sh}`, reports
+  roughly **4.2 GB** of compressed data (its exact stated size is **4.16 GiB,
+  4,467,563,083 bytes**) outside git at **`~/energy-data/raw/elexon/`**:
+  12 datasets, 3,673 files, demand, fuel, prices/MID, flows, REMIT, BOA, PN,
+  MEL/MIL and BOD. This supersedes the *gathering* gap of the original one-day
+  sample, not its independent verification. Check hashes, semantic completeness,
+  revisions and per-period coverage; sparse BOA periods are not automatically
+  missing downloads. Re-check MID's third-party rights instead of inheriting a
+  blanket BMRS label. The reported spring-period numbering needs the consecutive
+  1–46 check above. No 4.2-GB archive was re-audited by this revision.
+
+All three are open PRs at this revision, not merged delivery evidence. The local
+samples here remain the original small inspection; no bulk raw data is copied
+into this branch. Inspect the data-quality traps before accepting their claims.
+
 ## 5. One weather year — ERA5
 
 The official [ERA5 single-level dataset](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download)
 supports the required wind, radiation and temperature variables and currently
 attaches CC-BY, commercially compatible with D-30. The committed
 `era5-request-2024-01.json` is an **unexecuted monthly request template** for
-2024, bbox **north 61°, west −12°, south 48°, east 3°**, hourly 100-m and 10-m
-wind components, 2-m temperature and surface solar radiation downwards.
+2024, bbox **north 61°, west −12°, south 48°, east 10°**, hourly 100-m and 10-m
+wind components, 2-m temperature, surface solar radiation downwards, total
+precipitation and total-sky direct solar radiation at surface. The eastward
+extension avoids the original 3° truncation of North Sea candidate coverage;
+it does not imply modelling neighbouring systems beyond the decided scope.
 
 - Complete 2024 has **8,784 hours**. A 0.25° regular grid over this inclusive
-  box would have 53 × 61 = **3,233 points**. Six variables as float32 would be
-  `8784 × 3233 × 6 × 4 = 681,568,128` bytes before encoding and metadata;
+  box would have 53 × 89 = **4,717 points**. Eight variables as float32 would be
+  `8784 × 4717 × 8 × 4 = 1,325,892,096` bytes before encoding and metadata;
   compression and NetCDF overhead are not fixed by this arithmetic.
 - Registration, dataset licence acceptance and authenticated CDS job submission
   are needed for this retrieval route. No `~/.cdsapirc` was present; no credentials
@@ -319,11 +501,14 @@ wind components, 2-m temperature and surface solar radiation downwards.
   ERA5 is reanalysis, not a day-ahead forecast, so it cannot alone establish
   forecasting skill without avoiding look-ahead leakage.
 
-**ASSUMPTION:** a 0.25° grid and six fields are a useful initial data-volume
+**ASSUMPTION:** a 0.25° grid and eight fields are a useful initial data-volume
 budget, not an owner decision or measured download size. Exact arithmetic is
-recorded during final validation; allow roughly **0.68 GB uncompressed per year**
+recorded during final validation; allow roughly **1.33 GB uncompressed per year**
 before encoding/metadata, and submit monthly jobs rather than one giant request.
-The bounding box is a candidate, not a guarantee of all offshore/future assets.
+Precipitation is a candidate hydro-inflow input, not an inflow model; the direct
+radiation field supports a direct/diffuse PV split after validating definitions
+and subtraction/accumulation conventions. The bounding box is a candidate, not a
+guarantee of all offshore/future assets. Approval is tracked as **Q-C-12**.
 
 ## 6. Dataset register — everything used or investigated
 
@@ -331,6 +516,9 @@ Sizes are **actual downloaded payload bytes** unless explicitly marked otherwise
 `Page only` and `not retrieved` are not successful dataset acquisitions. Licence
 URLs/clauses are in §2; exact successful resource URLs are also in `sources.tsv`.
 No = no share-alike requirement identified; **?** = no usable licence established.
+Under D-56 the not-cleared datasets are `research-only`, **not blocked for
+research**. `Yes` commercial rows correspond to `open-commercial`; licence/access
+claims on other PRs remain unverified here until checked against the actual file.
 
 | Dataset / primary URL | Licence | Commercial OK? | Share-alike? | Coverage / size | Quality or limit |
 |---|---|---|---|---|---|
@@ -342,6 +530,10 @@ No = no share-alike requirement identified; **?** = no usable licence establishe
 | [NGED LTDS nodes](https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/a92da9e4-2010-4406-b86a-825cd65761d6/download/ltds-attachment-8-node.csv) | NGED Open | Yes | No | Same model; **1,826,097 B** | 22,590 node rows, not all 132 kV/current. |
 | [NGED LTDS two-winding transformers](https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/8c964d61-a7fb-41e7-99b4-6032d063a8c6/download/ltds-table-2a-two-winding-transformer.csv) | NGED Open | Yes | No | Same model; **308,177 B** | 2,705 rows, statuses and unit/tap semantics need resolution. |
 | [NGED LTDS CIM](https://connecteddata.nationalgrid.co.uk/dataset/ltds-common-information-model) | Portal metadata: NGED/WPD Open | Yes for associated open data | No | Four areas; **page/metadata only**, no ZIP size measured | Successor case/profile coverage checked; not parsed. |
+| [NGED LTDS Table 2b](https://connecteddata.nationalgrid.co.uk/dataset/ltds-tabular-model) | NGED Open | Yes | No | Three-winding table; **11,279 B** | 69 records; electrical semantics not validated. DSA095 reviewed separately as metadata. |
+| [NESO day-ahead constraint flows/limits](https://api.neso.energy/api/3/action/package_show?id=day-ahead-constraint-flows-and-limits) | NESO Open (`license_id: ESO` checked 13 Nov) | Yes for associated dataset | No | **Metadata only**, payload not audited here | Candidate D-55 proxy limits; do not assume 2024 archive/current coverage. |
+| [NESO 24-month constraint limits](https://api.neso.energy/api/3/action/package_show?id=24-months-ahead-constraint-limits) | NESO Open (`license_id: ESO` checked 13 Nov) | Yes for associated dataset | No | **Metadata only**, payload not audited here | Forward-looking limits, not actual historical topology or stable line ratings. |
+| [ENTSO-E Energy Prices / flows](https://transparency.entsoe.eu/) | CC-BY-4.0 listed data; provider exceptions in §4 | I-SEM prices in scope; flows checked individually | No for CC-BY | 2024 candidate; **not retrieved**, needs owner token | DAM, scheduled exchanges and physical flow are distinct; no complete-archive claim. |
 | [Elexon BM-unit reference](https://data.elexon.co.uk/bmrs/api/v1/reference/bmunits/all?format=json) | BMRS open-data licence | Yes, subject to exemptions | No | Current GB registry; **2,171,607 B** | 3,134 records, no electrical-node key. |
 | [NESO TEC](https://api.neso.energy/api/3/action/package_show?id=transmission-entry-capacity-tec-register) | NESO Open | Yes | No | 10 Nov 2026; **445,749 B** | 2,220 rows include queue, not just operating plant. |
 | [REPD](https://www.gov.uk/government/publications/renewable-energy-planning-database-monthly-extract) | OGL v3, stated exceptions | Yes for released rights | No | Q2 2026 CSV; **5,087,389 B** | 14,657 project rows; renewables/planning, not complete fleet. |
@@ -359,6 +551,25 @@ No = no share-alike requirement identified; **?** = no usable licence establishe
 | [Nord Pool UK histories](https://www.nordpoolgroup.com/en/services/power-market-data-services/) / [EPEX](https://www.epexspot.com/en/market-data) | Nord Pool restrictive website/data-contract terms; EPEX **UNVERIFIED** | No free commercial grant established | ? | **Page only / blocked**, no price dataset, size unknown | Obtain product/redistribution terms, not scrape-and-assume. |
 | [ERA5 single levels](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download) | Attached CC-BY-4.0 | Yes | No | Proposed 2024 GB+IE; **0 weather B retrieved** | Metadata/licence checked; request template only. |
 
+### Additional DNO coverage register (D-60; follow PR #10)
+
+These are candidate publications, not newly acquired/cleared networks. Licence
+status stays **UNVERIFIED here** pending dataset/file-level confirmation; any
+research acquisition is conservatively `research-only` until then.
+
+| DNO / relevant E&W licence areas | Publication route | Licence / access and coverage gate |
+|---|---|---|
+| UKPN — Eastern, London, South Eastern | [LTDS table/CIM portal](https://ukpowernetworks.opendatasoft.com/) | PR #10 reports CC-BY; verify actual files/terms, access and all three areas. |
+| Northern Powergrid — Northeast, Yorkshire | [LTDS portal](https://northernpowergrid.opendatasoft.com/) | PR #10 reports operator Open licence; verify files, login and both areas. |
+| Electricity North West — North West | [LTDS](https://www.enwl.co.uk/) | PR #10 flags restrictive internal-use terms/customer access; do not label cleared without permission or a verified replacement grant. |
+| SPEN — Manweb | [LTDS portal](https://spenergynetworks.opendatasoft.com/) | PR #10 reports CC-BY; verify actual tables/CIM and access. Scottish SP Distribution is not an extra 132-kV DNO model. |
+| SSEN — Southern Electric (SEPD) | [LTDS portal](https://data.ssen.co.uk/) | PR #10 reports CC-BY; verify workbook/units/edition. Scottish SHEPD is not an extra 132-kV DNO model. |
+
+NGED's four licence areas are above. Scottish 132 kV is transmission in ETYS
+(SSEN Transmission/SPT), so 14 DNO licence areas are not 14 independent 132-kV
+distribution networks. Verify all E&W areas and GSP seams, not merely a portal
+count or a "presumed open" duty.
+
 Other inspected pages/APIs were discovery or legal evidence, not extra datasets:
 EirGrid sitemaps; NESO/NGED CKAN search and licence metadata; Elexon OpenAPI,
 WordPress search and static app bundle; SEMOpx static-report listings/app bundle;
@@ -370,32 +581,42 @@ map URL. No successful independent TO geographic dataset is claimed. URLs which
 
 **ASSUMPTION:** estimates below are engineering person-weeks for an experienced
 data/network modeller after access is available, excluding external response
-delays, procurement and engine/UI work. These are estimates, not commitments or
-decisions. The user prohibited edits to the questionnaire/decisions/STATUS in
-this task, so approval questions are recorded here for the coordinator.
+delays, procurement, engine/UI work and **D-28 independent numerical acceptance**.
+That validation is separately gated and not included in the ranges. These are
+estimates, not commitments; option/scope approval is tracked as **Q-M-4**.
+Under D-56, A is usable for research now, while D-55 governs DC/proxy physics and
+D-60 still requires all GB 132 kV. Reduced options cannot silently replace that
+coverage obligation merely because they are cheaper or avoid permission work.
 
 | Option | Prerequisite and effort estimate | Fidelity / accuracy impact |
 |---|---|---|
-| **A. Clear and assemble the published detailed models** | Obtain written ETYS and EirGrid/SONI commercial/derived-database grants; inventory every relevant DNO LTDS, use explicit present cases and match GSPs. **8–16 person-weeks** after access; rights responses may take weeks/months. | Best route towards D-32. Keeps real impedances/ratings, but not a verified full model until coverage/current topology, ties and missing parameters are reconciled. Do not promise today's grid just by importing planning files. |
-| **B. Reduced ~300 main-substation GB network + ~100–250 Irish equivalents** | **Conditional on cleared source rights**; select major transmission nodes, preserve interfaces/boundaries and reduce detailed models, validate transfer factors. **4–8 person-weeks** after access. No right to derive from restricted models is assumed. | Loses some 132/110-kV/local congestion, radial connections and busbar security. Can support national dispatch and major-boundary BM studies; cannot claim all-node fidelity, reliable local LMPs, voltage or stability. Reduced sizes are targets, not achieved counts. |
+| **A. Assemble published detailed models for research; clear before commerce** | Use ETYS/Irish research-only cases under D-56; inventory every DNO, resolve dates/status, match GSPs, and retain provenance. **16–32 person-weeks** for data assembly/reconciliation, excluding D-28 numerical acceptance and external access delays. PC-1/PC-2 permission work runs separately before commerce. | Best route towards D-32/D-60. Keeps real impedances/ratings, but no verified full model until coverage/current topology, ties and missing parameters are reconciled. Planning files are not today's grid. |
+| **B. Reduced ~300 main-substation GB network + ~100–250 Irish equivalents** | **A's source access + assembly/reconciliation, then 4–8 additional person-weeks** for reduction/transfer-factor checks (indicatively 20–40 total, before independent D-28 acceptance). Research inputs remain research-only; commercial derivation needs the same rights as A. | Loses some 132/110-kV/local congestion, radial connections and busbar security. Not an independent escape from A's data dependencies or rights. No all-node fidelity, reliable local LMPs, voltage or stability claim. Sizes are targets, not achieved counts. |
 | **C. Licence-clean synthetic electrical model** | Only independently licensed connectivity/geography/line types, plus independently sourced or newly estimated R/X/B/ratings from length/conductor assumptions; no copying restricted topology/parameters. **6–12 person-weeks** for a transparent prototype if connectivity is available. | Approximate PTDFs, loop flows, losses and constraint costs; underground cable charging and transformer behaviour particularly uncertain. Invented topology/line types must be labelled synthetic. Does **not** satisfy an accurate full-current-grid requirement. Source topology rights are still necessary. |
-| **D. National GB + all-island two-zone UC with explicit HVDC links and calibrated major-boundary constraints** | Cleared aggregate demand/generation/weather; procure/clear prices and link data. **2–4 person-weeks** for data preparation once access is resolved. | Fastest honest dispatch/backtest fallback; cannot reproduce nodal congestion or full network BM costs. Boundary-only representation remains a scope reduction requiring owner approval, not a silent interpretation of D-32. |
-| **E. Licence-clean regional pilot while rights proceed** | Use NGED's explicitly Open LTDS and current-case CIM if adequate, plus permitted time series; resolve switch/status semantics and GSP injection assumptions. **2–4 person-weeks**. | Demonstrates ingest/topology/electrical-unit handling without restricted ETYS/Irish data. Limited to four DNO areas, not the GB+IE MVP; cannot validate national transmission dispatch. |
+| **D. National GB + all-island two-zone UC with explicit HVDC links** | Aggregate demand/generation/weather and D-57 free price/link observations; **2–4 person-weeks** for data preparation after access. No internal boundary network in this two-zone option. | Fast dispatch/backtest prototype; cannot reproduce internal congestion or full network BM costs. Explicit D-32/D-60 scope reduction requires owner approval. |
+| **E. Licence-clean regional technical pilot** | Target NGED's **successor CIM**, with case/profile checks and LTDS cross-checks including Table 2b/DSA095, plus permitted time series. Resolve switch/status/GSP assumptions. **2–4 person-weeks** for data preparation. | Useful ingest/electrical-unit experiment only; four DNO areas, not national transmission or the GB+IE MVP. Not a fallback that satisfies D-32/D-60. |
+| **F. GB boundary-zone model plus SEM and explicit HVDC** | **4–6 person-weeks** for candidate zone/limit data preparation: ETYS boundary GIS, NESO day-ahead and 24-month limits (dataset-specific Open licence confirmed), TEC/BMU groups and cleared plant coordinates. Roughly **20–40 GB zones** is an estimate to validate, not a measured electrical partition. Calibrate interfaces and costs, including separately sourced SEM observations. | Represents boundary-level redispatch/constraint costs with D-55 proxies, not intra-zone congestion or AC voltage/stability. No Appendix B/Irish network grant is needed for the aggregate prototype, but zone membership and simultaneous limits need validation. Does not independently fulfil D-32/D-60 nodal coverage; combine with A or obtain explicit scope approval. |
 
-Synthetic parameters alone cannot solve an unlicensed/missing topology. Buying
-data is compatible with D-30 only if the actual commercial terms allow the
-intended uses and do not impose share-alike. PyPSA-GB/PyPSA-Eur/OSM-derived network
+Synthetic parameters alone cannot solve an unlicensed/missing topology. Cleared
+operator spatial publications/asset coordinates are candidates for C, so absence
+of a demonstrated topology here is not proof that no spatial data exists. Such
+coordinates or schematics alone do not establish electrical connectivity.
+D-57 permits paid auction data only if its cost is minuscule; other procurement
+is not authorised by this report. No share-alike source is acceptable.
+PyPSA-GB/PyPSA-Eur/OSM-derived network
 datasets were **not** used as a shortcut or test reference in this spike.
 
 ## 8. Recommended M1 gates and next actions
 
-1. **Rights gate before network ingest:** ask NESO to attach a licence explicitly
-   to the Appendix B workbook and TO contributions; ask EirGrid/SONI for RAW/SEQ
-   use, alteration, derived-database and commercial SaaS permissions. Preserve
-   terms/version/hash and identify redistribution restrictions. Keep uncleared
-   sources quarantined. Owner chooses A/B/C/D/E if grants are unavailable.
+1. **Research provenance gate (D-56), not commercial clearance:** ingest publicly
+   downloadable research-only ETYS/Irish data now with licence tags, URLs,
+   versions/hashes and local raw storage; commit scripts/provenance, not restricted
+   raw data or derived exports. Exclude share-alike. Track NESO and EirGrid/SONI
+   commercial/derived-database permissions in PC-1/PC-2 and other uncertain data
+   in PC-3–PC-5. All are pre-commercial gates, not research blockers.
 2. **Coverage and date gate:** create an owner/voltage/region inventory including
-   all England/Wales 132-kV DNO areas, Scottish 132 kV, offshore connections,
+   all England/Wales 132-kV DNO areas (**UKPN, NGED, NPg, ENWL, SP Manweb, SSEN
+   Southern**; PR #10 and §6), Scottish transmission 132 kV, offshore connections,
    Ireland 400/220/110 **and NI 275 kV**. Agree whether other connecting voltage
    levels/equivalents are retained. Separate 2024 historical and 2026 present-day
    cases; obtain commissioning/outage/topology updates. An asset list and effective
@@ -406,6 +627,10 @@ datasets were **not** used as a shortcut or test reference in this spike.
    Verify unit/base/voltage conventions and physical connectivity per synchronous
    system, then run independent power-flow/reference cases once engine work is
    authorised. No arbitrary component-joining or zero-rating substitution.
+   Use **D-55 DC + published proxy constraints** for MVP and D-59 cost-based
+   redispatch; full AC remains P2. F is a boundary-level prototype, not automatic
+   permission to drop D-60's all-132-kV detail. D-28 numerical acceptance is still
+   required, separately from data assembly effort.
 4. **Fleet/load gate:** version plant/BMU/resource/node crosswalks; reconcile
    installed/available/TEC capacities and commissioning dates; obtain permitted
    nodal demand allocation and UC technical parameters. Demand disaggregation and
@@ -415,17 +640,21 @@ datasets were **not** used as a shortcut or test reference in this spike.
    require correct UTC/local settlement alignment and tests for both DST days.
    Preserve negative prices, direction/loss conventions, currencies GBP/EUR and
    data vintages. Secure **actual** GB and I-SEM DAM histories and document price
-   rights; do not relabel MID or imbalance prices.
+   rights; do not relabel MID or imbalance prices (D-57). Use PR #12's gathered
+   archive as a candidate, not a completeness certificate; apply §4's DST,
+   effective-dated BMU, REMIT revision and vintage/overlap checks. Obtain an owner
+   ENTSO-E token and verify I-SEM A44 coverage and flow-specific licence scope.
 6. **Weather gate:** provision CDS access/accept terms, verify and submit monthly
    2024 requests, capture job IDs/checksums, inspect NetCDF coordinates/units and
    prove 8,784 unique hours with expected spatial/variable coverage. Weather-year
    assembly is **unfinished**, not hidden behind a request template.
 
-**Owner questions for the coordinator:** Is an explicitly reduced/synthetic or
-two-zone fallback acceptable if network rights cannot be cleared? Does D-32
-intend NI 275 kV and all E&W distribution-owned 132 kV, with operational status
-as of a named date? What budget is acceptable for licensed auction histories and
-operator data access? No answer or scope change is inferred here.
+**Owner questions for the coordinator:** Q-C-11 asks for the named topology date,
+NI 275-kV interpretation and connecting voltage/equivalent treatment; **D-60
+already answers all GB 132 kV**. Q-C-12 asks for approval of the weather candidate.
+Q-M-4 records fallback/scope choices and estimate assumptions; D-55 alone does
+not authorise a reduced nodal inventory. **D-57 already answers the price budget
+stance** (free or minuscule cost); no new paid-feed permission is inferred.
 
 ## 9. Validation performed
 
@@ -436,3 +665,18 @@ Shell/Python syntax, every committed JSON document, ERA5 template input schemas,
 the catalogue's CC-BY association, sample files below 1 MB, ignored raw paths and
 `git diff --check` were checked. These are data-spike checks, not application CI,
 legal clearance or numerical model validation. No Cargo project exists to test.
+
+**13 November revision checks:** both full local inspections pass. An isolated
+cleared-only run with no research-only datasets passes the 17,568-row assertions
+and skips optional MID/Irish XML and absent network manifest entries. Temporary
+fixtures exercise default-fetch skipping, matching hashes and warning-only source
+drift; numeric fixtures reject missing/text/non-finite cells. NGED finite coverage
+remains 1,138 circuits, and newly inspected Table 2b has 69 records. An independent
+star graph of the same Irish case yields the same **physical-bus** component sizes
+(2,022 + 1), confirming that the projection is adequate for this diagnostic, not
+for power flow. All eight weather variables match the captured CDS enum schema;
+the enlarged-box float32 budget is 1,325,892,096 bytes. JSON, Python/shell syntax,
+provenance classifications/hashes, ignored-raw paths and whitespace are checked.
+No ENTSO-E token, authenticated weather job, full electrical solve or independent
+re-audit of PR #10/#11/#12 is claimed. Detailed dispositions and remaining owner
+actions are in [the response](../../docs/requirements/reviews/response-pr5-2026-11-13.md).
