@@ -1,0 +1,245 @@
+# Elexon Insights Solution (BMRS) Data Manifest - Calendar Year 2024
+# GB Electricity Market & Operations Backtest Dataset
+# Licence: BMRS Open Data Licence (open-commercial)
+
+[manifest]
+version = "1.0.0"
+generated_at = "2026-11-13T13:11:23.273593+00:00"
+calendar_year = 2024
+is_leap_year = true
+expected_settlement_periods = 17568
+spring_clock_change = "2024-03-31 (46 settlement periods)"
+autumn_clock_change = "2024-10-27 (50 settlement periods)"
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+reference_attribution = "Contains BMRS data © Elexon Limited copyright and database right 2026."
+licence_exclusions = "Personal data; third-party rights Elexon is not authorised to license; other intellectual-property rights."
+coverage_scope = "Settlement-period union, not completeness of every provider, unit or message."
+base_api_url = "https://data.elexon.co.uk/bmrs/api/v1"
+total_datasets = 12
+total_files = 3673
+total_bytes = 4467563083
+total_bytes_human = "4.16 GiB"
+total_records = 166850655
+
+[datasets.bmunits]
+name = "BM Unit Reference Data"
+category = "Reference"
+endpoint = "/reference/bmunits/all?format=json"
+date_range = "Current reference snapshot; not point-in-time 2024 reference data"
+file_count = 1
+total_bytes = 2171607
+total_records = 3134
+sha256_index_file = "bmunits_sha256.txt"
+sha256_index_digest = "cceddd03523dad0455542284a19e507c97722fb28d0b3869a5af3906bd8020f0"
+expected_settlement_periods = 0
+actual_settlement_periods = 0
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2026."
+coverage_scope = "Current reference snapshot"
+
+retrieved_at = "Unknown; not recorded during original download"
+verified_at = "2026-11-13"
+
+[datasets.system_prices]
+name = "System Buy/Sell Prices (Imbalance Prices)"
+category = "Balancing Mechanism"
+endpoint = "/balancing/settlement/system-prices/{settlementDate}?format=json"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 15635205
+total_records = 17568
+sha256_index_file = "system_prices_sha256.txt"
+sha256_index_digest = "42a40b969b62170cf962ff67c457f34db63cd733eb418685b4c6da7231b0164e"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.demand_outturn]
+name = "Demand Outturn (INDO/ITSDO)"
+category = "Demand"
+endpoint = "/demand/outturn?settlementDateFrom={d}&settlementDateTo={d}&format=json"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 3564108
+total_records = 17568
+sha256_index_file = "demand_outturn_sha256.txt"
+sha256_index_digest = "098d3e8c90be2a9f75f47dce469d03883244c93cf5df0ba4b0c1439dcf41384a"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.fuelhh]
+name = "Half-Hourly Generation by Fuel Type (FUELHH)"
+category = "Generation"
+endpoint = "/datasets/FUELHH/stream?settlementDateFrom={d}&settlementDateTo={d}"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 61770007
+total_records = 340894
+sha256_index_file = "fuelhh_sha256.txt"
+sha256_index_digest = "3b5792e472586039d0cfba6f2def1d9b657e1f4fe6413f8c7dea25b94bc48292"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.interconnectors]
+name = "Interconnector Flows"
+category = "Interconnectors"
+endpoint = "/generation/outturn/interconnectors?settlementDateFrom={d}&settlementDateTo={d}&format=json"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 40898830
+total_records = 165214
+sha256_index_file = "interconnectors_sha256.txt"
+sha256_index_digest = "7ae152bed6d1fa00f17c590a85fafd1c4e314ef7548582d2f5501797002b8bd8"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.mid]
+name = "Market Index Data (Market Index Price)"
+category = "Wholesale Market"
+endpoint = "/datasets/MID/stream?from={d}&to={d}&settlementPeriodFrom=1&settlementPeriodTo=50"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 5627284
+total_records = 35091
+sha256_index_file = "mid_sha256.txt"
+sha256_index_digest = "bffdb29678556e6495467ae443fc457131c5acf4ee5a8ffd1386ffc1f2d36226"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.remit]
+name = "REMIT Market Messages"
+category = "Transparency / REMIT"
+endpoint = "/datasets/REMIT/stream?publishDateTimeFrom={ts}&publishDateTimeTo={ts}"
+date_range = "2024-01-01T00:00:00Z to 2025-01-01T00:00:00Z"
+file_count = 12
+total_bytes = 90172114
+total_records = 48191
+sha256_index_file = "remit_sha256.txt"
+sha256_index_digest = "4dd8b74ce30b76ca5412df6fbd59ed4dbcb230bb0e95bdd4cb13d05023d24ab0"
+expected_settlement_periods = 0
+actual_settlement_periods = 0
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Publication-window capture; source duplicate retained"
+
+[datasets.boalf]
+name = "Bid-Offer Acceptances (BOALF)"
+category = "Balancing Mechanism"
+endpoint = "/datasets/BOALF/stream?from={d}&to={d}&settlementPeriodFrom=1&settlementPeriodTo=50"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 1389492362
+total_records = 3469685
+sha256_index_file = "boalf_sha256.txt"
+sha256_index_digest = "b44415536b90a1b03aacee7fb8d04fb591a9407eca99730f57c16f006c5b6180"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17563
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.mels]
+name = "Maximum Export Limits (MEL)"
+category = "Balancing Mechanism"
+endpoint = "/datasets/MELS/stream?from={d}&to={d}&settlementPeriodFrom=1&settlementPeriodTo=50"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 795833135
+total_records = 36658371
+sha256_index_file = "mels_sha256.txt"
+sha256_index_digest = "c040c799af4302293143ed5e3981166a25e3897f0fa9d62cdc2aecea4603c5af"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.mils]
+name = "Maximum Import Limits (MIL)"
+category = "Balancing Mechanism"
+endpoint = "/datasets/MILS/stream?from={d}&to={d}&settlementPeriodFrom=1&settlementPeriodTo=50"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 633417702
+total_records = 34325048
+sha256_index_file = "mils_sha256.txt"
+sha256_index_digest = "af6a215f293a002ea78c8c308c08d6c05798829c4844b826df0bf3c3a3a73104"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.pn]
+name = "Physical Notifications (PN)"
+category = "Balancing Mechanism"
+endpoint = "/datasets/PN/stream?from={d}&to={d}&settlementPeriodFrom=1&settlementPeriodTo=50"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 523401063
+total_records = 36636103
+sha256_index_file = "pn_sha256.txt"
+sha256_index_digest = "3b8dd42fdff37938b64323f0c422409491c94e7d95568d363f3bd70127623097"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
+[datasets.bod]
+name = "Bid-Offer Data (BOD)"
+category = "Balancing Mechanism"
+endpoint = "/datasets/BOD/stream?from={d}&to={d}&settlementPeriodFrom=1&settlementPeriodTo=50"
+date_range = "2024-01-01 to 2024-12-31"
+file_count = 366
+total_bytes = 905579666
+total_records = 55133788
+sha256_index_file = "bod_sha256.txt"
+sha256_index_digest = "82db08ac452186ba670239e80bee11ab00b8752f576386c843aaa76afd994756"
+expected_settlement_periods = 17568
+actual_settlement_periods = 17568
+licence = "BMRS Open Data Licence"
+licence_status = "open-commercial"
+licence_url = "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+attribution = "Contains BMRS data © Elexon Limited copyright and database right 2024."
+coverage_scope = "Settlement-period union only; see COVERAGE.md for dimension gaps"
+
