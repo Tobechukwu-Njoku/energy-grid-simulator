@@ -98,6 +98,13 @@ they are not marked answered without an owner decision or explicit baseline adop
   reanalysis like ERA5 or climate projections)? ★ Yes.
 - [ ] **Q-C-6 Geospatial.** Is a map-based view with real coordinates required? ★ Yes (PostGIS).
 
+- [ ] **Q-C-11 SEMO archive time interpretation (PR #18 verification):**
+  ASSUMPTION: offsetless imbalance `START_TIME` labels are UTC for the provisional
+  coverage recount. May these be used for aligned calibration before file-specific
+  timezone confirmation? Options: keep provisional and require publisher/schema
+  confirmation before alignment · accept the UTC interpretation from transition-day
+  evidence. ★ Keep provisional; do not align this series to demand until confirmed.
+
 ## D. Scenarios ("different circumstances")
 
 - [x] **Q-D-1 Which circumstances matter?** (multi-select) Extreme weather (heat waves,
