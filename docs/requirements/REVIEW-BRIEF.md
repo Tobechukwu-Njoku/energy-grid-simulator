@@ -26,3 +26,21 @@ and market simulator. No code exists yet. Read in this order:
 Write findings to `docs/requirements/reviews/<model>-<date>.md` as a numbered list, each with
 severity (high/med/low), the file/ID it concerns, and a suggested change. **Do not edit the
 decisions log**; only the owner makes decisions.
+
+### Machine-checked header for code-review reports
+
+The `independent-review` CI gate (`cargo xtask review`, ADR 0001, NFR-3.AC3) reads review
+reports from `main`, never from the pull request. A code review counts only if its first
+40 lines contain these fields, one per line:
+
+    - Author role/provider: <role> / <provider>
+    - Reviewer role/provider: <role> / <provider>
+    - Reviewed head: `<full 40-character commit SHA>`
+    - Verdict: **approve**   (or approved, merge-ready; anything else blocks)
+
+The providers must differ, the reviewed SHA must be a commit of the pull request, and no
+path the pull request changes (other than review reports) may differ between that commit
+and the current head. Adversarial reports (file name containing `adversarial`) must cite a
+full commit SHA of the pull request. After a report lands on `main`, re-run the gate by
+pushing or editing the pull request. Triage of adversarial findings is still confirmed by
+the coordinator.

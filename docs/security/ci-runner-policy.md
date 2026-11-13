@@ -19,22 +19,36 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
 
 ## 2. Hosted-runner rules (enforced now)
 
-`ci/policy_checks.py` fails the `policy` job if a workflow breaks any of these:
+`cargo xtask policy` parses every workflow and local action as YAML and fails the
+`policy` job if any of these breaks:
 
-1. No `pull_request_target` or `workflow_run` trigger. PR code runs only under
-   `pull_request`, with a read-only token and no secrets.
-2. An explicit top-level `permissions:` block with no write scope. Any write scope needs a
+1. Only allow-listed triggers (`pull_request`, `pull_request_review`, `push`); never
+   `pull_request_target` or `workflow_run`. PR code runs with a read-only token and no secrets.
+2. An explicit top-level `permissions:` block; every workflow and job permission is `read`
+   or `none`, in block or flow (`{contents: write}`) form. Any write scope needs a
    separately reviewed exception in this document.
 3. Every third-party action is pinned to a full 40-character commit SHA; the tag goes in a
    comment. Updating a pin is a reviewed policy change.
 4. `actions/checkout` always sets `persist-credentials: false`.
-5. Untrusted event data (PR title/body, branch names, commit text) never appears inside a
-   `run:` script as a `${{ }}` expression. Scripts read the event file or an `env:` value.
-6. No `secrets.*` other than `GITHUB_TOKEN`; no self-hosted runner labels before M1.
-7. Policy scripts judging a PR come from the base revision where they exist
-   (attribution check), so a PR cannot weaken the rules applied to itself. Changes to
-   `.github/workflows/**`, `ci/**`, `.githooks/**`, `deny.toml` or this document are
-   policy changes and need independent review (ADR 0001).
+5. A `run:` script contains only allow-listed `${{ }}` expressions (`env.*`, `runner.*`);
+   every event value reaches a script through `env:` or the event file. Scripts never
+   run Python (D-73). No YAML aliases, `RUSTFLAGS` or rustc wrapper.
+6. No `secrets.*` other than `GITHUB_TOKEN`, no `secrets: inherit`; only the hosted
+   labels `ubuntu-24.04` and `macos-15` before M1; no `container:` or `services:`.
+7. **Trusted policy.** Every policy job checks out the base revision
+   (`.github/actions/trusted-policy`) and runs that revision's `xtask` with its policy
+   files (`xtask/policy/`, `.githooks/attribution-patterns.regex`) against the PR
+   checkout; cargo-deny reads the base `deny.toml`. A PR therefore cannot weaken the
+   rules applied to itself. The trusted gate graph (`xtask/policy/gates.toml`) requires
+   every gate job, unconditional, and `merge-gates` to depend on all of them.
+   Bootstrap: when the base has no `xtask` yet (the M0 seed PR), the PR's own copy runs
+   with a warning; that seed is reviewed independently.
+8. **Policy changes.** `.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
+   `Cargo.toml`, `rust-toolchain.toml` and `docs/security/` are owned by the policy owner
+   in `.github/CODEOWNERS`. The `policy-approval` check fails until the owner approves
+   the exact head. A pull-request workflow is itself defined by the PR, so these checks
+   rely on branch protection requiring `merge-gates`, `independent-review` and
+   `policy-approval` by name, plus code-owner review; the owner configures that.
 
 No caches are written by M0 workflows. If caching is added, PR jobs may only read caches
 written by trusted `main` runs, and caches are keyed by toolchain, platform, lockfile and flags.

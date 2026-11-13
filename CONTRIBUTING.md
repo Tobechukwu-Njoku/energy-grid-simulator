@@ -28,12 +28,19 @@ branch and open a pull request against `main`.
     cargo nextest run --workspace --locked
     cargo deny --locked check
 
-Policy and documentation checks need only Python 3, Perl and Git:
+Policy and documentation checks are a Rust `xtask` crate (D-73); the hook tests also need
+Perl and Git:
 
-    python3 .githooks/tests/run.py              # commit-msg hook fixtures
-    python3 -m unittest discover -s ci/tests    # CI attribution check, hook parity
-    python3 ci/doc_gates.py                     # Markdown links and traceability
-    python3 ci/policy_checks.py                 # unsafe scope, workflow hardening
+    cargo xtask all                                   # policy, provenance, docs
+    cargo xtask policy                                # unsafe scope, manifests, workflows, Python
+    cargo xtask provenance                            # dataset tags, raw data, secrets (D-56)
+    cargo xtask docs                                  # Markdown links and traceability
+    cargo xtask attribution --base origin/main --head HEAD   # D-52 scan of your branch
+    cargo nextest run -p xtask                        # policy tests, commit-msg hook fixtures
+
+In CI each check runs from the base revision's `xtask` and policy files (`--policy`), so a
+pull request is judged by the rules it started from. Python is allowed only in `spikes/`
+and allow-listed offline reference validators; CI rejects it elsewhere.
 
 The coding container is for light builds only. Heavy builds, databases and benchmarks run
 on the separate target system (D-65).
@@ -43,13 +50,18 @@ on the separate target system (D-65).
 - **No AI attribution** in commits, PR titles and bodies, or added lines (D-52).
 - **No `unsafe`** outside `crates/solver-*` adapters; there, allow it per item with a
   `// SAFETY:` comment.
-- **Licences:** new dependencies must pass `deny.toml`. Allow-list or exception changes
-  need independent review (NFR-8).
+- **Licences:** new dependencies must pass `deny.toml` as it is on the base branch.
+  Allow-list or exception changes need independent review and the policy owner's
+  approval (NFR-8, `.github/CODEOWNERS`).
 - **No Python or Julia** in the production dependency graph (NFR-10).
 - **Workflows:** SHA-pinned actions, read-only token, no `pull_request_target`
   ([CI security policy](docs/security/ci-runner-policy.md)).
 - **Data:** never commit raw `research-only` data; commit download scripts only (D-56).
+  Every provenance manifest tags each dataset `open-commercial` or `research-only`.
+- **Policy paths** (`.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
+  `Cargo.toml`, `rust-toolchain.toml`, `docs/security/`) need the policy owner's approval.
 
-The single required check is `merge-gates`. It fails if any gate fails and lists the gates
-that are not yet applicable. Independent review evidence is still checked by the coordinator
-on the exact head SHA (NFR-3).
+Checks to require on `main` (branch protection is configured by the owner; it is not
+on yet): `merge-gates` (all automated gates, listing the ones not yet applicable),
+`independent-review` and `policy-approval` (both in `review-gates.yml`). The last two fail
+until the review evidence or owner approval exists for the current head.
