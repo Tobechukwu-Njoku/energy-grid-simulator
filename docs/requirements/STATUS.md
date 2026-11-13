@@ -42,7 +42,7 @@ verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7,
 | PR #5: data spike (R-12 "Partially") | Reviewed (Claude PR #7, Gemini PR #9); needs revision | Author revision per Claude review + PR5 triage + D-56/D-57 |
 | PR #10: DNO 132 kV inventory | **Merged** 2026-11-13 after GPT verification (84 claims, 21% of determinate claims corrected, 8 UNVERIFIED) | Portal logins (UKPN, SPEN, NPg, ENWL) to close the gaps; commercial clearance in TODO-pre-commercial |
 | PR #12: Elexon 2024 data gathered (4.2 GB, 3,673 files, 12 datasets, D-62) | Done; file counts and sizes spot-checked by coordinator | GPT verification (record counts, coverage claims) |
-| PR #11: NESO/DNO/EirGrid/SEMO data gathered (~120 MB, 30 files, D-62) | Done; NESO licence tags corrected by coordinator (ETYS → research-only) | GPT verification; owner logins needed for UKPN, SPEN, NPg, ENWL portals and an ENTSO-E API token |
+| PR #11: NESO/DNO/EirGrid/SEMO data (30 files) | **Merged** 2026-11-13 after GPT verification (hashes match; licences corrected) | Gap: 2024 Irish prices (have 2018–2020 only); owner logins for UKPN, SPEN, NPg, ENWL and an ENTSO-E token. Local-only T3 checkpoint ref `286d675` holds ETYS raw files: never push `refs/t3/*`, and exclude them from any public mirror |
 | History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #5 merge: rewrite AI trailers, scan, make public, enable branch protection |
 
 Rules in force: GPT for non-code (D-51), Claude reviews GPT docs (D-54), Gemini adversarial reviews (D-53)
