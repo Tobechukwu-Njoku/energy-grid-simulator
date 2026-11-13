@@ -1,0 +1,400 @@
+# Data Gathering Manifest
+# GB & Ireland Electricity Grid Network and Market Datasets
+# Generated: 2026-11-13 01:44:15Z
+# Storage location: /Users/njotob/energy-data/raw/<category>/<filename>
+
+[meta]
+repository = "Tobechukwu-Njoku/energy-grid-simulator"
+storage_root = "/Users/njotob/energy-data/raw"
+dataset_count = 30
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-appendix-b-system-technical-data"
+filename = "etys-2025-appendix-b-system-technical-data.xlsx"
+relative_path = "neso/etys-2025-appendix-b-system-technical-data.xlsx"
+source_url = "https://www.neso.energy/document/383936/download"
+retrieval_date = "2026-11-13T01:42:47.839330+00:00"
+bytes = 1237005
+sha256 = "d5cacf238292e8c78af989a5ee3a0c9bd8619acc6e6e67f451d6b44c71fa5e0c"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Appendix B: System technical data workbook (busbars, circuits, transformers)"
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-boundary-chart-data"
+filename = "etys-2025-boundary-chart-data.xlsx"
+relative_path = "neso/etys-2025-boundary-chart-data.xlsx"
+source_url = "https://www.neso.energy/document/383896/download"
+retrieval_date = "2026-11-13T01:42:49.006210+00:00"
+bytes = 71901
+sha256 = "5199c86cc4038bddf46928df0e23565f8315bbd50debc6b63db08fef2b2c56d7"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Boundary capability chart data and boundary transfer limits"
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-appendix-a-system-schematics"
+filename = "etys-2025-appendix-a-system-schematics.pdf"
+relative_path = "neso/etys-2025-appendix-a-system-schematics.pdf"
+source_url = "https://www.neso.energy/document/383931/download"
+retrieval_date = "2026-11-13T01:42:51.953095+00:00"
+bytes = 4829641
+sha256 = "417dcbb992545123205145ab6a97a91b670c9cc6cf053026e0020e376746713e"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Appendix A: System schematics and geographic drawings"
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-appendix-c-power-flows"
+filename = "etys-2025-appendix-c-power-flows.pdf"
+relative_path = "neso/etys-2025-appendix-c-power-flows.pdf"
+source_url = "https://www.neso.energy/document/383946/download"
+retrieval_date = "2026-11-13T01:42:54.775135+00:00"
+bytes = 3249024
+sha256 = "086236f8220e953822a71283eabe70d9d9350257223fddcf80dc6e7a909af7bf"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Appendix C: System power flow diagrams"
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-appendix-d-fault-peak"
+filename = "etys-2025-appendix-d-fault-peak.xlsx"
+relative_path = "neso/etys-2025-appendix-d-fault-peak.xlsx"
+source_url = "https://www.neso.energy/document/383951/download"
+retrieval_date = "2026-11-13T01:42:56.645837+00:00"
+bytes = 718863
+sha256 = "ad8b54fa0b0562c34295514c150f33913a92fc756ff140e0154d53c181363440"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Appendix D: Fault levels peak data"
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-appendix-d-fault-min"
+filename = "etys-2025-appendix-d-fault-min.xlsx"
+relative_path = "neso/etys-2025-appendix-d-fault-min.xlsx"
+source_url = "https://www.neso.energy/document/383961/download"
+retrieval_date = "2026-11-13T01:42:57.915094+00:00"
+bytes = 161789
+sha256 = "5f44bdb1650422368bb4ded9d1cbe53fafbd9d5af101725457619001fd264774"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Appendix D: Fault levels minimum data"
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-appendix-f-contracted-generation"
+filename = "etys-2025-appendix-f-contracted-generation.xlsx"
+relative_path = "neso/etys-2025-appendix-f-contracted-generation.xlsx"
+source_url = "https://www.neso.energy/document/379146/download"
+retrieval_date = "2026-11-13T01:42:59.210363+00:00"
+bytes = 188189
+sha256 = "1a4d16701ac84c758fd3fc262d056e10141a130b20f9f25ff4ff8c55595151ee"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Appendix F: Contracted generation background"
+
+[[datasets]]
+category = "neso"
+name = "etys-2025-appendix-g-nodal-demand"
+filename = "etys-2025-appendix-g-nodal-demand.xlsx"
+relative_path = "neso/etys-2025-appendix-g-nodal-demand.xlsx"
+source_url = "https://www.neso.energy/document/379136/download"
+retrieval_date = "2026-11-13T01:43:00.377737+00:00"
+bytes = 74494
+sha256 = "9f7e66eef5631a1cbd699772affe083957d5b7fee00be068f105aeb8d58b56ef"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS 2025 Appendix G: FES Nodal demand data"
+
+[[datasets]]
+category = "neso"
+name = "etys-boundary-gis-data-mar25"
+filename = "etys-boundary-gis-data-mar25.zip"
+relative_path = "neso/etys-boundary-gis-data-mar25.zip"
+source_url = "https://api.neso.energy/dataset/997f4820-1ad4-499b-b1fe-4b8d3d7fbc72/resource/e914fcec-1dc9-4f1f-97e7-59c0d9521bea/download/etys-boundary-gis-data-mar25.zip"
+retrieval_date = "2026-11-13T01:43:03.436042+00:00"
+bytes = 87714
+sha256 = "0e6dbd110a5d87cd53982dc0a5fdf80badb3c86d5ab10c8c4702fcbbc02f6433"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO ETYS GB Transmission System Boundary GIS shapefiles/geodata"
+
+[[datasets]]
+category = "neso"
+name = "tec-register"
+filename = "tec-register-10-november-2026.csv"
+relative_path = "neso/tec-register-10-november-2026.csv"
+source_url = "https://api.neso.energy/dataset/cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1/resource/17becbab-e3e8-473f-b303-3806f43a6a10/download/tec-register-10-november-2026.csv"
+retrieval_date = "2026-11-13T01:43:06.542642+00:00"
+bytes = 445749
+sha256 = "0f19d9b411c9da3711739eb2647d099cedc2a421abcd04a5cf913168ac817df3"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO Transmission Entry Capacity (TEC) Register of generators connected to GB transmission"
+
+[[datasets]]
+category = "neso"
+name = "embedded-capacity-register"
+filename = "embedded-register-10-november-2026.csv"
+relative_path = "neso/embedded-register-10-november-2026.csv"
+source_url = "https://api.neso.energy/dataset/4b0e109c-aa23-45ac-86c1-0bda557d1aab/resource/68b6f3a1-e1bf-403b-9062-0269fc758d77/download/embedded-register-10-november-2026.csv"
+retrieval_date = "2026-11-13T01:43:09.931553+00:00"
+bytes = 92230
+sha256 = "90bbca6c91c694f924bb4dd5a8831bf2725d64083f4e359a0686c90f5800ac22"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO GB Embedded Capacity Register for generation connected to distribution networks"
+
+[[datasets]]
+category = "neso"
+name = "24-months-ahead-constraint-limits"
+filename = "24-months-ahead-constraint-limit_nov26.csv"
+relative_path = "neso/24-months-ahead-constraint-limit_nov26.csv"
+source_url = "https://api.neso.energy/dataset/d515b4a9-60a1-489c-a126-004efc04f121/resource/3c359e33-3dac-4bdd-87d1-efbf4cbc2f07/download/24-months-ahead-constraint-limit_nov26.csv"
+retrieval_date = "2026-11-13T01:43:12.862658+00:00"
+bytes = 7688
+sha256 = "3bbb83f6b0f12882b87605e3f1ce625428b3c58475a120489d2db29d8c8e74f0"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO 24-months ahead boundary constraint limits and capability forecast"
+
+[[datasets]]
+category = "neso"
+name = "day-ahead-constraint-flows-and-limits"
+filename = "day-ahead-constraints-limits-and-flow-output-v1.5.csv"
+relative_path = "neso/day-ahead-constraints-limits-and-flow-output-v1.5.csv"
+source_url = "https://api.neso.energy/dataset/cf3cbc92-2d5d-4c2b-bd29-e11a21070b26/resource/38a18ec1-9e40-465d-93fb-301e80fd1352/download/day-ahead-constraints-limits-and-flow-output-v1.5.csv"
+retrieval_date = "2026-11-13T01:43:18.933764+00:00"
+bytes = 29271088
+sha256 = "6406ca6f7e6a70005d29035ebf10551ba75339bc26de3973049b27bf9098c310"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO Day-ahead transmission boundary constraint flows and limits"
+
+[[datasets]]
+category = "neso"
+name = "outturn-system-costs-constraint"
+filename = "outturn-system-costs-2024-2025.csv"
+relative_path = "neso/outturn-system-costs-2024-2025.csv"
+source_url = "https://api.neso.energy/dataset/f0055054-c55c-4068-a01c-61da4334e58f/resource/27df75fd-6233-466c-beed-3e6e2261e6b1/download/outturn-system-costs-2024-2025.csv"
+retrieval_date = "2026-11-13T01:43:22.057955+00:00"
+bytes = 48346
+sha256 = "9a0b431c475e8e1ab3e874d8344c94b3b33952cf66290f2ec797d1bc3aae80d1"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NESO Outturn System Costs (thermal and constraint costs 2024-2025)"
+
+[[datasets]]
+category = "dno"
+name = "nged-ltds-table-1-circuit"
+filename = "ltds-table-1-circuit.csv"
+relative_path = "dno/ltds-table-1-circuit.csv"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/7892e22f-e489-49fa-a582-b1384006e4e2/download/ltds-table-1-circuit.csv"
+retrieval_date = "2026-11-13T01:43:24.781865+00:00"
+bytes = 2663962
+sha256 = "b299289eb4f951b7e1c6c710d8dca8979e9418745ceb539121f3005b4128c615"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS Table 1: Circuit parameters (132 kV, 66 kV, 33 kV) across East Midlands, West Midlands, South Wales, South West"
+
+[[datasets]]
+category = "dno"
+name = "nged-ltds-table-2a-transformer"
+filename = "ltds-table-2a-two-winding-transformer.csv"
+relative_path = "dno/ltds-table-2a-two-winding-transformer.csv"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/8c964d61-a7fb-41e7-99b4-6032d063a8c6/download/ltds-table-2a-two-winding-transformer.csv"
+retrieval_date = "2026-11-13T01:43:26.286613+00:00"
+bytes = 308177
+sha256 = "bcf2c7bf15e3b717aeea224ecddcc66891299f02e849ea48b9bd330d8c8ff8ae"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS Table 2a: Two-winding transformer parameters across all 4 NGED areas"
+
+[[datasets]]
+category = "dno"
+name = "nged-ltds-table-2b-transformer"
+filename = "ltds-table-2b-three-winding-transformer.csv"
+relative_path = "dno/ltds-table-2b-three-winding-transformer.csv"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/56033622-8ed7-4425-916c-82a030df4822/download/ltds-table-2b-three-winding-transformer.csv"
+retrieval_date = "2026-11-13T01:43:27.450348+00:00"
+bytes = 11279
+sha256 = "fd8c7650a709dbb7acb6090135b8faf0329aa8a822795c76c5c899d971131837"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS Table 2b: Three-winding transformer parameters across all 4 NGED areas"
+
+[[datasets]]
+category = "dno"
+name = "nged-ltds-attachment-8-node"
+filename = "ltds-attachment-8-node.csv"
+relative_path = "dno/ltds-attachment-8-node.csv"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/a92da9e4-2010-4406-b86a-825cd65761d6/download/ltds-attachment-8-node.csv"
+retrieval_date = "2026-11-13T01:43:29.946192+00:00"
+bytes = 1826097
+sha256 = "cf1ff667fd939a1847f73e218a19248bb0824c81cccd8d79cf98b80109c5613e"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS Attachment 8: Busbar/node definitions across all 4 NGED areas"
+
+[[datasets]]
+category = "dno"
+name = "nged-cim-east-midlands"
+filename = "nged-cim-emids.zip"
+relative_path = "dno/nged-cim-emids.zip"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/7367f8a5-7714-4647-84db-dc35119bea78/resource/2ef4b5ac-3e57-4f84-a376-9014c146c1de/download/emids.zip"
+retrieval_date = "2026-11-13T01:43:33.622833+00:00"
+bytes = 11166470
+sha256 = "71ef0e5d369ec3644ef50013703c8152f6e524b0c02fa5d8c0614ca8570ee14d"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS CIM Model XML archive for East Midlands licence area"
+
+[[datasets]]
+category = "dno"
+name = "nged-cim-west-midlands"
+filename = "nged-cim-wmids.zip"
+relative_path = "dno/nged-cim-wmids.zip"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/7367f8a5-7714-4647-84db-dc35119bea78/resource/ab83d544-7a2a-4801-9d2a-4dbec5c8efbf/download/wmids.zip"
+retrieval_date = "2026-11-13T01:43:36.844993+00:00"
+bytes = 7414763
+sha256 = "b08918699f9bbb4b30d64402ea772f3580f3b4731485382659c0d770e405f79c"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS CIM Model XML archive for West Midlands licence area"
+
+[[datasets]]
+category = "dno"
+name = "nged-cim-south-wales"
+filename = "nged-cim-swales.zip"
+relative_path = "dno/nged-cim-swales.zip"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/7367f8a5-7714-4647-84db-dc35119bea78/resource/46575bac-99cf-4edd-933e-9df58c2b95e0/download/swales.zip"
+retrieval_date = "2026-11-13T01:43:40.003077+00:00"
+bytes = 5305393
+sha256 = "ed187ecc5a5df899be8944f4ed10ccc630af87fd14661a36a61e7d2499a080b7"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS CIM Model XML archive for South Wales licence area"
+
+[[datasets]]
+category = "dno"
+name = "nged-cim-south-west"
+filename = "nged-cim-swest.zip"
+relative_path = "dno/nged-cim-swest.zip"
+source_url = "https://connecteddata.nationalgrid.co.uk/dataset/7367f8a5-7714-4647-84db-dc35119bea78/resource/38dbec57-e1ff-48c3-b4dc-c9759ebed3c0/download/swest.zip"
+retrieval_date = "2026-11-13T01:43:43.397696+00:00"
+bytes = 8297269
+sha256 = "adf260a0d4afb70d78038c3ca020905375ebefc34aaf289486bb7bc3b361b056"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "NGED LTDS CIM Model XML archive for South West licence area"
+
+[[datasets]]
+category = "dno"
+name = "ssen-sepd-ltds-tables-may-2026"
+filename = "southern-electric-power-distribution-long-term-development-statement-tables_may-2026.xlsx"
+relative_path = "dno/southern-electric-power-distribution-long-term-development-statement-tables_may-2026.xlsx"
+source_url = "https://data-api.ssen.co.uk/dataset/695078a0-bbd8-420b-8383-ee6bf7fc0045/resource/02c9431f-6126-4384-9f46-9079dbcd7057/download/southern-electric-power-distribution-long-term-development-statement-tables_may-2026.xlsx"
+retrieval_date = "2026-11-13T01:43:45.927494+00:00"
+bytes = 730943
+sha256 = "7cd5e07bf9562bccc4038281cc1c9b60ede26396d5ded48ac5f91f8de241a0a5"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "SSEN SEPD (Southern Electric) LTDS Tables 1-7 including 132 kV circuit parameters"
+
+[[datasets]]
+category = "dno"
+name = "ssen-sepd-ltds-cim-eq"
+filename = "ltds_sepd_2025-02_eq_2025-10-20_v1.0.zip"
+relative_path = "dno/ltds_sepd_2025-02_eq_2025-10-20_v1.0.zip"
+source_url = "https://data-api.ssen.co.uk/dataset/695078a0-bbd8-420b-8383-ee6bf7fc0045/resource/d56de5a2-4150-48e9-986a-7c315f570a7b/download/ltds_sepd_2025-02_eq_2025-10-20_v1.0.zip"
+retrieval_date = "2026-11-13T01:43:49.522514+00:00"
+bytes = 5599633
+sha256 = "b0441cc3fa892305d2f81b3080a34aa4c420bc9f95ec3261e20afce0cf5aeb54"
+licence_name = "Open Government Licence v3.0"
+licence_status = "open-commercial"
+description = "SSEN SEPD (Southern Electric) CIM Equipment (EQ) profile XML archive"
+
+[[datasets]]
+category = "eirgrid"
+name = "eirgrid-tytfs-2024-study-files"
+filename = "TYTFS2024_studyfiles.zip"
+relative_path = "eirgrid/TYTFS2024_studyfiles.zip"
+source_url = "https://cms.eirgrid.ie/sites/default/files/publications/TYTFS2024_studyfiles.zip"
+retrieval_date = "2026-11-13T01:43:53.716280+00:00"
+bytes = 11954215
+sha256 = "1dae320fa3b504f9795c4986258f03a948785d1ecc375b74262a8f7dfed700ba"
+licence_name = "EirGrid / SONI Network Study Models"
+licence_status = "research-only"
+description = "EirGrid/SONI All-Island TYTFS 2024 Study Files (PSS/E RAW network models and SEQ sequence data)"
+
+[[datasets]]
+category = "eirgrid"
+name = "eirgrid-system-data-qtr-hourly-2024"
+filename = "System-Data-Qtr-Hourly-2024.xlsx"
+relative_path = "eirgrid/System-Data-Qtr-Hourly-2024.xlsx"
+source_url = "https://cms.eirgrid.ie/sites/default/files/publications/System-Data-Qtr-Hourly-2024.xlsx"
+retrieval_date = "2026-11-13T01:43:59.637435+00:00"
+bytes = 12101550
+sha256 = "27b01a5b1fbc69284fa0390d580b4ae105a9af9bb85aff9ad5190088b1d368e6"
+licence_name = "EirGrid / SONI System Operational Data"
+licence_status = "research-only"
+description = "EirGrid/SONI 2024 Quarter-Hourly operational SCADA data (IEDemand, NIDemand, wind, solar, EWIC, Moyle, SNSP)"
+
+[[datasets]]
+category = "eirgrid"
+name = "eirgrid-system-renewable-summary-report"
+filename = "System-and-Renewable-Data-Summary-Report-V30.xlsx"
+relative_path = "eirgrid/System-and-Renewable-Data-Summary-Report-V30.xlsx"
+source_url = "https://cms.eirgrid.ie/sites/default/files/publications/System-and-Renewable-Data-Summary-Report-V30.xlsx"
+retrieval_date = "2026-11-13T01:44:01.945179+00:00"
+bytes = 621212
+sha256 = "5d3f7d1eb928bac292f3a646d16e56182699b9b06d88934842f24c230c48ad70"
+licence_name = "EirGrid / SONI System Operational Data"
+licence_status = "research-only"
+description = "EirGrid/SONI System & Renewable monthly/annual summary metrics workbook"
+
+[[datasets]]
+category = "semo"
+name = "semopx-market-lookback"
+filename = "lookback_mkt.xlsx"
+relative_path = "semo/lookback_mkt.xlsx"
+source_url = "https://www.semopx.com/documents/general-publications/lookback_mkt.xlsx"
+retrieval_date = "2026-11-13T01:44:10.778176+00:00"
+bytes = 16788754
+sha256 = "e650ff08de4334b430ad2c868fdf57f875f2c7df7f974e65d2b7b7b4dd909a60"
+licence_name = "SEMOpx Market Data Publication"
+licence_status = "research-only"
+description = "SEMOpx Historical Market Results Lookback: Day-Ahead (DAM) and Intraday (IDM) prices, volumes, and reference metrics"
+
+[[datasets]]
+category = "semo"
+name = "semo-pub-monthly-registered-capacity"
+filename = "PUB_MnlyRegisteredCapacity_202412011000.xml"
+relative_path = "semo/PUB_MnlyRegisteredCapacity_202412011000.xml"
+source_url = "https://reports.sem-o.com/documents/PUB_MnlyRegisteredCapacity_202412011000.xml"
+retrieval_date = "2026-11-13T01:44:12.623975+00:00"
+bytes = 464148
+sha256 = "15b4a26f344dcccf747dcc5d5b66ff822841aaa689dcfa60c2550fb7d32b20e9"
+licence_name = "SEMO Market Data Publication"
+licence_status = "research-only"
+description = "SEMO Balancing Market Monthly Registered Capacity report (December 2024 all-island generator capacities)"
+
+[[datasets]]
+category = "semo"
+name = "semo-pub-daily-registered-units"
+filename = "PUB_DailyRegisteredUnits_202609140734.xml"
+relative_path = "semo/PUB_DailyRegisteredUnits_202609140734.xml"
+source_url = "https://reports.sem-o.com/documents/PUB_DailyRegisteredUnits_202609140734.xml"
+retrieval_date = "2026-11-13T01:44:14.168286+00:00"
+bytes = 290167
+sha256 = "b344bb639cdc0819dbaa34023124ea11ab77c176860489e813a845f29202b094"
+licence_name = "SEMO Market Data Publication"
+licence_status = "research-only"
+description = "SEMO Balancing Market Registered Units master reference report"
+
