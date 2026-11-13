@@ -1011,7 +1011,9 @@ pub fn parse_codeowners(text: &str) -> (Vec<OwnerRule>, Vec<Finding>) {
         let mut tokens = line.split_whitespace();
         let pattern = tokens.next().unwrap_or_default().to_owned();
         let owners: Vec<String> = tokens.map(str::to_owned).collect();
-        let bad_pattern = pattern.starts_with('!') || pattern.contains(['[', ']', '\\']);
+        let bad_pattern = pattern.starts_with('!')
+            || pattern.contains(['[', ']', '\\'])
+            || crate::util::partial_globstar(&pattern);
         let bad_owner = owners.iter().find(|owner| !valid_owner(owner));
         if bad_pattern || bad_owner.is_some() {
             findings.push(Finding::at(
@@ -1516,6 +1518,10 @@ mod tests {
         assert!(!codeowners_match("/xtask/**/lib.rs", "xtask/evillib.rs"));
         assert!(codeowners_match("/xtask/**/lib.rs", "xtask/lib.rs"));
         assert!(codeowners_match("/xtask/**/lib.rs", "xtask/src/lib.rs"));
+        // `**` that does not fill a component is version-dependent in Git:
+        // the line is rejected and grants nothing.
+        let partial = check("/xtask/ @Owner\n/xtask/**lib.rs @Owner\n/xtask/evillib.rs @someone\n");
+        assert!(partial.len() >= 2, "{partial:?}");
         // Control: a genuine override by `**/` still restores ownership.
         assert!(
             check("/xtask/ @Owner\n/xtask/src/lib.rs @someone\n/xtask/**/lib.rs @Owner\n")

@@ -241,9 +241,9 @@ fn glob_bytes(pattern: &[u8], path: &[u8]) -> bool {
 /// (`WM_PATHNAME`): a run of two or more `*` is a globstar only when it fills
 /// a whole pattern component (preceded by the start or `/`, followed by the end
 /// or `/`). `**/` then matches zero or more whole directories; it never
-/// consumes part of a file name (R4-02). Any other run of two or more `*`
-/// matches any characters including `/`, and a single `*` matches within one
-/// component, as `git check-ignore` does.
+/// consumes part of a file name (R4-02). Any other run of `*` is a single `*`
+/// (within one component), as Git documents. Git releases have disagreed on
+/// such runs, so CODEOWNERS rejects them ([`partial_globstar`]).
 fn glob_from(pattern: &[u8], index: usize, path: &[u8]) -> bool {
     let Some(&head) = pattern.get(index) else {
         return path.is_empty();
@@ -273,7 +273,7 @@ fn glob_from(pattern: &[u8], index: usize, path: &[u8]) -> bool {
                 if glob_from(pattern, next, &path[split..]) {
                     return true;
                 }
-                if stars == 1 && path.get(split) == Some(&b'/') {
+                if path.get(split) == Some(&b'/') {
                     break;
                 }
             }
@@ -292,6 +292,16 @@ fn glob_from(pattern: &[u8], index: usize, path: &[u8]) -> bool {
         },
         other => path.first() == Some(&other) && glob_from(pattern, index + 1, &path[1..]),
     }
+}
+
+/// Whether a pattern has a run of two or more `*` that does not fill a whole
+/// component (`a**/b`, `x/**y`). Git versions match such runs differently,
+/// so untrusted patterns using them are rejected (R4-02).
+#[must_use]
+pub fn partial_globstar(pattern: &str) -> bool {
+    pattern
+        .split('/')
+        .any(|part| part.contains("**") && !part.bytes().all(|b| b == b'*'))
 }
 
 /// Reads a string array from a TOML item.
@@ -347,7 +357,11 @@ mod tests {
         assert!(glob_match("xtask/**/lib.rs", "xtask/src/lib.rs"));
         assert!(!glob_match("xtask/**/lib.rs", "xtask/evillib.rs"));
         assert!(!glob_match("**/lib.rs", "evillib.rs"));
-        assert!(glob_match("a**/b", "a/x/b"));
+        assert!(!glob_match("a**/b", "a/x/b"));
+        assert!(partial_globstar("a**/b"));
+        assert!(partial_globstar("/a/**b"));
+        assert!(!partial_globstar("/a/**/b"));
+        assert!(!partial_globstar("**/b/***"));
         assert!(glob_match("a**b", "axxb"));
     }
 

@@ -518,19 +518,17 @@ fn r3_04_codeowners_matcher_agrees_with_git() {
         "**/lib.rs",
         "**/evillib.rs",
         "/**/lib.rs",
-        "a**/c.rs",
-        "a/**b/c.rs",
-        "a/b**",
-        "x**/",
         "***/lib.rs",
         "a/***/c.rs",
         "**/**/c.rs",
         "docs/**/",
         "xtask/**",
         "/xtask/**/*.rs",
-        "**lib.rs",
     ];
+    // Partial `**` runs (`a**/c.rs`, `x/**y`) are matched differently by Git
+    // releases; CODEOWNERS rejects them (`repository::r4_02_...`).
     for pattern in patterns {
+        assert!(!xtask::util::partial_globstar(pattern), "{pattern}");
         repo.write(".gitignore", &format!("{pattern}\n"));
         let output = std::process::Command::new("git")
             .arg("-C")
