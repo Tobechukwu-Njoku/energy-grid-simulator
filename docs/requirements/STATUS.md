@@ -34,7 +34,7 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
 
-**2026-11-13: all agent work stopped by the owner ahead of moving the workspace to an LXC container.** Nothing is running. PRs #4 and #5 are revised and await Claude and Gemini review; PR #12 verification must be re-run; the 2024 Irish price gathering must be re-run. Raw data (`~/energy-data/raw`, 4.3 GB) is outside git and must be copied.
+**2026-11-13: workspace moved to the coding container (D-65); work resumed.** Running: Claude and Gemini reviews of the revised PRs #4 and #5, GPT re-verification of PR #12, and Gemini gathering of the 2024 Irish prices. Next: merge, clean the history and make the repo public, then GPT drafts the topology ADRs 0002/0004/0005/0006 (recommended: a modular monolith).
 
 | Item | State | Next action |
 |---|---|---|
