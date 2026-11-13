@@ -17,8 +17,8 @@ source_url = "https://www.neso.energy/document/383936/download"
 retrieval_date = "2026-11-13T01:42:47.839330+00:00"
 bytes = 1237005
 sha256 = "d5cacf238292e8c78af989a5ee3a0c9bd8619acc6e6e67f451d6b44c71fa5e0c"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Appendix B: System technical data workbook (busbars, circuits, transformers)"
 
 [[datasets]]
@@ -30,8 +30,8 @@ source_url = "https://www.neso.energy/document/383896/download"
 retrieval_date = "2026-11-13T01:42:49.006210+00:00"
 bytes = 71901
 sha256 = "5199c86cc4038bddf46928df0e23565f8315bbd50debc6b63db08fef2b2c56d7"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Boundary capability chart data and boundary transfer limits"
 
 [[datasets]]
@@ -43,8 +43,8 @@ source_url = "https://www.neso.energy/document/383931/download"
 retrieval_date = "2026-11-13T01:42:51.953095+00:00"
 bytes = 4829641
 sha256 = "417dcbb992545123205145ab6a97a91b670c9cc6cf053026e0020e376746713e"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Appendix A: System schematics and geographic drawings"
 
 [[datasets]]
@@ -56,8 +56,8 @@ source_url = "https://www.neso.energy/document/383946/download"
 retrieval_date = "2026-11-13T01:42:54.775135+00:00"
 bytes = 3249024
 sha256 = "086236f8220e953822a71283eabe70d9d9350257223fddcf80dc6e7a909af7bf"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Appendix C: System power flow diagrams"
 
 [[datasets]]
@@ -69,8 +69,8 @@ source_url = "https://www.neso.energy/document/383951/download"
 retrieval_date = "2026-11-13T01:42:56.645837+00:00"
 bytes = 718863
 sha256 = "ad8b54fa0b0562c34295514c150f33913a92fc756ff140e0154d53c181363440"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Appendix D: Fault levels peak data"
 
 [[datasets]]
@@ -82,8 +82,8 @@ source_url = "https://www.neso.energy/document/383961/download"
 retrieval_date = "2026-11-13T01:42:57.915094+00:00"
 bytes = 161789
 sha256 = "5f44bdb1650422368bb4ded9d1cbe53fafbd9d5af101725457619001fd264774"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Appendix D: Fault levels minimum data"
 
 [[datasets]]
@@ -95,8 +95,8 @@ source_url = "https://www.neso.energy/document/379146/download"
 retrieval_date = "2026-11-13T01:42:59.210363+00:00"
 bytes = 188189
 sha256 = "1a4d16701ac84c758fd3fc262d056e10141a130b20f9f25ff4ff8c55595151ee"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Appendix F: Contracted generation background"
 
 [[datasets]]
@@ -108,8 +108,8 @@ source_url = "https://www.neso.energy/document/379136/download"
 retrieval_date = "2026-11-13T01:43:00.377737+00:00"
 bytes = 74494
 sha256 = "9f7e66eef5631a1cbd699772affe083957d5b7fee00be068f105aeb8d58b56ef"
-licence_name = "Open Government Licence v3.0"
-licence_status = "open-commercial"
+licence_name = "None found: ETYS publication page carries no dataset licence; NESO website terms restrict commercial exploitation"
+licence_status = "research-only"
 description = "NESO ETYS 2025 Appendix G: FES Nodal demand data"
 
 [[datasets]]
@@ -121,7 +121,7 @@ source_url = "https://api.neso.energy/dataset/997f4820-1ad4-499b-b1fe-4b8d3d7fbc
 retrieval_date = "2026-11-13T01:43:03.436042+00:00"
 bytes = 87714
 sha256 = "0e6dbd110a5d87cd53982dc0a5fdf80badb3c86d5ab10c8c4702fcbbc02f6433"
-licence_name = "Open Government Licence v3.0"
+licence_name = "NESO Open Data Licence v1.0 (UNVERIFIED per dataset: confirm the portal dataset page shows this licence)"
 licence_status = "open-commercial"
 description = "NESO ETYS GB Transmission System Boundary GIS shapefiles/geodata"
 
@@ -134,7 +134,7 @@ source_url = "https://api.neso.energy/dataset/cbd45e54-e6e2-4a38-99f1-8de6fd96d7
 retrieval_date = "2026-11-13T01:43:06.542642+00:00"
 bytes = 445749
 sha256 = "0f19d9b411c9da3711739eb2647d099cedc2a421abcd04a5cf913168ac817df3"
-licence_name = "Open Government Licence v3.0"
+licence_name = "NESO Open Data Licence v1.0 (UNVERIFIED per dataset: confirm the portal dataset page shows this licence)"
 licence_status = "open-commercial"
 description = "NESO Transmission Entry Capacity (TEC) Register of generators connected to GB transmission"
 
@@ -147,7 +147,7 @@ source_url = "https://api.neso.energy/dataset/4b0e109c-aa23-45ac-86c1-0bda557d1a
 retrieval_date = "2026-11-13T01:43:09.931553+00:00"
 bytes = 92230
 sha256 = "90bbca6c91c694f924bb4dd5a8831bf2725d64083f4e359a0686c90f5800ac22"
-licence_name = "Open Government Licence v3.0"
+licence_name = "NESO Open Data Licence v1.0 (UNVERIFIED per dataset: confirm the portal dataset page shows this licence)"
 licence_status = "open-commercial"
 description = "NESO GB Embedded Capacity Register for generation connected to distribution networks"
 
@@ -160,7 +160,7 @@ source_url = "https://api.neso.energy/dataset/d515b4a9-60a1-489c-a126-004efc04f1
 retrieval_date = "2026-11-13T01:43:12.862658+00:00"
 bytes = 7688
 sha256 = "3bbb83f6b0f12882b87605e3f1ce625428b3c58475a120489d2db29d8c8e74f0"
-licence_name = "Open Government Licence v3.0"
+licence_name = "NESO Open Data Licence v1.0 (UNVERIFIED per dataset: confirm the portal dataset page shows this licence)"
 licence_status = "open-commercial"
 description = "NESO 24-months ahead boundary constraint limits and capability forecast"
 
@@ -173,7 +173,7 @@ source_url = "https://api.neso.energy/dataset/cf3cbc92-2d5d-4c2b-bd29-e11a21070b
 retrieval_date = "2026-11-13T01:43:18.933764+00:00"
 bytes = 29271088
 sha256 = "6406ca6f7e6a70005d29035ebf10551ba75339bc26de3973049b27bf9098c310"
-licence_name = "Open Government Licence v3.0"
+licence_name = "NESO Open Data Licence v1.0 (UNVERIFIED per dataset: confirm the portal dataset page shows this licence)"
 licence_status = "open-commercial"
 description = "NESO Day-ahead transmission boundary constraint flows and limits"
 
@@ -186,7 +186,7 @@ source_url = "https://api.neso.energy/dataset/f0055054-c55c-4068-a01c-61da4334e5
 retrieval_date = "2026-11-13T01:43:22.057955+00:00"
 bytes = 48346
 sha256 = "9a0b431c475e8e1ab3e874d8344c94b3b33952cf66290f2ec797d1bc3aae80d1"
-licence_name = "Open Government Licence v3.0"
+licence_name = "NESO Open Data Licence v1.0 (UNVERIFIED per dataset: confirm the portal dataset page shows this licence)"
 licence_status = "open-commercial"
 description = "NESO Outturn System Costs (thermal and constraint costs 2024-2025)"
 

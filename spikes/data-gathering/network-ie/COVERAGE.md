@@ -138,3 +138,14 @@ To inspect target URLs without downloading:
 python3 spikes/data-gathering/network-ie/fetch.py --dry-run
 ```
 All downloaded files will be validated and re-hashed into `spikes/data-gathering/network-ie/manifest.toml`.
+
+## Licence correction (coordinator, 2026-11-13)
+
+The original manifest tagged every NESO file "Open Government Licence v3.0 / open-commercial". That was wrong:
+- **ETYS 2025 publication files (Appendices A, B, C, D, F, G and the boundary chart workbook)** carry no dataset
+  licence on the publication page, and NESO's website terms restrict commercial exploitation (verified in
+  `docs/research/data-sources-gb.md` and the PR #5 data spike). They are now **`research-only`** (D-56) and
+  covered by pre-commercial item PC-1.
+- **NESO Data Portal datasets** (boundary GIS, TEC register, embedded register, constraint limits, constraint
+  costs) fall under the **NESO Open Data Licence v1.0**, not OGL. Each still needs per-dataset confirmation
+  during verification.
