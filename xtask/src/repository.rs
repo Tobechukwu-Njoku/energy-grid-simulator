@@ -149,35 +149,13 @@ fn looks_like_file(value: &str) -> bool {
     })
 }
 
-/// Collects file references from one dataset table, recursively.
+/// Collects file references from one dataset table, recursively. Every
+/// value is walked whatever its container shape (arrays of arrays, inline
+/// tables in arrays, nested tables), keeping the enclosing key so the schema
+/// rule still applies to nested values; nothing is silently dropped (R4-03).
 fn collect_files(key: &str, item: &Item, out: &mut Vec<String>) {
-    let named = is_file_key(key);
-    let take = |value: &toml_edit::Value, out: &mut Vec<String>| {
-        if let Some(text) = value.as_str()
-            && (named || looks_like_file(text))
-        {
-            out.push(text.to_owned());
-        }
-    };
     match item {
-        Item::Value(toml_edit::Value::Array(array)) => {
-            for value in array {
-                match value {
-                    toml_edit::Value::InlineTable(table) => {
-                        for (inner, value) in table {
-                            collect_files(inner, &Item::Value(value.clone()), out);
-                        }
-                    }
-                    other => take(other, out),
-                }
-            }
-        }
-        Item::Value(toml_edit::Value::InlineTable(table)) => {
-            for (inner, value) in table {
-                collect_files(inner, &Item::Value(value.clone()), out);
-            }
-        }
-        Item::Value(value) => take(value, out),
+        Item::Value(value) => collect_value(key, value, out),
         Item::Table(table) => {
             for (inner, value) in table {
                 collect_files(inner, value, out);
@@ -191,6 +169,28 @@ fn collect_files(key: &str, item: &Item, out: &mut Vec<String>) {
             }
         }
         Item::None => {}
+    }
+}
+
+fn collect_value(key: &str, value: &toml_edit::Value, out: &mut Vec<String>) {
+    match value {
+        toml_edit::Value::String(text) => {
+            let text = text.value();
+            if is_file_key(key) || looks_like_file(text) {
+                out.push(text.clone());
+            }
+        }
+        toml_edit::Value::Array(array) => {
+            for element in array {
+                collect_value(key, element, out);
+            }
+        }
+        toml_edit::Value::InlineTable(table) => {
+            for (inner, element) in table {
+                collect_value(inner, element, out);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -788,32 +788,109 @@ pub const MANIFEST_NAME: &str = "manifest.toml";
 /// The canonical provenance table name.
 pub const SOURCES_NAME: &str = "sources.tsv";
 
+/// Suffixes of prose and source documents that may *name* manifests,
+/// datasets or sources without being one (reviews, research notes, code).
+/// They are still rejected when their content parses as structured
+/// provenance records.
+const PROSE_SUFFIXES: &[&str] = &[".md", ".rs", ".py", ".sh", ".html", ".css", ".js"];
+
+fn has_status_key(key: &str) -> bool {
+    let lower = key.to_ascii_lowercase();
+    lower == "licence_status" || lower == "license_status"
+}
+
+fn toml_declares_status(table: &dyn toml_edit::TableLike) -> bool {
+    table.iter().any(|(key, item)| {
+        has_status_key(key)
+            || match item {
+                Item::Table(inner) => toml_declares_status(inner),
+                Item::ArrayOfTables(tables) => tables.iter().any(|t| toml_declares_status(t)),
+                Item::Value(value) => toml_value_declares_status(value),
+                Item::None => false,
+            }
+    })
+}
+
+fn toml_value_declares_status(value: &toml_edit::Value) -> bool {
+    match value {
+        toml_edit::Value::InlineTable(table) => toml_declares_status(table),
+        toml_edit::Value::Array(array) => array.iter().any(toml_value_declares_status),
+        _ => false,
+    }
+}
+
+fn json_declares_status(value: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::Object(map) => map
+            .iter()
+            .any(|(key, inner)| has_status_key(key) || json_declares_status(inner)),
+        serde_json::Value::Array(items) => items.iter().any(json_declares_status),
+        _ => false,
+    }
+}
+
+fn yaml_declares_status(value: &yaml_rust2::Yaml) -> bool {
+    match value {
+        yaml_rust2::Yaml::Hash(map) => map.iter().any(|(key, inner)| {
+            key.as_str().is_some_and(has_status_key) || yaml_declares_status(inner)
+        }),
+        yaml_rust2::Yaml::Array(items) => items.iter().any(yaml_declares_status),
+        _ => false,
+    }
+}
+
+/// Whether the content, parsed structurally (TOML, JSON, YAML, or a
+/// delimited table header), declares a licence status. Prose that merely
+/// mentions the key does not parse as such a record (R4-04).
+fn declares_status(text: &str) -> bool {
+    if let Ok(document) = text.parse::<DocumentMut>()
+        && toml_declares_status(document.as_table())
+    {
+        return true;
+    }
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(text)
+        && json_declares_status(&value)
+    {
+        return true;
+    }
+    if let Ok(documents) = yaml_rust2::YamlLoader::load_from_str(text)
+        && documents.iter().any(yaml_declares_status)
+    {
+        return true;
+    }
+    text.lines()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|header| {
+            header
+                .split(['\t', ',', ';'])
+                .any(|field| has_status_key(field.trim().trim_matches('"')))
+        })
+}
+
 /// Whether a tracked file other than the canonical `manifest.toml` and
-/// `sources.tsv` looks like a provenance manifest: a structured-data file
-/// whose name mentions a manifest, provenance, dataset or sources, or whose
-/// content declares a licence status. Such a file would not be read, so its
-/// records would be ignored; it is rejected instead (ADV23R3-07). Reviewed
-/// metadata files listed in the trusted policy are exempt.
+/// `sources.tsv` looks like a provenance manifest. Such a file would not be
+/// read, so its records would be ignored; it is rejected instead
+/// (ADV23R3-07). The rule does not depend on the file's suffix (R4-04):
+///
+/// - any file whose content parses as structured records declaring a
+///   licence status is a manifest, whatever its name;
+/// - any file whose name mentions a manifest, provenance, dataset or sources
+///   is a manifest unless it is a prose or source document
+///   ([`PROSE_SUFFIXES`]); an extensionless or unknown suffix fails closed.
+///
+/// Reviewed metadata files listed in the trusted policy are exempt.
 #[must_use]
 pub fn misnamed_manifest(path: &str, text: &str, metadata: &[String]) -> Option<Finding> {
     let name = path.rsplit('/').next().unwrap_or(path).to_ascii_lowercase();
     if name == MANIFEST_NAME || name == SOURCES_NAME || metadata.iter().any(|m| m == path) {
         return None;
     }
-    let structured = [
-        ".toml", ".json", ".jsonl", ".ndjson", ".yaml", ".yml", ".tsv", ".csv", ".xml", ".ini",
-    ]
-    .iter()
-    .any(|extension| name.ends_with(extension));
-    if !structured {
-        return None;
-    }
-    let named = ["manifest", "provenance", "dataset", "sources"]
-        .iter()
-        .any(|word| name.contains(word));
-    let lower = text.to_ascii_lowercase();
-    let declares = lower.contains("licence_status") || lower.contains("license_status");
-    (named || declares).then(|| {
+    let prose = PROSE_SUFFIXES.iter().any(|suffix| name.ends_with(suffix));
+    let named = !prose
+        && ["manifest", "provenance", "dataset", "sources"]
+            .iter()
+            .any(|word| name.contains(word));
+    (named || declares_status(text)).then(|| {
         Finding::at(
             path,
             None,
@@ -1282,7 +1359,8 @@ mod tests {
         assert!(misnamed_manifest("spikes/data/manifest.toml", record, &[]).is_none());
         assert!(misnamed_manifest("spikes/data/sources.tsv", "", &[]).is_none());
         assert!(misnamed_manifest("Cargo.toml", "[package]\n", &[]).is_none());
-        assert!(misnamed_manifest("docs/notes.md", record, &[]).is_none());
+        assert!(misnamed_manifest("docs/notes.md", "See `licence_status`.\n", &[]).is_none());
+        assert!(misnamed_manifest("docs/data-sources-gb.md", "# Sources\n", &[]).is_none());
         let listed = vec!["spikes/data/samples/download-manifest.json".to_owned()];
         assert!(
             misnamed_manifest(
@@ -1292,6 +1370,72 @@ mod tests {
             )
             .is_none()
         );
+    }
+
+    // R4-03: arrays nested in arrays (and any other container shape) are walked.
+    #[test]
+    fn r4_03_nested_arrays_are_walked() {
+        for files in [
+            "files = [[\"restricted.txt\"]]",
+            "files = [[[\"restricted.txt\"]]]",
+            "files = [[{ path = \"restricted.txt\" }]]",
+            "parts = [{ inner = [\"restricted.txt\"] }]",
+            "files = [\"other.csv\", [\"restricted.txt\"]]",
+        ] {
+            let text = format!(
+                "[[datasets]]\nname = \"r\"\nlicence_status = \"research-only\"\n{files}\n"
+            );
+            let (found, restricted) = check_manifest("m.toml", &text);
+            assert!(found.is_empty(), "{found:?}");
+            assert!(
+                restricted.iter().any(|f| f == "restricted.txt"),
+                "{files}: {restricted:?}"
+            );
+        }
+    }
+
+    // R4-04: the manifest rule does not depend on the file name's suffix.
+    #[test]
+    fn r4_04_suffix_does_not_exempt_manifests() {
+        let record = "[[datasets]]\nname = \"r\"\nlicence_status = \"research-only\"\nfile = \"restricted.txt\"\n";
+        for path in [
+            "data/provenance",
+            "data/records",
+            "data/records.txt",
+            "data/records.dat",
+            "data/manifest",
+            "data/MANIFEST.lock",
+            "data/notes.md",
+        ] {
+            assert!(
+                misnamed_manifest(path, record, &[]).is_some(),
+                "{path} accepted"
+            );
+        }
+        // Named like a manifest with an unknown suffix: fails closed.
+        assert!(misnamed_manifest("data/provenance", "anything\n", &[]).is_some());
+        // JSON, YAML and delimited headers declaring a status, any name.
+        for text in [
+            "{\"datasets\": [{\"licence_status\": \"research-only\"}]}",
+            "datasets:\n  - licence_status: research-only\n",
+            "name\tlicence_status\tfile\nr\tresearch-only\tx.txt\n",
+        ] {
+            assert!(misnamed_manifest("data/x", text, &[]).is_some(), "{text}");
+        }
+        // Controls: prose and code may mention the key or the words.
+        assert!(
+            misnamed_manifest("xtask/src/repository.rs", "let licence_status = 1;\n", &[])
+                .is_none()
+        );
+        assert!(
+            misnamed_manifest(
+                "docs/review.md",
+                "Uses `licence_status = \"x\"` keys.\n",
+                &[]
+            )
+            .is_none()
+        );
+        assert!(misnamed_manifest("data/manifest.toml", record, &[]).is_none());
     }
 
     // ADV23R-09: grid and market exchange formats count as data.
@@ -1357,6 +1501,26 @@ mod tests {
         // Controls: `?` needs exactly one character and never matches `/`.
         assert!(check("/xtask/ @Owner\n/xtask/sr?x/lib.rs @someone\n").is_empty());
         assert!(check("/xtask/ @Owner\n/xtask?src/lib.rs @someone\n").is_empty());
+    }
+
+    // R4-02: `**/` matches whole directories, so it cannot reach a file
+    // whose name merely ends with the literal and manufacture coverage.
+    #[test]
+    fn r4_02_globstar_cannot_manufacture_coverage() {
+        let protected = paths(&["/xtask/"]);
+        let tracked = paths(&["xtask/evillib.rs", "xtask/lib.rs", "xtask/src/lib.rs"]);
+        let check = |text: &str| check_codeowners_paths(text, "Owner", &protected, &tracked);
+        let found = check("/xtask/ @Owner\n/xtask/evillib.rs @someone\n/xtask/**/lib.rs @Owner\n");
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].message.contains("xtask/evillib.rs"), "{found:?}");
+        assert!(!codeowners_match("/xtask/**/lib.rs", "xtask/evillib.rs"));
+        assert!(codeowners_match("/xtask/**/lib.rs", "xtask/lib.rs"));
+        assert!(codeowners_match("/xtask/**/lib.rs", "xtask/src/lib.rs"));
+        // Control: a genuine override by `**/` still restores ownership.
+        assert!(
+            check("/xtask/ @Owner\n/xtask/src/lib.rs @someone\n/xtask/**/lib.rs @Owner\n")
+                .is_empty()
+        );
     }
 
     #[test]

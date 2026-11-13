@@ -234,37 +234,63 @@ pub fn glob_match(pattern: &str, path: &str) -> bool {
 }
 
 fn glob_bytes(pattern: &[u8], path: &[u8]) -> bool {
-    match pattern.split_first() {
-        None => path.is_empty(),
-        Some((b'*', rest)) if rest.first() == Some(&b'*') => {
-            let rest = &rest[1..];
-            let rest = rest.strip_prefix(b"/").unwrap_or(rest);
-            (0..=path.len()).any(|index| glob_bytes(rest, &path[index..]))
-        }
-        Some((b'*', rest)) => {
-            for index in 0..=path.len() {
-                if glob_bytes(rest, &path[index..]) {
+    glob_from(pattern, 0, path)
+}
+
+/// Matches `pattern[index..]` against `path` with Git's wildmatch rules
+/// (`WM_PATHNAME`): a run of two or more `*` is a globstar only when it fills
+/// a whole pattern component (preceded by the start or `/`, followed by the end
+/// or `/`). `**/` then matches zero or more whole directories; it never
+/// consumes part of a file name (R4-02). Any other run of two or more `*`
+/// matches any characters including `/`, and a single `*` matches within one
+/// component, as `git check-ignore` does.
+fn glob_from(pattern: &[u8], index: usize, path: &[u8]) -> bool {
+    let Some(&head) = pattern.get(index) else {
+        return path.is_empty();
+    };
+    match head {
+        b'*' => {
+            let stars = pattern[index..].iter().take_while(|b| **b == b'*').count();
+            let next = index + stars;
+            let starts_component = index == 0 || pattern[index - 1] == b'/';
+            let ends_component = next == pattern.len() || pattern[next] == b'/';
+            if stars >= 2 && starts_component && ends_component {
+                if next == pattern.len() {
                     return true;
                 }
-                if path.get(index) == Some(&b'/') {
+                // `**/rest`: rest matches here or after any `/` in the path.
+                let rest = next + 1;
+                if glob_from(pattern, rest, path) {
+                    return true;
+                }
+                return path
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, byte)| **byte == b'/')
+                    .any(|(slash, _)| glob_from(pattern, rest, &path[slash + 1..]));
+            }
+            for split in 0..=path.len() {
+                if glob_from(pattern, next, &path[split..]) {
+                    return true;
+                }
+                if stars == 1 && path.get(split) == Some(&b'/') {
                     break;
                 }
             }
             false
         }
-        Some((b'?', rest)) => match path.split_first() {
+        b'?' => match path.split_first() {
             Some((b'/', _)) | None => false,
             Some((_, tail)) => {
                 // One character, not one byte: skip UTF-8 continuation bytes.
-                let width = path
+                let width = tail
                     .iter()
-                    .skip(1)
                     .take_while(|byte| (**byte & 0xC0) == 0x80)
                     .count();
-                glob_bytes(rest, &tail[width..])
+                glob_from(pattern, index + 1, &tail[width..])
             }
         },
-        Some((head, rest)) => path.first() == Some(head) && glob_bytes(rest, &path[1..]),
+        other => path.first() == Some(&other) && glob_from(pattern, index + 1, &path[1..]),
     }
 }
 
@@ -316,6 +342,13 @@ mod tests {
         assert!(glob_match("caf?", "café"));
         assert!(!glob_match("a?b", "a/b"));
         assert!(!glob_match("a?", "a"));
+        // R4-02: `**/` matches whole directories only.
+        assert!(glob_match("xtask/**/lib.rs", "xtask/lib.rs"));
+        assert!(glob_match("xtask/**/lib.rs", "xtask/src/lib.rs"));
+        assert!(!glob_match("xtask/**/lib.rs", "xtask/evillib.rs"));
+        assert!(!glob_match("**/lib.rs", "evillib.rs"));
+        assert!(glob_match("a**/b", "a/x/b"));
+        assert!(glob_match("a**b", "axxb"));
     }
 
     #[test]

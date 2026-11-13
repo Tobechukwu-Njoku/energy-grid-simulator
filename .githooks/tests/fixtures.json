@@ -77,18 +77,20 @@
     "expected": "fix: exercise message policy\n\nThe formulation was authored by Claude Shannon in 1948.\n"
   },
   {
-    "name": "keep-12",
+    "name": "strip-footer-any-qualifier-1",
     "source": "claude §C / gemini ADV4-R2-01",
     "input": "fix: exercise message policy\n\nGenerated with GPT tokenizer fixtures\n",
     "exit": 0,
-    "expected": "fix: exercise message policy\n\nGenerated with GPT tokenizer fixtures\n"
+    "expected": "fix: exercise message policy\n\n",
+    "note": "R4 policy: after a known name any trailing words are attribution in a footer (ADV23R4-05..10)"
   },
   {
-    "name": "keep-13",
+    "name": "strip-footer-any-qualifier-2",
     "source": "claude §C / gemini ADV4-R2-01",
     "input": "fix: exercise message policy\n\nPowered by cursor movement hooks\n",
     "exit": 0,
-    "expected": "fix: exercise message policy\n\nPowered by cursor movement hooks\n"
+    "expected": "fix: exercise message policy\n\n",
+    "note": "R4 policy: after a known name any trailing words are attribution in a footer (ADV23R4-05..10)"
   },
   {
     "name": "keep-14",
@@ -916,5 +918,110 @@
     "input": "fix: exercise message policy\n\n🤖️ Generated with [Claude Code](https://claude.com/claude-code)\n",
     "exit": 0,
     "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r4-strip-1",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436c617564652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-2",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436c617564652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-3",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820446565705365656b2d52310a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-4",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20446565705365656b2d52310a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-5",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820437572736f72204167656e740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-6",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20437572736f72204167656e740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-7",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820416e7469677261766974790a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-8",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20416e746967726176697479203c616e74696772617669747940676f6f676c652e636f6d3e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-9",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682047656d696e6920416476616e6365640a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-10",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682047656d696e6920322e3020466c617368205468696e6b696e670a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-11",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436f70696c6f7420576f726b73706163650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-12",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436f70696c6f7420436861740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-keep-1",
+    "source": "R4 human-credit control",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Claude Monet <monet@example.fr>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Claude Monet <monet@example.fr>\n"
+  },
+  {
+    "name": "r4-keep-2",
+    "source": "R4 human-credit control",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Devin Smith <devin@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Devin Smith <devin@example.org>\n"
+  },
+  {
+    "name": "r4-keep-3",
+    "source": "R4 human-credit control",
+    "input": "fix: exercise message policy\n\nThe status bar shows a cursor agent icon.\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThe status bar shows a cursor agent icon.\n"
   }
 ]

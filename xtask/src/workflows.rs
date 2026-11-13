@@ -166,9 +166,13 @@ fn check_permissions(path: &str, scope: &str, yaml: &Yaml, findings: &mut Vec<Fi
     }
 }
 
+/// Whether a `uses:` reference is pinned. A local reference is accepted only
+/// under `./.github/actions/` (steps) or `./.github/workflows/` (reusable
+/// workflows), without `..`, where every action file is checked (ADV23R4-03).
 fn pinned(action: &str) -> bool {
-    if action.starts_with("./") {
-        return true;
+    if let Some(local) = action.strip_prefix("./") {
+        return (local.starts_with(".github/actions/") || local.starts_with(".github/workflows/"))
+            && !local.split('/').any(|part| part == ".." || part == ".");
     }
     if let Some(image) = action.strip_prefix("docker://") {
         return image.contains("@sha256:");
@@ -443,7 +447,7 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
             findings.push(Finding::at(
                 path,
                 None,
-                format!("{scope}: `{action}` must be pinned to a full commit SHA"),
+                format!("{scope}: `{action}` must be pinned to a full commit SHA, or be local under ./.github/"),
             ));
         }
     }
@@ -495,7 +499,7 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
                 findings.push(Finding::at(
                     path,
                     None,
-                    format!("{step_scope}: `{action}` must be pinned to a full commit SHA"),
+                    format!("{step_scope}: `{action}` must be pinned to a full commit SHA, or be local under ./.github/actions/"),
                 ));
             }
             if action.starts_with("actions/checkout@") {
@@ -640,16 +644,24 @@ pub fn check(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             .map_err(|error| format!("{path}: {error}"))?;
         findings.extend(check_workflow(path, &text, &policy));
     }
+    // Every action definition anywhere in the repository is checked, not
+    // only those under .github/actions/ (ADV23R4-03).
     for path in tracked(&ctx.repo)? {
-        if path.starts_with(".github/actions/")
-            && (path.ends_with("action.yml") || path.ends_with("action.yaml"))
-        {
+        if is_action_file(&path) {
             let text = std::fs::read_to_string(ctx.repo.join(&path))
                 .map_err(|error| format!("{path}: {error}"))?;
             findings.extend(check_action(&path, &text, &policy));
         }
     }
     Ok(findings)
+}
+
+/// Whether a tracked path is a GitHub action definition (`action.yml` or
+/// `action.yaml`, any directory, any letter case).
+#[must_use]
+pub fn is_action_file(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path).to_ascii_lowercase();
+    name == "action.yml" || name == "action.yaml"
 }
 
 /// Checks a local composite action: pinned `uses`, no Python, allow-listed
@@ -839,6 +851,28 @@ jobs:
             "env: {RUSTFLAGS: \"-A unsafe_code\"}\npermissions:",
         );
         assert!(!run(&flags).is_empty());
+    }
+
+    // ADV23R4-03: actions outside .github/actions/ are checked, and local
+    // references must point under .github/.
+    #[test]
+    fn adv23r4_03_actions_anywhere_are_checked() {
+        let policy = Policy::parse(POLICY).expect("policy");
+        assert!(is_action_file("actions/helper/action.yml"));
+        assert!(is_action_file("tools/ci/action.yaml"));
+        assert!(is_action_file("x/Action.YML"));
+        assert!(!is_action_file("x/myaction.yml"));
+        let action = "name: helper\nruns:\n  using: composite\n  steps:\n    - shell: python\n      run: print(1)\n";
+        assert!(!check_action("actions/helper/action.yml", action, &policy).is_empty());
+        for (uses, ok) in [
+            ("./.github/actions/trusted-policy", true),
+            ("./actions/helper", false),
+            ("./tools/ci", false),
+            ("./.github/actions/../../actions/helper", false),
+            ("./.github/workflows/reusable.yml", true),
+        ] {
+            assert_eq!(pinned(uses), ok, "{uses}");
+        }
     }
 
     // ADV23R3-05: a shell inherited from workflow or job defaults is checked,

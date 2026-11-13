@@ -49,13 +49,27 @@ impl Patterns {
     pub fn load(bytes: &[u8]) -> Result<Self, String> {
         let text = std::str::from_utf8(bytes).map_err(|_| "patterns: invalid UTF-8".to_owned())?;
         let mut rules = Vec::new();
+        let mut fragments: Vec<(String, String)> = Vec::new();
         for raw in text.split('\n') {
             let rule = raw.strip_suffix('\r').unwrap_or(raw);
             let trimmed = rule.trim_start();
             if trimmed.is_empty() || trimmed.starts_with('#') {
                 continue;
             }
-            let regex = RegexBuilder::new(rule)
+            if let Some(definition) = trimmed.strip_prefix("define ") {
+                let (name, body) = definition
+                    .split_once(" = ")
+                    .ok_or_else(|| format!("invalid fragment definition: {definition}"))?;
+                let name = name.trim();
+                if name.is_empty() || !name.chars().all(|c| c.is_ascii_uppercase() || c == '_') {
+                    return Err(format!("invalid fragment name: {name}"));
+                }
+                let body = expand(body, &fragments)?;
+                fragments.push((name.to_owned(), body));
+                continue;
+            }
+            let rule = expand(rule, &fragments)?;
+            let regex = RegexBuilder::new(&rule)
                 .case_insensitive(true)
                 .build()
                 .map_err(|error| format!("invalid pattern: {error}"))?;
@@ -102,6 +116,31 @@ impl Patterns {
             .map(|(index, line)| (index + 1, line.to_owned()))
             .collect()
     }
+}
+
+/// Replaces every `{{NAME}}` with its earlier `define NAME = body`; an
+/// unknown name is an error, so a typo cannot silently drop a rule.
+fn expand(rule: &str, fragments: &[(String, String)]) -> Result<String, String> {
+    let mut out = String::with_capacity(rule.len());
+    let mut rest = rule;
+    while let Some(open) = rest.find("{{") {
+        let close = rest[open..]
+            .find("}}")
+            .map(|end| open + end)
+            .ok_or_else(|| format!("unterminated fragment reference in: {rule}"))?;
+        let name = &rest[open + 2..close];
+        let body = fragments
+            .iter()
+            .rev()
+            .find(|(known, _)| known == name)
+            .map(|(_, body)| body)
+            .ok_or_else(|| format!("undefined fragment {{{{{name}}}}}"))?;
+        out.push_str(&rest[..open]);
+        out.push_str(body);
+        rest = &rest[close + 2..];
+    }
+    out.push_str(rest);
+    Ok(out)
 }
 
 /// Splits on every line terminator a renderer might honour, not just `\n`.
@@ -336,19 +375,21 @@ fn is_delimiter(character: char) -> bool {
 }
 
 /// Generic delimiter stripping. Returns the forms of `line` that start at the
-/// line start or at any white-space separated token that begins with a
-/// delimiter, with those leading delimiters removed; each form is returned
+/// line start or at the start of any run of delimiters, whether or not white
+/// space precedes it (`$x = 1<# ... #>`, `mov r0, r1@...`, ADV23R4-04), with
+/// those leading delimiters removed; each form is returned
 /// as is, without trailing delimiter-only tokens, and without any trailing
 /// delimiters. A payload hidden behind any comment syntax, at the start of a
 /// line or after code, is thereby exposed without a per-language list.
 fn delimiter_forms(line: &str) -> BTreeSet<String> {
     let mut starts = vec![0];
-    let mut previous_space = true;
+    let mut previous_delimiter = true;
     for (index, character) in line.char_indices() {
-        if previous_space && index > 0 && is_delimiter(character) {
+        let delimiter = is_delimiter(character);
+        if delimiter && !previous_delimiter && index > 0 {
             starts.push(index);
         }
-        previous_space = character.is_whitespace();
+        previous_delimiter = delimiter;
     }
     let mut found = BTreeSet::new();
     for start in starts {
@@ -993,9 +1034,9 @@ mod tests {
                 "ated with [Google Gem",
                 "ini](https://example.com)",
             ]),
-            j(&["Co-Auth", "ored-By: Anthropic Cla", "ude"]),
+            j(&["Co-Auth", "ored-", "By: Anthropic Cla", "ude"]),
             j(&["Co-Auth", "ored-By: Google Gem", "ini <x@example.org>"]),
-            j(&["Co-Auth", "ored-By: Mistral AI Mis", "tral Large"]),
+            j(&["Co-Auth", "ored-", "By: Mistral AI Mis", "tral Large"]),
         ] {
             assert!(p.matches_line(&line), "missed: {line}");
         }
@@ -1159,5 +1200,171 @@ mod tests {
         let range = Range::from_event("push", &event).expect("push");
         assert!(range.base.is_none());
         assert!(Range::from_event("workflow_run", &event).is_err());
+    }
+
+    // Footer and email-less trailer forms of a name, assembled at run time.
+    fn forms(name: &str) -> Vec<String> {
+        vec![
+            j(&["Gener", "ated with ", name]),
+            j(&["Co-Auth", "ored-", "By: ", name]),
+            j(&["Gener", "ated with [", name, "](https://example.com)"]),
+        ]
+    }
+
+    fn all_match(p: &Patterns, names: &[&[&str]]) {
+        for parts in names {
+            let name = parts.concat();
+            for line in forms(&name) {
+                assert!(p.matches_line(&line), "missed: {line}");
+            }
+        }
+    }
+
+    // ADV23R4-04: a comment delimiter glued to code, with no white space.
+    #[test]
+    fn adv23r4_04_glued_delimiters_are_detected() {
+        let p = patterns();
+        let footer = footer();
+        for line in [
+            format!("$x = 1<# {footer} #>"),
+            format!("mov r0, r1@{footer}"),
+            format!("x = 1--[[{footer}]]"),
+            format!("call();//{footer}"),
+            format!("value=1;{footer}"),
+        ] {
+            assert!(p.matches_line(&line), "missed: {line}");
+        }
+        for line in [
+            "$x = 1<# Generated with the build script #>",
+            "mov r0, r1@ generated with care",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    // ADV23R4-05: an `AI` suffix after a model or tool name.
+    #[test]
+    fn adv23r4_05_ai_suffix_is_detected() {
+        all_match(
+            &patterns(),
+            &[
+                &["Cla", "ude AI"],
+                &["Gem", "ini AI"],
+                &["Deep", "Seek AI"],
+                &["Ai", "der AI"],
+            ],
+        );
+    }
+
+    // ADV23R4-06: `R`-prefixed and other letter-prefixed versions.
+    #[test]
+    fn adv23r4_06_reasoning_model_versions_are_detected() {
+        all_match(
+            &patterns(),
+            &[
+                &["Deep", "Seek-R1"],
+                &["Deep", "Seek R1 Distill"],
+                &["Qw", "Q-32B"],
+                &["o", "3-mini-high"],
+            ],
+        );
+    }
+
+    // ADV23R4-07: agent-mode qualifiers.
+    #[test]
+    fn adv23r4_07_agent_qualifier_is_detected() {
+        all_match(
+            &patterns(),
+            &[
+                &["Cur", "sor Agent"],
+                &["Cur", "sor Background Agent"],
+                &["Cla", "ude Agent SDK"],
+            ],
+        );
+    }
+
+    // ADV23R4-08: Antigravity by name and by Google address.
+    #[test]
+    fn adv23r4_08_antigravity_is_detected() {
+        let p = patterns();
+        all_match(&p, &[&["Anti", "gravity"], &["Google Anti", "gravity"]]);
+        let identity = j(&["Anti", "gravity <anti", "gravity@google.com>"]);
+        assert!(p.matches_identity(&identity), "missed: {identity}");
+        assert!(p.matches_line(&j(&["Co-Auth", "ored-", "By: ", &identity])));
+    }
+
+    // ADV23R4-09: product tiers after a name, any number of words.
+    #[test]
+    fn adv23r4_09_tiers_are_detected() {
+        all_match(
+            &patterns(),
+            &[
+                &["Gem", "ini Advanced"],
+                &["Gem", "ini 2.0 Flash Thinking"],
+                &["Gem", "ini Experimental 1206"],
+                &["Gem", "ini 2.5 Pro Deep Think"],
+            ],
+        );
+    }
+
+    // ADV23R4-10: Copilot surfaces.
+    #[test]
+    fn adv23r4_10_copilot_surfaces_are_detected() {
+        all_match(
+            &patterns(),
+            &[
+                &["Cop", "ilot Workspace"],
+                &["Cop", "ilot Chat"],
+                &["GitHub Cop", "ilot Coding Agent"],
+            ],
+        );
+    }
+
+    // ADV23R4-05..10 general mechanism: names live once in the policy file as
+    // fragments; a human co-author with a personal address still passes,
+    // while a model qualifier with any address is caught.
+    #[test]
+    fn adv23r4_names_are_defined_once_and_humans_pass() {
+        let text = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("..")
+                .join(PATTERNS),
+        )
+        .expect("pattern file");
+        let model_lists = text
+            .lines()
+            .filter(|line| line.contains(&j(&["anti", "gravity|"])))
+            .count();
+        assert_eq!(
+            model_lists, 1,
+            "the model list must be defined exactly once"
+        );
+        let p = patterns();
+        for identity in [
+            j(&["Cla", "ude AI <x@example.org>"]),
+            j(&["Cur", "sor Agent <bot@example.org>"]),
+            j(&["Deep", "Seek-R1 <x@example.org>"]),
+        ] {
+            assert!(p.matches_identity(&identity), "missed: {identity}");
+        }
+        for identity in [
+            "Claude Shannon <cshannon@example.com>",
+            "Claude Monet <monet@example.fr>",
+            "Devin Smith <devin@example.org>",
+            "Jules Verne <jules@example.org>",
+        ] {
+            assert!(!p.matches_identity(identity), "false positive: {identity}");
+        }
+    }
+
+    // Fragment references fail closed: an undefined or unterminated name is
+    // a load error, not a silently empty rule.
+    #[test]
+    fn fragment_references_fail_closed() {
+        assert!(Patterns::load(b"define A = x\n^{{A}}y$\n").is_ok());
+        assert!(Patterns::load(b"^{{MISSING}}y$\n").is_err());
+        assert!(Patterns::load(b"^{{A y$\n").is_err());
+        assert!(Patterns::load(b"define lower = x\n^x$\n").is_err());
+        assert!(Patterns::load(b"define A x\n^x$\n").is_err());
     }
 }
