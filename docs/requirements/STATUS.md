@@ -48,6 +48,16 @@ humans who share a model's first name stay creditable. Two footer controls
 Needs exact-head GPT re-review, Gemini adversarial re-check and triage before bootstrap
 attestation.
 
+**PR #23 revision-5 review:** exact head `b21d83de896ba09b59259fa687e427271bbc06ed`
+re-reviewed; verdict **must-fix**. All 143 submitted tests pass, and all fourteen
+round-4 concrete inputs are fixed. Four new STRUCTURAL probes, each verified with
+real offline Cargo compilation and a rejection control, expose a substring-based
+OUT_DIR include exemption, an aliased include macro, Cargo member-glob mismatch
+and lost build context through a local patch. Do not attest this head as the
+one-time trusted bootstrap seed. Evidence and finding-by-finding regression
+assessment: [revision-5 report](reviews/gpt-2026-11-13-pr23-r5.md).
+PR #23 was not modified.
+
 **PR #23 revision-4 review:** exact head `dc3093ea100ace554ad3a7c11a9f77927f2776a7`
 re-reviewed; verdict **must-fix**. All 124 submitted tests pass, and all eleven
 round-3 concrete inputs are fixed. Four new STRUCTURAL probes demonstrate a
