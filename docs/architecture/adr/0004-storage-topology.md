@@ -1,6 +1,6 @@
 # ADR 0004 — PostgreSQL authority, Valkey live state and Parquet results
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-11-13 (D-72). Performance figures remain to be qualified on the D-65 target system.
 - **Date:** 2026-11-13
 - **Decision sources:** D-2–D-3, D-17, D-19–D-20, D-22, D-28, D-30, D-36, D-38–D-39, D-48, D-56, D-65, D-67.
 - **Related draft requirements:** PR #4 FR-4, FR-11, FR-16, FR-19–FR-20; NFR-1, NFR-5–NFR-6, NFR-8–NFR-10, NFR-12.

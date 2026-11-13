@@ -1,6 +1,6 @@
 # ADR 0001 — Repository layout and staged CI gates
 
-- **Status:** Proposed; bootstrap policy is specified, not deployed by this ADR.
+- **Status:** Accepted 2026-11-13 (D-72). Performance figures remain to be qualified on the D-65 target system.
 - **Date:** 2026-11-13
 - **Linked decisions:** D-3, D-8, D-16, D-17, D-19, D-20, D-22, D-28, D-29, D-31, D-43, D-48, D-51–D-54, D-56, D-58, D-61, D-62, D-65.
 - **Related requirements:** FR-4, FR-13–FR-19; NFR-1–NFR-4, NFR-7–NFR-12.

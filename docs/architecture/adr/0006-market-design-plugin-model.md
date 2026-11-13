@@ -1,6 +1,6 @@
 # ADR 0006 — Versioned market modules with explicit capabilities and fidelity
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-11-13 (D-72). Performance figures remain to be qualified on the D-65 target system.
 - **Date:** 2026-11-13
 - **Decision sources:** D-11, D-15–D-22, D-25–D-26, D-28, D-35, D-38, D-40–D-41, D-44, D-55, D-57, D-59, D-69.
 - **Related draft requirements:** PR #4 FR-1, FR-4–FR-11, FR-12–FR-13, FR-18, FR-21; NFR-1–NFR-2, NFR-8–NFR-11.

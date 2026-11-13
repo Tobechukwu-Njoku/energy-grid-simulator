@@ -3,10 +3,12 @@
 This repository is an **energy grid simulation platform**, built from the ground up by
 multiple AI models/threads working together with one human product owner.
 
-## Current phase: REQUIREMENTS ENGINEERING (no application code yet)
+## Current phase: BUILD — MVP milestone M0 (requirements baselined, D-72)
 
-Do **not** start writing application code until `docs/requirements/STATUS.md` says the
-requirements are baselined. Sole exception: the data spike in `spikes/` (D-31).
+Application code is allowed. Follow `docs/requirements/04-requirements.md` and the accepted ADRs
+in `docs/architecture/adr/`. Enable the attribution hook with `git config core.hooksPath .githooks`.
+The coding container is for light builds only; heavy builds, databases and benchmarks run on the
+D-65 target system.
 
 ## Where things live
 

@@ -1,6 +1,6 @@
 # ADR 0002 — Canonical network, data releases and TOML scenario references
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-11-13 (D-72). Performance figures remain to be qualified on the D-65 target system.
 - **Date:** 2026-11-13
 - **Decision sources:** D-6, D-11–D-12, D-18–D-22, D-24–D-25, D-30–D-32, D-35, D-37–D-38, D-40, D-44, D-55–D-60, D-70–D-71.
 - **Related draft requirements:** PR #4 FR-1–FR-5, FR-9, FR-16, FR-19, FR-21; NFR-1–NFR-2, NFR-8, NFR-11.

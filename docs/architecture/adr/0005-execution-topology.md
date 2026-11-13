@@ -1,6 +1,6 @@
 # ADR 0005 — Independent Rust worker supervision and PostgreSQL job dispatch
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-11-13 (D-72). Performance figures remain to be qualified on the D-65 target system.
 - **Date:** 2026-11-13
 - **Decision sources:** D-2–D-3, D-8, D-10, D-13, D-16–D-22, D-24–D-25, D-28–D-29, D-35–D-36, D-39, D-43–D-44, D-48, D-55, D-59, D-62, D-65, D-67–D-68, D-70.
 - **Related draft requirements:** PR #4 FR-4, FR-6–FR-11, FR-15–FR-16, FR-18; NFR-1–NFR-2, NFR-4–NFR-10, NFR-12.

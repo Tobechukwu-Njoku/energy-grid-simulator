@@ -1,6 +1,6 @@
 # ADR 0003 — Staged optimisation and a solver-neutral Rust contract
 
-- **Status:** Proposed; not performance-qualified and not permission to write application code.
+- **Status:** Accepted 2026-11-13 (D-72). Performance figures remain to be qualified on the D-65 target system.
 - **Date:** 2026-11-13
 - **Linked decisions:** D-1, D-2, D-16, D-18–D-21, D-26, D-28–D-29, D-31–D-32, D-35, D-38, D-43–D-44, D-48, D-55–D-57, D-59–D-60, D-65.
 - **Related requirements:** FR-1–FR-13, FR-18, FR-21; NFR-1–NFR-5, NFR-7–NFR-12.

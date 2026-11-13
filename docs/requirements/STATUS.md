@@ -2,9 +2,9 @@
 
 _Last updated: 2026-11-13_
 
-**Phase:** Requirements engineering. Decisions D-1 … D-62 (D-5 superseded by D-23).
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-62 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
-**Code allowed?** No, except the **data spike** (D-31) in `spikes/`.
+**Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
 ## Snapshot of what's decided
@@ -42,7 +42,7 @@ verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7,
 | PR #17: topology ADRs 0002/0004/0005/0006 | Round 2 revision pushed (`d99ceab`); reviews #19, #20 merged | Claude re-check; then 4 owner questions (Valkey, reconstruction label, no uploaded market code before P4, forecast priority); merge |
 | PR #5 data spike | **Merged** (`0a14265`) | none |
 | PRs #10, #11, #12, #18 data | **Merged** (verified by GPT; known source gaps in each COVERAGE.md) | none |
-| History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #17 merge |
+| History cleanup (D-52) + public repo (D-58) | **Done** 2026-11-13: trailers stripped from all commits, history scanned (no secrets, no raw research-only data), repo public, `main` protected (no force-push, linear history) | Add required checks once M0 CI exists |
 | Owner inputs | Open | Copernicus account (ERA5), ENTSO-E token, UKPN/SPEN/NPg portal logins, target-system specs (D-65) |
 
 Rules in force: GPT for non-code (D-51), Claude reviews GPT docs (D-54), Gemini adversarial reviews (D-53)
