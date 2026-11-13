@@ -158,6 +158,10 @@ they are not marked answered without an owner decision or explicit baseline adop
 - [x] **Q-H-3 Deployment target:** single beefy workstation (Docker Compose) · on-prem
   cluster / Kubernetes · cloud (AWS/GCP/Azure) · hybrid burst-to-cloud for sweeps?
 - [x] **Q-H-7 GPU machine specs (from D-29):** GPU model(s) and VRAM, CPU cores, RAM, OS/distro, reachable remotely by agents?
+  **Pending target inventory clarification (D-65):** the separate simulator target
+  remains unspecified. ASSUMPTION: use D-48's 5900X/128 GB only as a planning floor,
+  not a confirmed runtime/GPU specification. This note does not reopen the recorded
+  answer about the available Linux machine or invent a target decision.
 - [ ] **Q-H-4 Concurrency:** how many simultaneous simulations / users?
 - [x] **Q-H-5 Data volume:** retain all time-series results of all runs forever, or prune?
   (A 100k-bus × 8,760 h × 1,000 scenarios run is ~TBs.)
@@ -190,8 +194,9 @@ they are not marked answered without an owner decision or explicit baseline adop
 
 - [ ] **Q-J-1 Import/export formats:** MATPOWER, PSS/E RAW, CIM/CGMES, pandapower,
   PyPSA netCDF, OpenDSS, GridLAB-D?
-- [ ] **Q-J-2 Plugins:** can users add custom models (new device types, control logic,
-  market rules) via a plugin API?
+- [~] **Q-J-2 Plugins:** D-69 answers the pre-P4 customer market-code scope through
+  **Q-O-5**: no customer uploads, only first-party compiled modules and typed
+  parameters. Other device/control extensions and P4 isolation policy remain open.
 - [ ] **Q-J-3 Co-simulation:** integrate external simulators via HELICS / FMI?
 - [ ] **Q-J-4 Public API:** REST, GraphQL, gRPC, WebSocket streaming?
 
@@ -285,3 +290,33 @@ are **ASSUMPTION:** unless an existing decision is explicitly cited.
 
 D-60 resolves the 132 kV boundary; D-58 resolves the public-repository direction;
 D-61 resolves the bot-summary policy. Do not reopen these as baseline questions.
+
+## O. Architecture product choices (PR #17)
+
+These four entries record the answered choices detailed in the
+[architecture companion](../architecture/owner-questionnaire.md). They share
+resolution with the mapped questions above through D-67–D-70.
+Operational protocols remain proposed engineering defaults under D-22.
+
+- [x] **Q-O-1 Historical backtest/repeatability claims — answers Q-D-5.**
+  **Answered → D-70:** label runs **reconstruction** when publication-time
+  evidence is unknown; allow **as-of** only with proven vintages. Pin execution
+  settings/state and disclose MIP tolerance-based repeatability rather than promise
+  bit identity. Alternatives: reject unproven historic vintages; restrict all
+  backends/platforms to a separately qualified bit-identity contract.
+- [x] **Q-O-3 Cache service — answers Q-I-5, refines Q-I-1/D-3.**
+  **Answered → D-67:** Valkey (BSD-3-Clause), shared Redis protocol only;
+  Redis remains a compatible alternative with a recorded licence assessment.
+  Alternative: assessed Redis 8 licence/deployment path. P1 dispatch uses PostgreSQL.
+- [x] **Q-O-5 Customer market-code uploads — answers Q-J-2 for this scope.**
+  **Answered → D-69:** none before P4; first-party compiled modules and typed
+  parameters only. Alternatives: earlier qualified WASM/process sandbox, or a
+  declarative-only extension surface. General/P4 plug-in policy stays open in Q-J-2.
+- [x] **Q-O-6 Forecast priority — relates to Q-H-4/Q-C-4.**
+  **Answered → D-68:** P2+ forecast runs preempt research/sweeps; checkpoint
+  when timely, otherwise kill/reap and replay the uncommitted window later.
+  Alternatives: dedicated reserved forecast capacity; FIFO accepting deadline risk.
+
+Q-O-2 and Q-O-4 are deprecated engineering bundles; never renumber or reuse them.
+Existing Q-C-6/Q-I-6 and Q-H-4/Q-H-6 retain their product scope. Target inventory
+clarification is tracked in Q-H-7; the D-48 planning floor remains an assumption.
