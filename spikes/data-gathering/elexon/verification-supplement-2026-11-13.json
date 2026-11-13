@@ -87,8 +87,97 @@
       "records": 912,
       "status": 200,
       "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/FUELHH/stream?settlementDateFrom=2024-03-20&settlementDateTo=2024-03-20"
+    },
+    {
+      "checked_at": "2026-11-13T13:06:19.572285+00:00",
+      "dataset": "REMIT",
+      "local_payload_frequencies": {
+        "72b7e6ad90a6dd2a3f08e6b2ae58c21e186e93f57044f99bbcfeb2954325b8c8": 2
+      },
+      "matches_local_capture": true,
+      "payload_frequencies": {
+        "72b7e6ad90a6dd2a3f08e6b2ae58c21e186e93f57044f99bbcfeb2954325b8c8": 2
+      },
+      "records": 2,
+      "selected_identifier": "IFA202410240600T-ELXP-RMT-00000021",
+      "selected_revision": 5,
+      "selected_rows": 2,
+      "status": 200,
+      "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/REMIT/stream?publishDateTimeFrom=2024-10-24T12:59:08Z&publishDateTimeTo=2024-10-24T12:59:09Z"
     }
   ],
+  "compression_measurements": {
+    "datasets": [
+      {
+        "dataset": "bmunits",
+        "stored_bytes": 2171607,
+        "uncompressed_bytes": 2171607
+      },
+      {
+        "dataset": "boalf",
+        "stored_bytes": 1389492362,
+        "uncompressed_bytes": 1389492362
+      },
+      {
+        "dataset": "bod",
+        "stored_bytes": 905579666,
+        "uncompressed_bytes": 14051101638
+      },
+      {
+        "dataset": "demand_outturn",
+        "stored_bytes": 3564108,
+        "uncompressed_bytes": 3564108
+      },
+      {
+        "dataset": "fuelhh",
+        "stored_bytes": 61770007,
+        "uncompressed_bytes": 61770007
+      },
+      {
+        "dataset": "interconnectors",
+        "stored_bytes": 40898830,
+        "uncompressed_bytes": 40898830
+      },
+      {
+        "dataset": "mels",
+        "stored_bytes": 795833135,
+        "uncompressed_bytes": 10742183664
+      },
+      {
+        "dataset": "mid",
+        "stored_bytes": 5627284,
+        "uncompressed_bytes": 5627284
+      },
+      {
+        "dataset": "mils",
+        "stored_bytes": 633417702,
+        "uncompressed_bytes": 10049113561
+      },
+      {
+        "dataset": "pn",
+        "stored_bytes": 523401063,
+        "uncompressed_bytes": 7920294413
+      },
+      {
+        "dataset": "remit",
+        "stored_bytes": 90172114,
+        "uncompressed_bytes": 90172114
+      },
+      {
+        "dataset": "system_prices",
+        "stored_bytes": 15635205,
+        "uncompressed_bytes": 15635205
+      }
+    ],
+    "gzip_subset": {
+      "storage_reduction_pct": 93.31606279437936,
+      "stored_bytes": 2858231566,
+      "uncompressed_bytes": 42762693276
+    },
+    "storage_reduction_pct": 89.93157715059965,
+    "stored_bytes": 4467563083,
+    "uncompressed_bytes": 44372024793
+  },
   "independent_checksums": [
     {
       "dataset": "bmunits",
@@ -187,6 +276,19 @@
       "verified_files": 366
     }
   ],
+  "independent_clock_oracle": {
+    "clock_changes": {
+      "2024-03-31": 46,
+      "2024-10-27": 50
+    },
+    "days_by_period_count": {
+      "46": 1,
+      "48": 364,
+      "50": 1
+    },
+    "method": "UTC elapsed seconds between consecutive Europe/London midnights divided by 1800",
+    "settlement_periods": 17568
+  },
   "licence_check": {
     "checked_date": "2026-11-13",
     "classification": "open-commercial",

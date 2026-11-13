@@ -5,7 +5,7 @@ Set `DATA_DIR` to use another location. Python 3.12 or later, Bash, curl,
 gzip and the pinned streaming JSON dependency are required:
 
 ```sh
-python3 -m venv /path/to/elexon-venv
+python3 -I -m venv /path/to/elexon-venv
 /path/to/elexon-venv/bin/python -I -m pip install -r spikes/data-gathering/elexon/requirements.txt
 export PYTHON=/path/to/elexon-venv/bin/python
 export DATA_DIR=/home/njotob/energy-data/raw/elexon

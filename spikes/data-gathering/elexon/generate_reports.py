@@ -99,7 +99,7 @@ DATASETS_CONFIG = [
     },
     {
         "id": "remit",
-        "name": "REMIT Outage Messages",
+        "name": "REMIT Market Messages",
         "category": "Transparency / REMIT",
         "endpoint": "/datasets/REMIT/stream?publishDateTimeFrom={ts}&publishDateTimeTo={ts}",
         "date_range": "2024-01-01T00:00:00Z to 2025-01-01T00:00:00Z",
@@ -107,7 +107,7 @@ DATASETS_CONFIG = [
         "is_stream": True,
         "is_gz": False,
         "pattern": "remit/*.json",
-        "description": "Urgent Market Messages (UMM) published under REMIT covering generation and transmission outages, revisions, available capacities, and cause.",
+        "description": "Market messages published under REMIT covering outages, other market information, revisions, available capacities and causes.",
     },
     {
         "id": "boalf",
@@ -119,7 +119,7 @@ DATASETS_CONFIG = [
         "is_stream": True,
         "is_gz": False,
         "pattern": "boalf/*.json",
-        "description": "Dispatched bid-offer acceptances issued by ESO: acceptance numbers, unit IDs, MW levels, time intervals, SO-flag, STOR-flag, and amendments.",
+        "description": "Acceptance profile segments issued by ESO, with acceptance numbers, unit IDs, MW levels, time intervals, SO/STOR flags and amendments.",
     },
     {
         "id": "mels",
@@ -155,7 +155,7 @@ DATASETS_CONFIG = [
         "is_stream": True,
         "is_gz": True,
         "pattern": "pn/*.json.gz",
-        "description": "Physical Notifications (initial generation profile) submitted by BM units per settlement period.",
+        "description": "Intended generation or demand profiles notified by BM units per settlement period.",
     },
     {
         "id": "bod",
