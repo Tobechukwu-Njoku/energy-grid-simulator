@@ -1,5 +1,7 @@
 # M0 merge gates on GitHub-hosted runners (ADR 0001 bootstrap profile, NFR-3).
-# Security rules: docs/security/ci-runner-policy.md. Checked by ci/policy_checks.py.
+# Security rules: docs/security/ci-runner-policy.md, enforced by `cargo xtask policy`.
+# Policy checks, deny.toml and check configuration come from the base revision
+# (.github/actions/trusted-policy), never from the pull request (R1).
 # Never add pull_request_target, workflow_run, self-hosted runners or secrets here.
 name: ci
 
@@ -13,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -24,9 +26,9 @@ env:
 
 jobs:
   rust-linux:
-    name: rust (fmt, clippy, nextest) linux
+    name: rust (fmt, clippy, nextest incl. xtask and hook tests) linux
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,86 +64,100 @@ jobs:
         run: cargo nextest run --workspace --locked --no-fail-fast
 
   licences:
-    name: licences and advisories (cargo-deny)
+    name: licences and advisories (cargo-deny, trusted deny.toml)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install pinned toolchain (rust-toolchain.toml)
-        run: rustup toolchain install
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
           tool: cargo-deny@${{ env.CARGO_DENY_VERSION }}
-      - name: cargo deny
-        run: cargo deny --locked check
-
-  hook-tests:
-    name: hook and policy-script tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: commit-msg hook fixtures
-        run: python3 .githooks/tests/run.py
-      - name: CI attribution check tests (hook parity)
-        run: python3 -m unittest discover -s ci/tests -v
+      - name: cargo deny (policy from the base revision)
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: cargo deny --config "$TRUSTED/deny.toml" --locked check
 
   attribution:
     name: attribution policy (D-52)
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
       - name: Scan commits, title, body and added lines
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
         run: |
-          base="$(jq -r '.pull_request.base.sha // .before // empty' "$GITHUB_EVENT_PATH")"
-          trusted="$RUNNER_TEMP/trusted-ci"
-          mkdir -p "$trusted"
-          if [ -n "$base" ] \
-            && git cat-file -e "$base:ci/attribution_policy.py" 2>/dev/null \
-            && git cat-file -e "$base:ci/attribution-match.pl" 2>/dev/null; then
-            git show "$base:ci/attribution_policy.py" > "$trusted/attribution_policy.py"
-            git show "$base:ci/attribution-match.pl" > "$trusted/attribution-match.pl"
-            echo "Using policy scripts from base $base"
-          else
-            echo "::warning::bootstrap: policy scripts are not on the base branch; using this revision's copies"
-            cp ci/attribution_policy.py ci/attribution-match.pl "$trusted/"
-          fi
-          python3 "$trusted/attribution_policy.py"
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" attribution
 
   docs:
     name: documentation gates
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
       - name: Links and traceability
-        run: python3 ci/doc_gates.py
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" docs
 
   policy:
-    name: repository policy (unsafe scope, workflow hardening)
+    name: repository policy (unsafe scope, manifests, workflows, Python)
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
       - name: Policy checks
-        run: python3 ci/policy_checks.py
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" policy
+
+  provenance:
+    name: provenance, secrets and raw data (D-56)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      - name: Provenance gate
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" provenance
 
   merge-gates:
     name: merge-gates
     if: always()
-    needs: [rust-linux, rust-macos, licences, hook-tests, attribution, docs, policy]
+    needs: [rust-linux, rust-macos, licences, attribution, docs, policy, provenance]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -149,24 +165,13 @@ jobs:
         env:
           NEEDS: ${{ toJSON(needs) }}
         run: |
-          python3 - <<'PY'
-          import json, os, sys
-          needs = json.loads(os.environ["NEEDS"])
-          failed = False
-          for job, data in sorted(needs.items()):
-              result = data["result"]
-              print(f"{'PASS' if result == 'success' else 'FAIL'}: {job} ({result})")
-              failed |= result != "success"
-          not_applicable = {
-              "typescript fmt/lint/tests": "no TypeScript package exists yet (apps/web)",
-              "numerical-reference": "no numerical model or reference fixtures exist yet",
-              "benchmark-regression": "B1 profile starts at M1 on the D-65 target runner",
-              "mutation": "no commitment/redispatch/network/pricing/optimisation model logic yet",
-              "gpu-validation": "no enabled GPU adapter (cuOpt is a capability stub)",
-          }
-          for gate, reason in not_applicable.items():
-              print(f"N/A: {gate}: {reason}")
-          print("MANUAL: independent-review evidence and adversarial triage are verified by the "
-                "coordinator on the exact head SHA (NFR-3.AC3, NFR-3.AC5)")
-          sys.exit(1 if failed else 0)
-          PY
+          set -euo pipefail
+          printf '%s' "$NEEDS" | jq -r 'to_entries[] | "\(if .value.result == "success" then "PASS" else "FAIL" end): \(.key) (\(.value.result))"'
+          echo "N/A: typescript fmt/lint/tests: no TypeScript package exists yet (apps/web)"
+          echo "N/A: numerical-reference: no numerical model or reference fixtures exist yet"
+          echo "N/A: benchmark-regression: B1 profile starts at M1 on the D-65 target runner"
+          echo "N/A: mutation: no commitment/redispatch/network/pricing/optimisation model logic yet"
+          echo "N/A: gpu-validation: no enabled GPU adapter (cuOpt is a capability stub)"
+          echo "SEPARATE: independent-review and policy-approval are required checks in review-gates.yml"
+          failed="$(printf '%s' "$NEEDS" | jq '[.[] | select(.result != "success")] | length')"
+          test "$failed" -eq 0

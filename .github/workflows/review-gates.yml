@@ -1,0 +1,65 @@
+# Human-evidence gates (NFR-3.AC3/AC5, ADR 0001), checked by the trusted xtask.
+# independent-review: an approving, different-provider review report on main that
+#   covers the current head, plus an adversarial report for this PR (ADV23-10).
+# policy-approval: protected policy paths need the policy owner's approval on
+#   the exact head (R1, .github/CODEOWNERS).
+# Both fail until the evidence exists; they re-run on review events and pushes.
+name: review-gates
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-gates-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  independent-review:
+    name: independent-review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      - name: Review evidence on main covers this head
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" review --evidence refs/remotes/origin/main
+
+  policy-approval:
+    name: policy-approval
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      - name: Owner approval for protected policy paths
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" approval
