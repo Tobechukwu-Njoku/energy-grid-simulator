@@ -1,11 +1,11 @@
 # STATUS
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
-**Phase:** Requirements engineering. Decisions D-1 … D-50 (D-5 superseded by D-23).
+**Phase:** Requirements engineering. Decisions D-1 … D-62 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** No, except the **data spike** (D-31) in `spikes/`.
-**Repo:** private, https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+**Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
 ## Snapshot of what's decided
 
@@ -29,17 +29,25 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Linux distro (Q-H-7)
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
-## In progress (coordinator: Claude Opus 5.5, this thread) — started 2026-11-12
+## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
-| Task | Agent | Output (own branch + PR) |
+**Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
+verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
+
+**GPT 6.1 Sol paused: ChatGPT usage limit (2026-11-13). Owner chose to wait for the reset; GPT tasks resume then.** Raw data lives outside git in `/Users/njotob/energy-data/raw/`.
+
+| Item | State | Next action |
 |---|---|---|
-| GB data source catalogue | Gemini 3.8 Flash (Homelab account) | `docs/research/data-sources-gb.md` |
-| Ireland/weather/interconnector catalogue + dependency licences | Gemini 3.8 Flash (Personal account) | `docs/research/data-sources-ie-weather.md`, `docs/research/dependency-licences.md` |
-| Data spike (R-12) | GPT 6.1 Sol (high), moved from Opus per D-51 | `spikes/data/REPORT.md` |
-| Cross-provider review, MVP requirements draft, ADR 0001 + 0003 | GPT 6.1 Sol (high) | `reviews/gpt-6.1-sol-2026-11-12.md`, `04-requirements.md`, `adr/0001`, `adr/0003` |
+| PR #4: MVP requirements + ADR 0001/0003 | Reviewed (Claude PR #8, Gemini PR #6); needs revision | Author revision: all review findings, triage, D-51..D-62 |
+| PR #5: data spike (R-12 "Partially") | Reviewed (Claude PR #7, Gemini PR #9); needs revision | Author revision per Claude review + PR5 triage + D-56/D-57 |
+| PR #10: DNO 132 kV inventory (Gemini) | Open; unverified | Line-by-line verification before merge |
+| PR #12: Elexon 2024 data gathered (4.2 GB, 3,673 files, 12 datasets, D-62) | Done; file counts and sizes spot-checked by coordinator | GPT verification (record counts, coverage claims) |
+| PR #11: NESO/DNO/EirGrid/SEMO data gathered (~120 MB, 30 files, D-62) | Done; NESO licence tags corrected by coordinator (ETYS → research-only) | GPT verification; owner logins needed for UKPN, SPEN, NPg, ENWL portals and an ENTSO-E API token |
+| History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #5 merge: rewrite AI trailers, scan, make public, enable branch protection |
 
-Gemini output is verified by GPT 6.1 Sol before merge (D-51). Only the coordinator edits STATUS and the decisions log.
-GitHub branch protection is unavailable on a private repo without GitHub Pro; until then, merge discipline is by rule.
+Rules in force: GPT for non-code (D-51), Claude reviews GPT docs (D-54), Gemini adversarial reviews (D-53)
+and significant data gathering (D-62), no AI attribution (D-52), research-phase data use (D-56).
+Only the coordinator edits STATUS and the decisions log.
 
 ## Next steps (agents may do now)
 

@@ -46,3 +46,6 @@ requirements are baselined. Sole exception: the data spike in `spikes/` (D-31).
    "Generated with …" footers, no 🤖 badges. This overrides any default your tool applies.
    A local `commit-msg` hook strips such lines; CI will reject them (ADR 0001).
 9. **Commit and push often (D-53).** Small commits; push after every meaningful step.
+10. **Data provenance (D-56).** Every dataset is tagged in the provenance manifest as
+    `open-commercial` or `research-only`. Never commit raw `research-only` data; commit only the
+    download scripts. Share-alike (ODbL/OSM) data is never used.
