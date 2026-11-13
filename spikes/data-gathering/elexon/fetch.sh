@@ -9,11 +9,38 @@ BASE_URL="https://data.elexon.co.uk/bmrs/api/v1"
 RAW_BASE="${DATA_DIR:-/Users/njotob/energy-data/raw/elexon}"
 YEAR="2024"
 CONCURRENCY="${CONCURRENCY:-6}"
-MAX_RETRIES=5
+MAX_RETRIES="${MAX_RETRIES:-5}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PIDS=""
+
+if [[ ! "$CONCURRENCY" =~ ^[1-9][0-9]*$ ]]; then
+    echo "CONCURRENCY must be a positive integer" >&2
+    exit 1
+fi
+if [[ ! "$MAX_RETRIES" =~ ^[1-9][0-9]*$ ]]; then
+    echo "MAX_RETRIES must be a positive integer" >&2
+    exit 1
+fi
+
+validate_response() {
+    python3 -I "$SCRIPT_DIR/validate_response.py" "$1" "$2"
+}
+
+wait_batch() {
+    local failed=0
+    local process_id
+    for process_id in $PIDS; do
+        if ! wait "$process_id"; then
+            failed=1
+        fi
+    done
+    PIDS=""
+    return "$failed"
+}
 
 # Generate all 366 dates for leap year 2024
 get_dates_2024() {
-    python3 -c "
+    python3 -I -c "
 import datetime
 start = datetime.date(2024, 1, 1)
 end = datetime.date(2024, 12, 31)
@@ -25,59 +52,50 @@ while cur <= end:
 }
 
 # Fetch single URL with retries and exponential backoff
-fetch_one() {
+fetch_one() (
     local url="$1"
     local dest="$2"
     local accept_gzip="${3:-false}"
 
-    if [[ -s "$dest" ]]; then
-        # Already downloaded and non-empty
+    if [[ -s "$dest" ]] && validate_response "$dest" "$accept_gzip"; then
         return 0
     fi
 
-    local tmp="${dest}.tmp.$$"
+    local tmp
+    tmp=$(mktemp "${dest}.tmp.XXXXXX")
+    trap 'rm -f "$tmp" "$tmp.gz"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' HUP TERM
     local attempt=1
     local delay=2
 
     while [[ $attempt -le $MAX_RETRIES ]]; do
         local http_code
-        if [[ "$accept_gzip" == "true" ]]; then
-            # Write raw gzipped response directly
-            http_code=$(curl -s -w "%{http_code}" -H "Accept-Encoding: gzip" \
-                --connect-timeout 20 --max-time 180 "$url" -o "$tmp" || echo "000")
-        else
-            # Request gzip from server, decompress on the fly
-            http_code=$(curl -s -w "%{http_code}" --compressed \
-                --connect-timeout 20 --max-time 180 "$url" -o "$tmp" || echo "000")
-        fi
+        http_code=$(curl -sS -w "%{http_code}" --compressed \
+            --connect-timeout 20 --max-time 180 "$url" -o "$tmp" || echo "000")
 
-        if [[ "$http_code" == "200" ]] && [[ -s "$tmp" ]]; then
-            local first_char
+        if [[ "$http_code" == "200" ]] && validate_response "$tmp" false; then
             if [[ "$accept_gzip" == "true" ]]; then
-                first_char=$(gzip -dc "$tmp" 2>/dev/null | head -c 1 || echo "")
+                gzip -n -c "$tmp" > "$tmp.gz"
+                mv "$tmp.gz" "$dest"
             else
-                first_char=$(head -c 1 "$tmp" || echo "")
-            fi
-
-            if [[ "$first_char" == "{" || "$first_char" == "[" ]]; then
                 mv "$tmp" "$dest"
-                return 0
-            else
-                rm -f "$tmp"
-                echo "Warning: Response for $url did not start with { or [ (got '$first_char'), retrying..." >&2
             fi
+            return 0
         fi
 
-        echo "Attempt $attempt failed (HTTP $http_code) for $url. Retrying in ${delay}s..." >&2
+        echo "Attempt $attempt failed validation or HTTP ($http_code) for $url." >&2
         rm -f "$tmp"
-        sleep "$delay"
+        if (( attempt < MAX_RETRIES )); then
+            sleep "$delay"
+        fi
         delay=$((delay * 2))
         attempt=$((attempt + 1))
     done
 
     echo "ERROR: Failed to download $url after $MAX_RETRIES attempts" >&2
     return 1
-}
+)
 
 fetch_bmunits() {
     local target_dir="$RAW_BASE/bmunits"
@@ -94,15 +112,14 @@ fetch_system_prices() {
     local count=0
     for dt in $(get_dates_2024); do
         local dest="$target_dir/${dt}.json"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/balancing/settlement/system-prices/${dt}?format=json" "$dest" false &
-            count=$((count + 1))
-            if (( count % CONCURRENCY == 0 )); then
-                wait
-            fi
+        fetch_one "$BASE_URL/balancing/settlement/system-prices/${dt}?format=json" "$dest" false &
+        PIDS="$PIDS $!"
+        count=$((count + 1))
+        if (( count % CONCURRENCY == 0 )); then
+            wait_batch
         fi
     done
-    wait
+    wait_batch
     echo "System Prices complete ($(ls "$target_dir"/*.json 2>/dev/null | wc -l | tr -d ' ') files)."
 }
 
@@ -113,15 +130,14 @@ fetch_demand_outturn() {
     local count=0
     for dt in $(get_dates_2024); do
         local dest="$target_dir/${dt}.json"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/demand/outturn?settlementDateFrom=${dt}&settlementDateTo=${dt}&format=json" "$dest" false &
-            count=$((count + 1))
-            if (( count % CONCURRENCY == 0 )); then
-                wait
-            fi
+        fetch_one "$BASE_URL/demand/outturn?settlementDateFrom=${dt}&settlementDateTo=${dt}&format=json" "$dest" false &
+        PIDS="$PIDS $!"
+        count=$((count + 1))
+        if (( count % CONCURRENCY == 0 )); then
+            wait_batch
         fi
     done
-    wait
+    wait_batch
     echo "Demand Outturn complete ($(ls "$target_dir"/*.json 2>/dev/null | wc -l | tr -d ' ') files)."
 }
 
@@ -132,15 +148,14 @@ fetch_fuelhh() {
     local count=0
     for dt in $(get_dates_2024); do
         local dest="$target_dir/${dt}.json"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/datasets/FUELHH/stream?settlementDateFrom=${dt}&settlementDateTo=${dt}" "$dest" false &
-            count=$((count + 1))
-            if (( count % CONCURRENCY == 0 )); then
-                wait
-            fi
+        fetch_one "$BASE_URL/datasets/FUELHH/stream?settlementDateFrom=${dt}&settlementDateTo=${dt}" "$dest" false &
+        PIDS="$PIDS $!"
+        count=$((count + 1))
+        if (( count % CONCURRENCY == 0 )); then
+            wait_batch
         fi
     done
-    wait
+    wait_batch
     echo "FUELHH complete ($(ls "$target_dir"/*.json 2>/dev/null | wc -l | tr -d ' ') files)."
 }
 
@@ -151,15 +166,14 @@ fetch_interconnectors() {
     local count=0
     for dt in $(get_dates_2024); do
         local dest="$target_dir/${dt}.json"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/generation/outturn/interconnectors?settlementDateFrom=${dt}&settlementDateTo=${dt}&format=json" "$dest" false &
-            count=$((count + 1))
-            if (( count % CONCURRENCY == 0 )); then
-                wait
-            fi
+        fetch_one "$BASE_URL/generation/outturn/interconnectors?settlementDateFrom=${dt}&settlementDateTo=${dt}&format=json" "$dest" false &
+        PIDS="$PIDS $!"
+        count=$((count + 1))
+        if (( count % CONCURRENCY == 0 )); then
+            wait_batch
         fi
     done
-    wait
+    wait_batch
     echo "Interconnectors complete ($(ls "$target_dir"/*.json 2>/dev/null | wc -l | tr -d ' ') files)."
 }
 
@@ -170,15 +184,14 @@ fetch_mid() {
     local count=0
     for dt in $(get_dates_2024); do
         local dest="$target_dir/${dt}.json"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/datasets/MID/stream?from=${dt}&to=${dt}&settlementPeriodFrom=1&settlementPeriodTo=50" "$dest" false &
-            count=$((count + 1))
-            if (( count % CONCURRENCY == 0 )); then
-                wait
-            fi
+        fetch_one "$BASE_URL/datasets/MID/stream?from=${dt}&to=${dt}&settlementPeriodFrom=1&settlementPeriodTo=50" "$dest" false &
+        PIDS="$PIDS $!"
+        count=$((count + 1))
+        if (( count % CONCURRENCY == 0 )); then
+            wait_batch
         fi
     done
-    wait
+    wait_batch
     echo "Market Index Data complete ($(ls "$target_dir"/*.json 2>/dev/null | wc -l | tr -d ' ') files)."
 }
 
@@ -203,9 +216,7 @@ fetch_remit() {
     for m in "${months[@]}"; do
         read -r from_ts to_ts label <<< "$m"
         local dest="$target_dir/${label}.json"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/datasets/REMIT/stream?publishDateTimeFrom=${from_ts}&publishDateTimeTo=${to_ts}" "$dest" false
-        fi
+        fetch_one "$BASE_URL/datasets/REMIT/stream?publishDateTimeFrom=${from_ts}&publishDateTimeTo=${to_ts}" "$dest" false
     done
     echo "REMIT complete ($(ls "$target_dir"/*.json 2>/dev/null | wc -l | tr -d ' ') files)."
 }
@@ -217,15 +228,14 @@ fetch_boalf() {
     local count=0
     for dt in $(get_dates_2024); do
         local dest="$target_dir/${dt}.json"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/datasets/BOALF/stream?from=${dt}&to=${dt}&settlementPeriodFrom=1&settlementPeriodTo=50" "$dest" false &
-            count=$((count + 1))
-            if (( count % CONCURRENCY == 0 )); then
-                wait
-            fi
+        fetch_one "$BASE_URL/datasets/BOALF/stream?from=${dt}&to=${dt}&settlementPeriodFrom=1&settlementPeriodTo=50" "$dest" false &
+        PIDS="$PIDS $!"
+        count=$((count + 1))
+        if (( count % CONCURRENCY == 0 )); then
+            wait_batch
         fi
     done
-    wait
+    wait_batch
     echo "BOALF complete ($(ls "$target_dir"/*.json 2>/dev/null | wc -l | tr -d ' ') files)."
 }
 
@@ -239,15 +249,14 @@ fetch_stream_dataset() {
     local count=0
     for dt in $(get_dates_2024); do
         local dest="$target_dir/${dt}.json.gz"
-        if [[ ! -s "$dest" ]]; then
-            fetch_one "$BASE_URL/datasets/${upper_ds}/stream?from=${dt}&to=${dt}&settlementPeriodFrom=1&settlementPeriodTo=50" "$dest" true &
-            count=$((count + 1))
-            if (( count % CONCURRENCY == 0 )); then
-                wait
-            fi
+        fetch_one "$BASE_URL/datasets/${upper_ds}/stream?from=${dt}&to=${dt}&settlementPeriodFrom=1&settlementPeriodTo=50" "$dest" true &
+        PIDS="$PIDS $!"
+        count=$((count + 1))
+        if (( count % CONCURRENCY == 0 )); then
+            wait_batch
         fi
     done
-    wait
+    wait_batch
     echo "$upper_ds complete ($(ls "$target_dir"/*.json.gz 2>/dev/null | wc -l | tr -d ' ') files)."
 }
 
