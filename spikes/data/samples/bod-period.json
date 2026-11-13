@@ -1,0 +1,28 @@
+[
+  {
+    "settlementDate": "2024-01-01",
+    "settlementPeriod": 1,
+    "nationalGridBmUnit": "ABERU-1",
+    "bmUnit": "E_ABERDARE",
+    "timeFrom": "2024-01-01T00:00:00Z",
+    "timeTo": "2024-01-01T00:30:00Z",
+    "levelFrom": -16,
+    "levelTo": -16,
+    "bid": 60.0,
+    "offer": 136.5,
+    "pairId": -1
+  },
+  {
+    "settlementDate": "2024-01-01",
+    "settlementPeriod": 1,
+    "nationalGridBmUnit": "ABERU-1",
+    "bmUnit": "E_ABERDARE",
+    "timeFrom": "2024-01-01T00:00:00Z",
+    "timeTo": "2024-01-01T00:30:00Z",
+    "levelFrom": 16,
+    "levelTo": 16,
+    "bid": 60.0,
+    "offer": 136.5,
+    "pairId": 1
+  }
+]

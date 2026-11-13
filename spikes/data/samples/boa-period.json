@@ -1,0 +1,36 @@
+[
+  {
+    "settlementDate": "2024-01-01",
+    "settlementPeriodFrom": 1,
+    "settlementPeriodTo": 2,
+    "timeFrom": "2024-01-01T00:26:00Z",
+    "timeTo": "2024-01-01T00:56:00Z",
+    "levelFrom": 27,
+    "levelTo": 27,
+    "nationalGridBmUnit": "BURBW-1",
+    "bmUnit": "E_BURBO",
+    "acceptanceNumber": 39430,
+    "acceptanceTime": "2024-01-01T00:11:00Z",
+    "deemedBoFlag": false,
+    "soFlag": false,
+    "storFlag": false,
+    "rrFlag": false
+  },
+  {
+    "settlementDate": "2024-01-01",
+    "settlementPeriodFrom": 1,
+    "settlementPeriodTo": 1,
+    "timeFrom": "2024-01-01T00:26:00Z",
+    "timeTo": "2024-01-01T00:27:00Z",
+    "levelFrom": 27,
+    "levelTo": 86,
+    "nationalGridBmUnit": "BURBW-1",
+    "bmUnit": "E_BURBO",
+    "acceptanceNumber": 39429,
+    "acceptanceTime": "2023-12-31T23:41:00Z",
+    "deemedBoFlag": false,
+    "soFlag": false,
+    "storFlag": false,
+    "rrFlag": false
+  }
+]

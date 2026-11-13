@@ -1,0 +1,134 @@
+[
+  {
+    "startTime": "2024-01-01T00:00:00Z",
+    "settlementPeriod": 1,
+    "data": [
+      {
+        "fuelType": "BIOMASS",
+        "generation": 1002
+      },
+      {
+        "fuelType": "CCGT",
+        "generation": 2853
+      },
+      {
+        "fuelType": "COAL",
+        "generation": 230
+      },
+      {
+        "fuelType": "INTELEC",
+        "generation": 998
+      },
+      {
+        "fuelType": "INTFR",
+        "generation": 417
+      },
+      {
+        "fuelType": "INTNED",
+        "generation": 669
+      },
+      {
+        "fuelType": "INTNEM",
+        "generation": 903
+      },
+      {
+        "fuelType": "INTNSL",
+        "generation": 186
+      },
+      {
+        "fuelType": "INTVKL",
+        "generation": 554
+      },
+      {
+        "fuelType": "NPSHYD",
+        "generation": 537
+      },
+      {
+        "fuelType": "NUCLEAR",
+        "generation": 4675
+      },
+      {
+        "fuelType": "OCGT",
+        "generation": 0
+      },
+      {
+        "fuelType": "OIL",
+        "generation": 0
+      },
+      {
+        "fuelType": "OTHER",
+        "generation": 341
+      },
+      {
+        "fuelType": "WIND",
+        "generation": 10127
+      }
+    ]
+  },
+  {
+    "startTime": "2024-01-01T00:05:00Z",
+    "settlementPeriod": 1,
+    "data": [
+      {
+        "fuelType": "BIOMASS",
+        "generation": 987
+      },
+      {
+        "fuelType": "CCGT",
+        "generation": 2900
+      },
+      {
+        "fuelType": "COAL",
+        "generation": 229
+      },
+      {
+        "fuelType": "INTELEC",
+        "generation": 999
+      },
+      {
+        "fuelType": "INTFR",
+        "generation": 416
+      },
+      {
+        "fuelType": "INTNED",
+        "generation": 661
+      },
+      {
+        "fuelType": "INTNEM",
+        "generation": 901
+      },
+      {
+        "fuelType": "INTNSL",
+        "generation": 73
+      },
+      {
+        "fuelType": "INTVKL",
+        "generation": 577
+      },
+      {
+        "fuelType": "NPSHYD",
+        "generation": 536
+      },
+      {
+        "fuelType": "NUCLEAR",
+        "generation": 4673
+      },
+      {
+        "fuelType": "OCGT",
+        "generation": 0
+      },
+      {
+        "fuelType": "OIL",
+        "generation": 0
+      },
+      {
+        "fuelType": "OTHER",
+        "generation": 321
+      },
+      {
+        "fuelType": "WIND",
+        "generation": 10182
+      }
+    ]
+  }
+]
