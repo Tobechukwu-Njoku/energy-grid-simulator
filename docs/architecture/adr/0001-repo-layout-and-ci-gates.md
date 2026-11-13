@@ -145,13 +145,22 @@ Enable the committed hook explicitly in each clone (worktrees share common confi
     git config core.hooksPath .githooks
 
 .githooks/commit-msg reads the shared .githooks/attribution-patterns.regex using Perl
-(bootstrap prerequisite), removes matching whole lines, trims trailing blank lines
-and preserves human coauthor trailers and the rest of the message. Its patterns cover
-model/vendor coauthor trailers, generation/assistance banners and the robot pictograph.
-A hook error fails the commit without silently overwriting the message; ordinary Git
-empty-message rules still apply. --no-verify is not a CI waiver. A clean clone can test
-the hook on a temporary message before committing; hook conformance includes mixed-case
-banners, human trailers, Unicode, empty/all-attribution messages and file paths with spaces.
+(bootstrap prerequisite). It removes whole-line identity trailers and attribution
+footers from the body; it NEVER removes the subject. A matching subject aborts with
+an actionable diagnostic and leaves the entire message unchanged. Whole-line anchoring
+preserves ordinary technical prose and robot-icon descriptions. Complete known model/
+tool identities or known service/bot emails identify trailers; a human surname or
+`google.com` alone does not. All `*-by:` keys, `*-with:` pairing keys, Unicode hyphens,
+quoted trailers, creation verbs and the wider model/tool families have fixtures.
+
+Decode both files strictly as UTF-8 before producing output. Malformed bytes, invalid
+regexes, an empty rule set or an empty-string-matching pattern fail without rewriting
+the message. Ignore blank/comment pattern lines and accept CRLF pattern files. Preserve
+retained bytes/blank lines and the Git scissors suffix; ordinary Git empty-message rules
+still apply. --no-verify is not a CI waiver. Run `python3 .githooks/tests/run.py` for the
+committed review fixtures, failure cases and scratch-Git commit/merge/encoding checks;
+Python is a test-only prerequisite. The runner exercises paths containing spaces and
+temporary-file cleanup. It needs no application build, database or target-system access.
 
 The future attribution-policy CI check uses the SAME committed regex list, Unicode
 handling and fixtures, but REJECTS matches rather than deleting them. It scans:

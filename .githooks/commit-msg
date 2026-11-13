@@ -6,22 +6,45 @@ hook_directory=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 temporary_file=$(mktemp "${message_file}.strip.XXXXXX")
 trap 'rm -f -- "$temporary_file"' EXIT HUP INT TERM
 
-perl -CSDA - "$hook_directory/attribution-patterns.regex" "$message_file" > "$temporary_file" <<'PERL'
+perl - "$hook_directory/attribution-patterns.regex" "$message_file" > "$temporary_file" <<'PERL'
 use strict;
 use warnings;
+use Encode qw(decode encode FB_CROAK);
+
+sub read_utf8 {
+    my ($path) = @_;
+    open my $file, '<:raw', $path or die "$path: $!\n";
+    local $/;
+    my $bytes = <$file>;
+    close $file or die "$path: $!\n";
+    my $decoded = eval { decode('UTF-8', $bytes, FB_CROAK) };
+    die "$path: invalid UTF-8; message left unchanged\n" if $@;
+    return $decoded;
+}
 
 my ($pattern_path, $message_path) = @ARGV;
-open my $pattern_file, '<:encoding(UTF-8)', $pattern_path or die "$pattern_path: $!\n";
-my @patterns = map { chomp; qr/$_/i } <$pattern_file>;
-close $pattern_file or die "$pattern_path: $!\n";
-open my $message_file, '<:encoding(UTF-8)', $message_path or die "$message_path: $!\n";
-my @retained;
-while (my $line = <$message_file>) {
-    push @retained, $line unless grep { $line =~ $_ } @patterns;
+my @patterns;
+for my $pattern (split /\n/, read_utf8($pattern_path)) {
+    $pattern =~ s/\r$//;
+    next if $pattern =~ /^\s*(?:#|$)/;
+    my $compiled = qr/$pattern/i;
+    die "unsafe empty-string attribution pattern\n" if '' =~ $compiled;
+    push @patterns, $compiled;
 }
-close $message_file or die "$message_path: $!\n";
-pop @retained while @retained && $retained[-1] =~ /^\s*$/;
-print @retained or die "cannot write filtered message: $!\n";
+die "no attribution patterns loaded\n" unless @patterns;
+my @lines = read_utf8($message_path) =~ /[^\n]*\n|[^\n]+$/g;
+if (@lines && grep { $lines[0] =~ $_ } @patterns) {
+    die "commit subject matches attribution policy; edit the subject and retry (message left unchanged)\n";
+}
+my @retained;
+my $scissors = 0;
+for my $line (@lines) {
+    $scissors = 1 if $line =~ /^# -+ >8 -+/;
+    push @retained, $line if $scissors || !grep { $line =~ $_ } @patterns;
+}
+binmode STDOUT, ':raw';
+print encode('UTF-8', join('', @retained), FB_CROAK)
+    or die "cannot write filtered message: $!\n";
 PERL
 
 cat -- "$temporary_file" > "$message_file"

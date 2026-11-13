@@ -114,7 +114,10 @@ names an owner/implementation dependency. Compound findings are split explicitly
   seeding, quality/reference/mutation/benchmark/licence/data/secrets checks, safe
   self-hosted execution, current-head evidence and explicit enforcement limits.
 - **D-52 hook:** `.githooks/commit-msg` and shared regex strip matching whole lines,
-  preserve human trailers and text, trim trailing blanks and fail safely. Activation:
+  were intended to preserve human trailers and text. Rev-2 review disproved that claim:
+  human names and legitimate subjects could be deleted and malformed UTF-8 rewritten.
+  Round 3 below supersedes the original smoke-test claim with committed conformance
+  fixtures and strict failure behaviour. Activation:
   `git config core.hooksPath .githooks`. This command is documented, not silently
   applied to the shared repository configuration by this revision.
 - **D-52 rejection policy:** ADR 0001 specifies PR-range commit messages, title/body
