@@ -5,4 +5,6 @@ node_modules/
 *.local
 /t3-*/
 /spikes/data/raw/
+/spikes/data/output/
+/spikes/data/__pycache__/
 /spikes/data/.venv/

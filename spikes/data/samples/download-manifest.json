@@ -4,7 +4,7 @@
     "bytes": 1236156,
     "sha256": "0a652a16dd94ce47c64e482b9a75c723d2dd5aa1d6c7351531587ec58777e56b",
     "source_url": "https://www.neso.energy/data-portal/neso-open-licence",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -12,7 +12,7 @@
     "bytes": 1279171,
     "sha256": "06f90a6d73a82032a7069e2549b9509b4f7d8295e5e79af9228adfbeb31f7795",
     "source_url": "https://www.neso.energy/terms-and-conditions",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -20,7 +20,7 @@
     "bytes": 53472,
     "sha256": "8986eda65f9591858e81c5cc5b02c09348814f763de0ffd30a86e0eda6b68460",
     "source_url": "https://www.eirgrid.ie/disclaimer",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -28,7 +28,7 @@
     "bytes": 191133,
     "sha256": "30535c369f732537c527a4c3ccf15896e8e1178639bfb452a150d4fe69f6b089",
     "source_url": "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -36,7 +36,7 @@
     "bytes": 110179,
     "sha256": "cc730b106d1aef1faa57742a8328419d6bec87536cbabbfc5236e8252c56e653",
     "source_url": "https://www.nationalgrid.co.uk/open-data-licence",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -44,7 +44,7 @@
     "bytes": 10450,
     "sha256": "f5b2b9f2af63647cde889fa6c3508f5705925295b74912c68caa28dd37e64aa5",
     "source_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -52,7 +52,7 @@
     "bytes": 424554,
     "sha256": "7b1349b8122b8d9cc5a9bb209f6784959f5f0cced2cea298183d22a7241a9fae",
     "source_url": "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -60,7 +60,7 @@
     "bytes": 48608,
     "sha256": "5297c05d2969af8938841fde6d2527c9c95b349c7381363ccabf0bf640271274",
     "source_url": "https://cds.climate.copernicus.eu/licences/cc-by",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -68,7 +68,7 @@
     "bytes": 7666,
     "sha256": "cec083511302199f9a0889177b4cdba5472f299436af018c3a768b1b5acdda27",
     "source_url": "https://cds.climate.copernicus.eu/api/catalogue/v1/collections/reanalysis-era5-single-levels",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -76,7 +76,7 @@
     "bytes": 15195,
     "sha256": "0e81203e5cd1d9b7b805bd22a668e3d72ad618656cc4daafdf16158f02a63d24",
     "source_url": "https://cds.climate.copernicus.eu/api/retrieve/v1/processes/reanalysis-era5-single-levels",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -84,7 +84,7 @@
     "bytes": 31950,
     "sha256": "8dda1ccec4be91fc80821d4e4fd5c568072b9a3a74b2fdc07c249a27e920ef01",
     "source_url": "https://creativecommons.org/licenses/by/4.0/",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -92,7 +92,7 @@
     "bytes": 3386,
     "sha256": "f0e85ad65e63b9a27c7fc6fb9b95cc87ec1fe26138b31e2de6fd2cffae05bc09",
     "source_url": "https://api.neso.energy/api/3/action/package_search?q=ETYS",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -100,7 +100,7 @@
     "bytes": 289103,
     "sha256": "efbcea9deebec7dd8776f2e966b3fe103fef4097b061b6f972125c45db18a1f8",
     "source_url": "https://api.neso.energy/api/3/action/package_search?q=transmission&rows=100",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -108,7 +108,7 @@
     "bytes": 251334,
     "sha256": "836b65b13d5e9c360aa7f2993879a2ae1153680c683bd803101a7de085123013",
     "source_url": "https://connecteddata.nationalgrid.co.uk/api/3/action/package_search?q=network%20model&rows=20",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -116,7 +116,7 @@
     "bytes": 50690,
     "sha256": "137cc64292e9e0f193e3f628d6df6a88b9d6018d2ff777a61b88e0644cb5da86",
     "source_url": "https://connecteddata.nationalgrid.co.uk/dataset/ltds-tabular-model",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -124,7 +124,7 @@
     "bytes": 1508191,
     "sha256": "691775269eb4005cb71fab912c7c8e94ff4dfb217f152cc6aa164fd48b583792",
     "source_url": "https://data.elexon.co.uk/swagger/v1/swagger.json",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -132,7 +132,7 @@
     "bytes": 45341,
     "sha256": "856b93fa6c3d02009fa0b08261dc80b1bc0c4e1bd213ba4ef31a23c8a71620e9",
     "source_url": "https://www.eirgrid.ie/all-island-ten-year-transmission-statement-2024-study-files-0",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -140,7 +140,7 @@
     "bytes": 46606,
     "sha256": "43ffa0c362f2509d681820b88a16ccedda6321a3a37d933c172fa18fe42772e4",
     "source_url": "https://www.eirgrid.ie/all-island-ten-year-transmission-forecast-statement-2024",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -148,7 +148,7 @@
     "bytes": 5151,
     "sha256": "7b74d941cab1c9123349204d53d0621f4eb20213ae4d93f1e54e8d13bcda942c",
     "source_url": "https://transparencyplatform.zendesk.com/api/v2/help_center/en-us/articles/40921911218961.json",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -156,7 +156,7 @@
     "bytes": 236143,
     "sha256": "b21717e8a5a41b9b8544db730d11c2a717abc9b07f89704437a89332b708ff9a",
     "source_url": "https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -164,7 +164,7 @@
     "bytes": 4270,
     "sha256": "35b49ec359ccac732d2d087d3b16202a1a6e974e3879c282d11d4e45269b272b",
     "source_url": "https://transparencyplatform.zendesk.com/api/v2/help_center/en-us/articles/12845911031188.json",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -172,7 +172,7 @@
     "bytes": 24680,
     "sha256": "ccecebeebf2c5b57c2ef0710d60b7561a6236c2a540db4226d5ef970b1cc0de8",
     "source_url": "https://transparencyplatform.zendesk.com/api/v2/help_center/en-us/articles/15885757676308.json",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -180,7 +180,7 @@
     "bytes": 15305,
     "sha256": "603807998c51714dee59a8070b95699f38c592361127127cedb33e40c1b690d9",
     "source_url": "https://connecteddata.nationalgrid.co.uk/api/3/action/package_show?id=ltds-tabular-model",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -188,7 +188,7 @@
     "bytes": 25166,
     "sha256": "5d022fedd165534e6d45d22eaa637b365b1d89cda0ee9e8b64c4868ce3b37e86",
     "source_url": "https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/ae11f56a-159b-4aa7-9a50-7729adcbadc3/download/dsa095-ltds-tabular-data-sharing-assessment.pdf",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -196,7 +196,7 @@
     "bytes": 7400,
     "sha256": "48724dd2fd43d8f6efe16c4aaab9c1e5bf963838491f03b6c6d38654134f2c9d",
     "source_url": "https://api.neso.energy/api/3/action/package_show?id=day-ahead-constraint-flows-and-limits",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
@@ -204,7 +204,7 @@
     "bytes": 5481,
     "sha256": "793e4d68c647e02c9acbca8427c25e16adebf6844ac2333f4270686cd7ba0a0d",
     "source_url": "https://api.neso.energy/api/3/action/package_show?id=24-months-ahead-constraint-limits",
-    "licence_status": "research-only",
+    "licence_status": "public-metadata",
     "source_role": "metadata"
   },
   {
