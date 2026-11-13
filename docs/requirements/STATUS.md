@@ -34,15 +34,15 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
 
-**GPT 6.1 Sol resumed 2026-11-13:** five delegates running (revise PRs #4, #5; verify PRs #10, #11, #12). Workspace is being prepared for a move to an LXC container (local, untracked `MIGRATION.md`); raw data must move with it.
+**2026-11-13: workspace moved to the coding container (D-65); work resumed.** Running: Claude and Gemini reviews of the revised PRs #4 and #5, GPT re-verification of PR #12, and Gemini gathering of the 2024 Irish prices. Next: merge, clean the history and make the repo public, then GPT drafts the topology ADRs 0002/0004/0005/0006 (recommended: a modular monolith).
 
 | Item | State | Next action |
 |---|---|---|
 | PR #4: MVP requirements + ADR 0001/0003 | Reviewed (Claude PR #8, Gemini PR #6); needs revision | Author revision: all review findings, triage, D-51..D-62 |
 | PR #5: data spike (R-12 "Partially") | Reviewed (Claude PR #7, Gemini PR #9); needs revision | Author revision per Claude review + PR5 triage + D-56/D-57 |
-| PR #10: DNO 132 kV inventory (Gemini) | Open; unverified | Line-by-line verification before merge |
+| PR #10: DNO 132 kV inventory | **Merged** 2026-11-13 after GPT verification (84 claims, 21% of determinate claims corrected, 8 UNVERIFIED) | Portal logins (UKPN, SPEN, NPg, ENWL) to close the gaps; commercial clearance in TODO-pre-commercial |
 | PR #12: Elexon 2024 data gathered (4.2 GB, 3,673 files, 12 datasets, D-62) | Done; file counts and sizes spot-checked by coordinator | GPT verification (record counts, coverage claims) |
-| PR #11: NESO/DNO/EirGrid/SEMO data gathered (~120 MB, 30 files, D-62) | Done; NESO licence tags corrected by coordinator (ETYS → research-only) | GPT verification; owner logins needed for UKPN, SPEN, NPg, ENWL portals and an ENTSO-E API token |
+| PR #11: NESO/DNO/EirGrid/SEMO data (30 files) | **Merged** 2026-11-13 after GPT verification (hashes match; licences corrected) | Gap: 2024 Irish prices (have 2018–2020 only); owner logins for UKPN, SPEN, NPg, ENWL and an ENTSO-E token. Local-only T3 checkpoint ref `286d675` holds ETYS raw files: never push `refs/t3/*`, and exclude them from any public mirror |
 | History cleanup (D-52) + public repo (D-58) | Waiting | After #4 and #5 merge: rewrite AI trailers, scan, make public, enable branch protection |
 
 Rules in force: GPT for non-code (D-51), Claude reviews GPT docs (D-54), Gemini adversarial reviews (D-53)

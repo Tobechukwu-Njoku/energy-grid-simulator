@@ -4,7 +4,7 @@ _Source: D-45, D-49, D-51, D-53, D-62, D-28, D-22. Owner checks milestones; agen
 
 | Model | Role | Use for | Do not use for |
 |---|---|---|---|
-| **Claude Opus 5.5** (medium effort) | Code generation only (D-51) | Writing code: Rust engine, backend, frontend, tests, data pipelines | Research, specs, verification (→ GPT); reviews only of GPT-authored work (D-54) |
+| **Claude Opus 5.5** (medium effort, ultracode on; D-64) | Code generation only (D-51) | Writing code: Rust engine, backend, frontend, tests, data pipelines | Research, specs, verification (→ GPT); reviews only of GPT-authored work (D-54) |
 | **GPT 6.1 Sol** | Default for everything except code generation (D-51) | Research, ADRs, specs, requirements, task breakdown, code review, **verifying all Gemini output**, validation reports | Bulk routine work (→ Gemini) |
 | **Gemini Flash 3.8** (high) | Assistant | **Significant data gathering (D-62)**: bulk downloads, scraping, collation and inventories of datasets; licence/docs lookups; formatting; first-pass summaries. Both accounts in parallel | Anything complex or needing scrutiny: engine/solver code, architecture, merge decisions, reviews |
 
