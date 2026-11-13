@@ -853,5 +853,68 @@
     "expected": "# commit instructions\n\nMade with ChatGPT\n\nKeep this body.\n",
     "exit": 1,
     "stderr": "commit subject matches attribution policy"
+  },
+  {
+    "name": "r3-keep-1",
+    "source": "claude recheck r3 C.1",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Ann Lee <123+octopus@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Ann Lee <123+octopus@users.noreply.github.com>\n"
+  },
+  {
+    "name": "r3-keep-2",
+    "source": "claude recheck r3 C.1",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Sam Roe <456+secretagent@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Sam Roe <456+secretagent@users.noreply.github.com>\n"
+  },
+  {
+    "name": "r3-keep-3",
+    "source": "claude recheck r3 C.1",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Dr Llama <789+drllama@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Dr Llama <789+drllama@users.noreply.github.com>\n"
+  },
+  {
+    "name": "r3-strip-1",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nCo-authored-by: GPT-4o <gpt@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-2",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nGenerated with GPT-4o\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-3",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nGenerated with gpt-5-codex\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-4",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nGenerated with Gemini 2.5 Flash-Lite\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-5",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r3-strip-6",
+    "source": "claude recheck r3 C.2",
+    "input": "fix: exercise message policy\n\n🤖️ Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\n"
   }
 ]
