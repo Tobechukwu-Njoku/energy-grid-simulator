@@ -31,6 +31,15 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision-4 review:** exact head `dc3093ea100ace554ad3a7c11a9f77927f2776a7`
+re-reviewed; verdict **must-fix**. All 124 submitted tests pass, and all eleven
+round-3 concrete inputs are fixed. Four new STRUCTURAL probes demonstrate a
+production target escaping through `spikes/`, incorrect `**/` CODEOWNERS coverage,
+nested-array provenance loss and ignored extensionless manifests. Do not attest
+this head as the one-time trusted bootstrap seed. Reproductions, regression
+assessments and activation limits: [revision-4 report](reviews/gpt-2026-11-13-pr23-r4.md).
+PR #23 was not modified.
+
 **PR #23 revision 4 (implementation, 2026-11-13):** R3-01..04 (GPT) and ADV23R3-01..07
 (Gemini) addressed with general mechanisms and mapped regression tests (finding→test
 table in the PR body): structural parse of the `forbid` lint list; every Cargo-selected
