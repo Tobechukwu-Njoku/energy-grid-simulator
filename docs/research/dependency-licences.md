@@ -4,8 +4,8 @@ _Reviewed: 2026-11-12. Versions are stable releases observed on that date, not d
 
 ## Scope and conclusions
 
-This supports **D-17** (commercial SaaS), **D-20** (Rust), **D-42** (hardware) and the **D-3
-PostgreSQL 18 + Redis baseline**. It does not accept an ADR, replace the owner's Redis decision
+This supports **D-17** (commercial SaaS), **D-20** (Rust), **D-42** (hardware) and the **D-3/D-67
+PostgreSQL 18 + Valkey baseline**. It does not accept an ADR
 or certify an unbuilt application's complete dependency graph.
 
 - All **11 named Rust crate versions and SPDX expressions were confirmed on crates.io**.
@@ -15,7 +15,8 @@ or certify an unbuilt application's complete dependency graph.
 - **Redis 8.10.3** offers RSALv2, SSPLv1 or AGPLv3. It is **not categorically forbidden in a
   proprietary application SaaS**. Licence choice, boundaries and modifications matter.
   **Valkey 9.1.3** has a BSD-3-Clause core and avoids Redis's service/copyleft conditions, but
-  changing the baseline needs an owner decision and compatibility validation.
+  D-67 now selects Valkey, shared Redis-protocol clients and PostgreSQL P1 dispatch.
+  Compatibility validation remains necessary; Redis is a compatible alternative.
 - PostGIS's GPL does not itself require publishing a separate SaaS application merely because
   the database is accessed over a network. Distribution is a separate assessment.
 - cuOpt's open **solver implementation**, not just interfaces, is Apache-2.0. A paid enterprise
@@ -93,10 +94,10 @@ release. For Redis 8, document **one applicable licence path**:
   condition. Preserve notices and audit bundled code/modules. Protocol ancestry does **not**
   prove compatibility with all Redis 8 commands, modules and features.
 
-**Position:** Valkey is the simpler permissive alternative; Redis 8 remains possible for
-commercial application SaaS under an appropriate, complied-with licence. This does **not** adopt
-Valkey or override **D-3**. Resolve the Redis assessment or obtain an owner-approved replacement
-decision before implementation.
+**Position:** D-67 replaces Redis with Valkey as the service baseline and refines D-3.
+Redis remains a compatible shared-protocol alternative, subject to its deployment
+licence assessment. The preceding version/licence research is not a complete
+application audit or acceptance of an implementation ADR.
 
 ### PostGIS and copyleft boundaries
 
@@ -265,7 +266,7 @@ releases. Candidate versions are not silently adopted as stack decisions.
   perform D-28 `cargo-deny` once an application exists.
 - **UNVERIFIED:** binary artifacts, individual Toolkit functions, cloud tiers and proprietary
   packages not covered by the inspected terms.
-- **UNVERIFIED:** final Redis licence/architecture, Gurobi hosting-exception fit/order scope,
+- **UNVERIFIED:** Valkey bundled-code notices and any optional Redis deployment terms, Gurobi hosting-exception fit/order scope,
   Xpress SaaS rights/size limits and negotiated prices.
 - **UNVERIFIED:** actual CPU/GPU performance and numerical suitability.
 
