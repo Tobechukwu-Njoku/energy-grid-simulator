@@ -1,0 +1,188 @@
+{
+  "etys_2025_26": {
+    "sheets": {
+      "B-2-1a": 310,
+      "B-2-1b": 352,
+      "B-2-1c": 614,
+      "B-2-1d": 116,
+      "B-3-1a": 254,
+      "B-3-1b": 310,
+      "B-3-1c": 768,
+      "B-3-1d": 140
+    },
+    "index_voltage_rows": {
+      "B-1-1a": {
+        "132": 188,
+        "33": 132,
+        "11": 29,
+        "275": 59,
+        "400": 46,
+        "20.5": 1
+      },
+      "B-1-1b": {
+        "33": 166,
+        "132": 175,
+        "275": 74,
+        "400": 57,
+        "11": 8,
+        "25": 1
+      },
+      "B-1-1c": {
+        "132": 186,
+        "400": 231,
+        "275": 128,
+        "33": 41,
+        "66": 23
+      },
+      "B-1-1d": {
+        "400": 57,
+        "220": 32,
+        "33": 32,
+        "132": 37,
+        "66": 13,
+        "275": 10,
+        "150": 7,
+        "155": 2
+      }
+    },
+    "endpoint_nodes": 1952,
+    "branch_rows": 2864,
+    "exact_endpoint_graph": {
+      "components": 20,
+      "largest_sizes": [
+        1861,
+        13,
+        9,
+        7,
+        5,
+        5,
+        5,
+        5,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        3,
+        3,
+        3,
+        3,
+        2
+      ],
+      "isolated_nodes": 0
+    },
+    "site_collapsed_diagnostic": {
+      "sites": 658,
+      "components": 12,
+      "largest_sizes": [
+        636,
+        3,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1
+      ],
+      "isolated_nodes": 1
+    },
+    "nonnumeric_electrical_or_rating_cells": {},
+    "repeated_unordered_endpoint_pairs": 491
+  },
+  "ireland_winter_peak_2024": {
+    "case": "TYTFS2024_studyfiles/TYTFS2024_WP2024_V33.raw",
+    "bus_records": 2025,
+    "transformer_graph_representation": "physical-terminal connectivity projection; not an electrical equivalent",
+    "bus_voltage_counts": {
+      "38.0000": 278,
+      "110.0000": 456,
+      "220.0000": 69,
+      "380.0000": 7,
+      "20.0000": 353,
+      "10.5000": 100,
+      "0.6900": 189,
+      "10.0000": 103,
+      "21.0000": 3,
+      "0.4000": 116,
+      "3.3000": 3,
+      "33.0000": 219,
+      "33.4000": 2,
+      "0.8000": 2,
+      "1.0000": 4,
+      "0.6600": 15,
+      "2.0000": 2,
+      "11.0000": 11,
+      "11.5000": 15,
+      "17.5000": 8,
+      "0.4800": 1,
+      "22.0000": 19,
+      "0.6000": 3,
+      "19.0000": 3,
+      "16.0000": 1,
+      "6.6000": 2,
+      "6.0000": 4,
+      "275.0000": 15,
+      "0.6500": 1,
+      "150.0000": 1,
+      "17.0000": 6,
+      "6.3000": 1,
+      "15.0000": 5,
+      "15.7500": 2,
+      "13.8000": 1,
+      "260.0000": 1,
+      "10.7500": 1,
+      "18.0000": 1,
+      "15.8000": 2
+    },
+    "bus_type_counts": {
+      "1": 1469,
+      "2": 549,
+      "3": 5,
+      "4": 2
+    },
+    "ac_branch_records": 1129,
+    "in_service_ac_branches": 1079,
+    "transformer_devices": 1310,
+    "three_winding_devices": 109,
+    "in_service_transformers_status_1": 1309,
+    "other_transformer_status_counts": {
+      "4": 1
+    },
+    "generator_records": 597,
+    "missing_branch_or_transformer_bus_references": 0,
+    "all_records_graph": {
+      "components": 2,
+      "largest_sizes": [
+        2024,
+        1
+      ],
+      "isolated_nodes": 1
+    },
+    "in_service_graph": {
+      "components": 2,
+      "largest_sizes": [
+        2022,
+        1
+      ],
+      "isolated_nodes": 1
+    },
+    "target_voltage_buses_including_380_base": 547,
+    "active_target_voltage_buses": 546,
+    "target_voltage_induced_graph": {
+      "components": 2,
+      "largest_sizes": [
+        545,
+        1
+      ],
+      "isolated_nodes": 1
+    },
+    "ac_branch_nonnumeric_r_x_b_rating_a": 0,
+    "ac_branch_zero_rating_a": 132
+  }
+}

@@ -1,0 +1,4 @@
+Licence,GSP Group,Node 1,Operating Voltage 1,Node 2,Operating Voltage 2,Status,Vector Group,R1,X1,X0,Min Tap,Max Tap,Nominal Rating,Emergency Rating,Reverse Power Capability,Method of Earthing
+EMIDS,Berkswell 132kV,BANR3_1H3,33,BANR5_1T0,11,Updated,Dyn11,6.422,110.846,99.761,-12,4,12,19,-,Resistor
+EMIDS,Berkswell 132kV,BANR3_2H3,33,BANR5_2T0,11,Updated,Dyn11,5.803,111.939,100.745,-12,4,12,19,-,Resistor
+EMIDS,Berkswell 132kV,CAMH3_1H3,33,CAMH5_1T0,11,Updated,Dyn11,3.279,93.939,93.939,-10,3,20,20,-,Resistor

@@ -1,0 +1,18 @@
+[
+  {
+    "publishTime": "2024-01-01T00:30:00Z",
+    "startTime": "2024-01-01T00:00:00Z",
+    "settlementDate": "2024-01-01",
+    "settlementPeriod": 1,
+    "initialDemandOutturn": 21681,
+    "initialTransmissionSystemDemandOutturn": 23366
+  },
+  {
+    "publishTime": "2024-01-01T01:00:00Z",
+    "startTime": "2024-01-01T00:30:00Z",
+    "settlementDate": "2024-01-01",
+    "settlementPeriod": 2,
+    "initialDemandOutturn": 22444,
+    "initialTransmissionSystemDemandOutturn": 24041
+  }
+]

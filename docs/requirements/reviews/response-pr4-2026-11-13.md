@@ -173,7 +173,9 @@ The coordinator's triage authorises the fixes below; proposed thresholds, budget
 and formulation choices remain ASSUMPTION under the existing Q-N register. No owner
 answer, requirements baseline, workflow deployment or performance result is invented.
 Only the upstream merge brings changes to STATUS/decisions; neither file is authored
-by this revision. The PR body and repository settings are unchanged.
+by this revision. The PR body and repository settings are unchanged. Refreshed main again after it
+advanced during this revision; preserved its new Q-M-4 question unchanged before
+the P1 Q-N register when resolving the questionnaire append conflict.
 
 ### Must-fix dispositions
 
