@@ -69,6 +69,21 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
   one pilot DNO area and aggregated elsewhere?
 - [x] **Q-C-9 MVP network granularity (review #8):** → D-32 (full transmission).
 - [x] **Q-C-10 Currency (review #14):** → D-38.
+- [x] **Q-C-11 Network scope / connecting voltages (spike PR #5):** → D-11/D-32
+  (GB + Northern Ireland + Republic of Ireland; NI 275 kV transmission included).
+  D-60 confirms all GB 132 kV. Scope is answered; the named snapshot date is
+  tracked separately in Q-C-13.
+- [ ] **Q-C-12 Weather candidate approval (spike PR #5):** use 0.25° hourly ERA5
+  over [61 N, 12 W, 48 N, 10 E], eight fields including precipitation for hydro
+  and direct radiation for PV, or a different footprint/resolution/field set?
+  **★ Recommended default:** ASSUMPTION: validate this candidate against actual assets, units
+  and conversion models before retrieving monthly 2024 jobs. The roughly 1.33 GB
+  float32 budget is an assumption, not a measured download or owner decision.
+- [ ] **Q-C-13 Network snapshot date (spike PR #5):** which named operational
+  date defines the present-day model, separately from the 2024 backtest?
+  **★ Recommended default:** ASSUMPTION: reconcile each source's study year and
+  effective changes to one owner-selected date before claiming an operational
+  snapshot. No specific date is assumed and no network scope is reopened.
 - [ ] **Q-C-2 Network size target.** Approx. buses/nodes: 100s · 10k · 100k+ (continental AC)?
 - [ ] **Q-C-3 Data sources.** Open data only (OSM, ENTSO-E, EIA, NREL, ERA5), or will you
   have licensed/proprietary data (e.g. FERC 715 / CEII, PLEXOS/PSS/E models)?
@@ -184,6 +199,8 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [ ] **Q-L-3 Sensitive data:** will any data be CEII/critical-infrastructure restricted?
 - [x] **Q-L-5 Commercial data licensing (review #6):** share-alike acceptable? → D-30 (no).
 - [x] **Q-L-6 SaaS tenant isolation (review #14):** → D-39 (deferred to P4).
+- [x] **Q-L-7 Price data cost and product labelling:** → D-57 (free historical
+  sources, paid only if minuscule; MID and imbalance are not day-ahead prices).
 - [ ] **Q-L-4 Validation:** how will we know the simulator is *right*? Benchmark vs
   historical events, vs reference tools, vs published studies?
 
@@ -192,3 +209,11 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-M-1 Timeline:** first usable version when? Any hard deadline?
 - [x] **Q-M-2 MVP slice:** if you could only have one thing working first, what is it?
 - [x] **Q-M-3 Non-goals:** anything explicitly out of scope?
+- [ ] **Q-M-4 Data-spike fallback and effort assumptions (PR #5 §7):** detailed
+  assembly A; reduction B after A; synthetic C; two-zone D; regional pilot E;
+  boundary-zone F? **★ Recommended default:** ASSUMPTION: proceed with research assembly A
+  under D-56/D-60 and evaluate F as a D-55 proxy prototype alongside it. B–F do
+  not silently replace required full-network coverage. The person-week ranges
+  (including F's candidate 20–40 zones) are assumptions, exclude procurement,
+  external access delays, engine/UI work and independent D-28 numerical acceptance,
+  and need owner review before they become schedule commitments.

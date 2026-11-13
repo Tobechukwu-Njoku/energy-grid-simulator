@@ -1,0 +1,4 @@
+Licence,GSP Group,BSP Group,Node 1,Node 2,Circuit Status,Operating Voltage (kV),Circuit Code,R1,X1,B1,R0,X0,Winter,Intermediate Cool,Intermediate Warm,Summer,Circuit Length (km),Equipment
+EMIDS,Berkswell 132kV,Berkswell 132kV,BESW1_105,COVC1_MAIN1,Unchanged,132,L1,0.4229,0.806,19.6259,1.2884,0.3873,644,587,587,587,9.638,Circuit
+EMIDS,Berkswell 132kV,Berkswell 132kV,BESW1_205,BESW1Q,Unchanged,132,L1,0.0217,0.1227,2.0701,0.2363,0.0526,971,899,899,899,1.469,Circuit
+EMIDS,Berkswell 132kV,Berkswell 132kV,BESW1_305,WARW1_103,Unchanged,132,L1,0.6336,2.1123,6.2997,1.6562,6.1203,972,900,900,780,13.856,Circuit
