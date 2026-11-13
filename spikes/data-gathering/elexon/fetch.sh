@@ -6,8 +6,9 @@
 set -euo pipefail
 
 BASE_URL="https://data.elexon.co.uk/bmrs/api/v1"
-RAW_BASE="${DATA_DIR:-/Users/njotob/energy-data/raw/elexon}"
-YEAR="2024"
+RAW_BASE="${DATA_DIR:-${HOME}/energy-data/raw/elexon}"
+PYTHON="${PYTHON:-python3}"
+"$PYTHON" -I -c 'import ijson'
 CONCURRENCY="${CONCURRENCY:-6}"
 MAX_RETRIES="${MAX_RETRIES:-5}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +24,7 @@ if [[ ! "$MAX_RETRIES" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 validate_response() {
-    python3 -I "$SCRIPT_DIR/validate_response.py" "$1" "$2"
+    "$PYTHON" -I "$SCRIPT_DIR/validate_response.py" "$1" "$2"
 }
 
 wait_batch() {
@@ -40,7 +41,7 @@ wait_batch() {
 
 # Generate all 366 dates for leap year 2024
 get_dates_2024() {
-    python3 -I -c "
+    "$PYTHON" -I -c "
 import datetime
 start = datetime.date(2024, 1, 1)
 end = datetime.date(2024, 12, 31)
