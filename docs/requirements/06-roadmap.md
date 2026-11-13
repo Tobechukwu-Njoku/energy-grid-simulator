@@ -21,3 +21,27 @@ control which features are *implemented*.
 - **M3** API and results storage
 - **M4** map UI
 - **M5** historic-year backtest report (prices, generation mix, constraint costs)
+
+## Proposed acceptance decomposition (PR #4 revision, 2026-11-13)
+
+ASSUMPTION: The following is engineering sequencing within the milestones above,
+not new phase/scope decisions. See `04-requirements.md` for individually numbered
+acceptance criteria, numeric proposals and the complete FR/NFR-to-milestone table.
+D-55 adds published security/stability proxies; D-59 fixes cost-based redispatch;
+D-60 includes every GB 132 kV area. D-56 permits tagged research-only data, but not
+committed restricted raw files, and does not waive pre-commercial clearance.
+
+| Milestone | Staged evidence and requirement ownership |
+|---|---|
+| M0 | Documentation bootstrap and later CPU CI profile, independent/adversarial review, attribution rejection and dependency policy (NFR-3/8/10/12, FR-18 contract). Baseline gate still controls code. |
+| M0.5 | D-31 only: per-operator/voltage coverage, provenance and missing-parameter handoff (FR-2/3/19); input rights tagged separately from commercial clearance. |
+| M1 | Dated topology/assets/rules, underlying/embedded demand, losses, calendar and shared scenario identity (FR-1–5/19/21 inputs, NFR-1/2 foundations). |
+| M2a | Long-horizon energy LP pre-pass, then two-market UC MILP with reserves and commitment proxies; rolling-state and cancellation tests (FR-6/9/11/18; NFR-2/5/7/9). |
+| M2b | Full-network fixed-commitment DC cost-based redispatch, secured boundaries/proxies, constraint screening and bounded UC repair (FR-7/8/21, NFR-4). |
+| M2c | National fixed-UC pricing LP and independent UC/network reference cases; full-network CPU benchmarks (FR-10/13, NFR-2/4/5). PyPSA agreement is not BM-outturn validation. |
+| M3 | SDK/CLI/API identity, solve workers, persisted results, retention and input archival (FR-4/11/15/16, NFR-1/6/9/10/12). |
+| M4 | Dense map/analytics, comparison, keyboard/accessibility and responsiveness evidence (FR-14/20, NFR-6). |
+| M5 | Frozen historical holdout: price/mix/BM cost AND volume/curtailment/adequacy gates and stress report; final full-inventory/throughput evidence (FR-12/17, NFR-11, FR-2, NFR-5). |
+
+M2a–c are parts of M2, not independently shippable reduced MVPs. M5 cannot be passed
+with incompatible or unavailable BM/curtailment observations labelled as success.

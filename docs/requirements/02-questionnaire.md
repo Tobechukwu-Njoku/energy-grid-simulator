@@ -1,12 +1,17 @@
 # 02 — Requirements Questionnaire
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 Each question has a stable ID, why it matters, options, and a **recommended default** (★) that
 agents may assume *only* if the owner explicitly says "use defaults" for that section.
 
 Status markers: `[ ]` open · `[x]` answered (see decisions log) · `[~]` partially answered.
 Sections are ordered by how much they shape everything downstream: **A–E are critical-path.**
+
+For PR #4's P1 baseline, section N is the active owner queue: **Q-N-4 and,
+conditionally, Q-N-3 only**. Earlier unanswered items remain a historical/P2+ backlog,
+not additional immediate owner requests. Engineering defaults below are proposals;
+they are not marked answered without an owner decision or explicit baseline adoption.
 
 ---
 
@@ -192,3 +197,42 @@ Sections are ordered by how much they shape everything downstream: **A–E are c
 - [x] **Q-M-1 Timeline:** first usable version when? Any hard deadline?
 - [x] **Q-M-2 MVP slice:** if you could only have one thing working first, what is it?
 - [x] **Q-M-3 Non-goals:** anything explicitly out of scope?
+
+## N. P1 baseline dispositions and engineering defaults
+
+Stable aliases preserve the draft's former OI-1–OI-12 references. `proposed default`
+means awaiting baseline adoption, not an invented owner answer. All defaults below
+are **ASSUMPTION:** unless an existing decision is explicitly cited.
+
+### Owner questions (two, one conditional)
+
+- [ ] **Q-N-3 Network/data gaps (alias OI-3, conditional).** If the verified D-31
+  inventory cannot satisfy D-32/D-60 or backtest observations, acquire missing data,
+  accept specific equivalents, or explicitly change release scope?
+  ★ Keep full all-132-kV scope; acquire/derive missing parameters with provenance and
+  accept equivalents individually. Reduced networks remain diagnostic fixtures, not
+  a reduced MVP. Escalate only evidenced gaps, not speculative scope questions.
+- [ ] **Q-N-4 Validation bar (alias OI-4; refines Q-L-4/Q-A-4).** Accept or amend the
+  proposed numeric holdout/coverage gates in `04-requirements.md`?
+  ★ Adopt its price, mix, BM cost/volume, curtailment and adequacy gates with a frozen
+  year/product definition before calibration; missing comparable evidence blocks a
+  validated-MVP claim. If FR-17's joint weather criterion has no observed event,
+  permit a clearly synthetic stress fixture alongside the closest observed episode.
+
+### Proposed engineering defaults (not additional owner questions)
+
+| ID / legacy alias | Status | Recommended default and alternatives |
+|---|---|---|
+| Q-N-1 / OI-1 | proposed default; D-55 fixes physics | DC plus secured boundaries and published commitment/stability proxies, reserves, directional interconnector losses and long-horizon storage targets; pure N-0 diagnostic only. Full AC remains P2. |
+| Q-N-2 / OI-2 | core settled D-59; detail proposed | Cost-based redispatch, never historic bid replay; GB Market Index and I-SEM DAM reference products if available (D-57); fixed historical external flows in reconstruction; explicit proxy/deferred market-rule inventory. Alternative boundary policies must be scenario-labelled. |
+| Q-N-5 / OI-5 | proposed default | 48 h look-ahead / 24 h advance, 0.1% UC relative gap or 1 native-objective-currency absolute gap, annual energy pre-pass; NFR-5 CPU budgets. Tighten after measurement, not an optimisation spike. Direct sparse production builder; no competing production-builder promotion contest. |
+| Q-N-6 / OI-6 | proposed default; relates Q-D-5 | Manifest-level numerical reproducibility with NFR-2 tolerances, not identical MILP schedules/bitwise cross-platform results. Exact reference solves use matched tolerances and relative gap ≤1e-6. |
+| Q-N-7 / OI-7 | information only; non-blocking | HiGHS CPU on D-48 host; inventory actual GPU and optional solver licences before enabling those adapters. No P1 cuOpt implementation or assumed GPU speedup. |
+| Q-N-8 / OI-8 | proposed default | Review all dependency/native/service terms; start with MIT, Apache-2.0, BSD-2/3-Clause, ISC, Zlib, Unicode-3.0; MPL-2.0 only after file-level obligation review. Isolate offline validators; block unreviewed exceptions. Retain Redis/PostgreSQL 18; no unapproved Valkey or TimescaleDB adoption. D-56 dataset research tags are separate from software licence approval. |
+| Q-N-9 / OI-9 | proposed default | Archive legally retainable pinned inputs as well as pinned results; manifests/summaries indefinite and unpinned full results 90 days (D-36). If rights prohibit retention, report rerun limitations and retain manifests/scripts only. |
+| Q-N-10 / OI-10 | proposed default | Submit/monitor/cancel/inspect, sequential CLI batches and limited two-run comparison; NFR-6 latency/viewports. In-place solver editing and distributed sweeps are later features. |
+| Q-N-11 / OI-11 | core settled D-54/D-58/D-61; detail proposed | ADR 0001 bootstrap profiles and shared-identity review evidence; proposed >5% wall / >10% RSS significant-regression gate with five paired repetitions. Public required checks after D-58 scans/merges; do not change bot summaries. |
+| Q-N-12 / OI-12 | proposed default; relates Q-L-2/Q-L-3 | Localhost/private VPN, no public P1 endpoints. Resolve auth/sensitive-data questions before external exposure; no P4 tenancy work pulled forward. |
+
+D-60 resolves the 132 kV boundary; D-58 resolves the public-repository direction;
+D-61 resolves the bot-summary policy. Do not reopen these as baseline questions.
