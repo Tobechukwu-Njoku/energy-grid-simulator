@@ -2,7 +2,7 @@
 
 _Last updated: 2026-11-13_
 
-**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-73 (D-5 superseded by D-23).
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-74 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
@@ -30,6 +30,12 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
+
+**PR #23 revision-2 review:** exact head `b38db0675fa3b2eb6a05600fc6fb22d85e0dd8cd`
+re-reviewed; verdict **must-fix**. All 81 submitted tests pass, but nine remaining
+enforcement findings require correction and exact-head re-review. Evidence and
+R1–R8 / ADV23-01..18 dispositions:
+[revision-2 report](reviews/gpt-2026-11-13-pr23-r2.md). PR #23 was not modified.
 
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
