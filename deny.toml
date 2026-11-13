@@ -1,0 +1,56 @@
+# cargo-deny policy (ADR 0001, NFR-8, Q-N-8). Run: cargo deny check
+# Any exception or allow-list change is a policy change and needs independent review.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+unmaintained = "all"
+# Approved advisory exceptions only, each with a reason and review reference.
+ignore = []
+
+[licenses]
+version = 2
+# Q-N-8 starting allow-list. MPL-2.0 needs a file-level obligation review first,
+# and copyleft licences are not on the list, so they fail until reviewed.
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.93
+# Keep the reviewed list even when no current dependency uses an entry.
+unused-allowed-license = "allow"
+# Reviewed per-crate licence exceptions only.
+exceptions = []
+
+[licenses.private]
+# Workspace crates are unpublished (publish = false); the project licence is
+# not chosen yet (D-17), so they are excluded from the licence check.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# NFR-10.AC1: no Python or Julia runtime in the production graph.
+deny = [
+    { crate = "pyo3", reason = "NFR-10: no Python runtime in production" },
+    { crate = "pyo3-ffi", reason = "NFR-10: no Python runtime in production" },
+    { crate = "cpython", reason = "NFR-10: no Python runtime in production" },
+    { crate = "python3-sys", reason = "NFR-10: no Python runtime in production" },
+    { crate = "jlrs", reason = "NFR-10: no Julia runtime in production" },
+    { crate = "jl-sys", reason = "NFR-10: no Julia runtime in production" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
