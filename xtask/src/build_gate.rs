@@ -2338,6 +2338,42 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
+    // R7-01: glibc's libc.so names the dynamic loader under /lib64, which
+    // gcc's search list omits; the trusted policy's system roots cover it,
+    // and the shipped policy lists those roots.
+    #[test]
+    fn r7_01_policy_system_roots_cover_script_inputs() {
+        let root = scratch("roots");
+        let sys = root.join("sys");
+        let os = root.join("lib64");
+        write(&sys.join("libc.so.6"), ELF);
+        write(&os.join("ld-linux-x86-64.so.2"), ELF);
+        write(
+            &sys.join("libc.so"),
+            format!(
+                "GROUP ( {}/libc.so.6 AS_NEEDED ( {}/ld-linux-x86-64.so.2 ) )\n",
+                sys.display(),
+                os.display()
+            )
+            .as_bytes(),
+        );
+        let mut policy = resolving(&root);
+        assert!(!policy.check(&strings(&["-lc"])).is_empty());
+        policy.search_roots = vec![os.clone()];
+        assert_eq!(policy.check(&strings(&["-lc"])), Vec::<String>::new());
+        let gates: toml_edit::DocumentMut = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/gates.toml"),
+        )
+        .expect("gates.toml")
+        .parse()
+        .expect("toml");
+        let roots = string_array(&gates["link_search_roots"]);
+        for dir in ["/lib64", "/usr/lib", "/lib"] {
+            assert!(roots.iter().any(|root| root == dir), "{dir}: {roots:?}");
+        }
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
     // R7-01: a direct input in Rust's own output places must be an object or
     // archive, not a script that names other files.
     #[test]

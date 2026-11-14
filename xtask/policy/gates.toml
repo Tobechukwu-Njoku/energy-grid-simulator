@@ -35,8 +35,13 @@ link_frameworks = ["CoreFoundation", "Security", "SystemConfiguration"]
 # refused, whatever it contains, and a system linker script's inputs are checked
 # the same way. Build and temporary directories are never trusted. A native
 # solver installed outside the system directories is added here with the
-# owner's approval.
-link_search_roots = []
+# owner's approval. The operating system's own library roots are listed because
+# the driver does not report all of them (glibc's libc.so names
+# /lib64/ld-linux-x86-64.so.2, which gcc's search list omits).
+link_search_roots = [
+    "/lib", "/lib32", "/lib64", "/libx32", "/usr/lib", "/usr/lib32", "/usr/lib64",
+    "/usr/libx32",
+]
 
 # Pull-request gates. They build and test PR code with a read-only token and no
 # secrets. Their workflow files are protected paths: any change needs the owner's

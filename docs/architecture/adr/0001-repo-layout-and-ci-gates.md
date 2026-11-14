@@ -440,8 +440,10 @@ adds no decision beyond D-52, D-56, D-73 and D-74.
   directory that is not *trusted* is refused, whatever it contains. Trusted means
   the toolchain sysroot, the C driver's own library directories (`cc
   -print-search-dirs`, in the guard's sanitised environment) or a
-  `link_search_roots` entry of the trusted `gates.toml` (empty); the build directory
-  and the temporary directory never are. The file found in the trusted directories
+  `link_search_roots` entry of the trusted `gates.toml` (the operating system's
+  `/lib*` and `/usr/lib*` roots, since the driver's list omits for example `/lib64`
+  where glibc's `libc.so` names the dynamic loader); the build directory and the
+  temporary directory never are. The file found in the trusted directories
   is inspected: a thin archive is refused, and a linker script (glibc's `libc.so`,
   `libm.so`, libgcc's `libgcc_s.so` are scripts) may only use `GROUP`, `INPUT`,
   `AS_NEEDED` and `OUTPUT_FORMAT`/`OUTPUT_ARCH`/`TARGET`; each input must be an
