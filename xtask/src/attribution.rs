@@ -1584,7 +1584,7 @@ mod tests {
             j(&["Generated with ", "v0."]),
             j(&["Generated with ", "v0.dev"]),
             j(&["Generated with Vercel ", "v0"]),
-            j(&["Generated with Augment ", "Code"]),
+            j(&["Generated with Aug", "ment Code"]),
             j(&["Built with ", "Augment"]),
             format!("{trailer}{}", j(&["v", "0"])),
             format!("{trailer}{}", j(&["Augment ", "Agent"])),
