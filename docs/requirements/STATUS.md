@@ -41,6 +41,16 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
 
+**PR #23 revision 14 (implementation, 2026-11-14):** R13-01..03 (GPT) and
+ADV23R13-01..08 (Gemini) addressed (ADR 0001 revision-14 addendum). Secret exemptions
+name the whole detected block (key header through end marker) by blob hash, per view;
+match locations drop consumed newlines so a following line cannot allowlist a finding;
+inline gitleaks markers are ignored; `provenance` scans every file version a PR's
+commits introduced (CI base: current main). Local rules add URI user-info passwords,
+kubeconfig credentials, netrc/pgpass records and over-150-character assignments.
+Attribution adds CodeQwen, Refact, appreciation/discussion/conversation phrases and
+preposition-less credit trailers. Next: round-14 review.
+
 **PR #23 revision 13 (implementation, 2026-11-14):** R12-01..02 (GPT) and
 ADV23R12-01..08 (Gemini) addressed (ADR 0001 revision-13 addendum). The secrets scan
 runs over every text view of a file (raw bytes, UTF-8, UTF-16/32 both byte orders and

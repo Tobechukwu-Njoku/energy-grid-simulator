@@ -70,8 +70,12 @@ on the separate target system (D-65).
   default ruleset (MIT), vendored unchanged in `xtask/policy/gitleaks.toml`, plus local rules
   in the same schema in `xtask/policy/secret-rules.toml`. Every file is scanned as raw bytes
   and as UTF-8, UTF-16 and UTF-32 text in both byte orders and every alignment; a finding in
-  any view fails. A synthetic example key quoted in a review needs an exact-line
-  `[[secret_exemption]]` in `xtask/policy/repository.toml`.
+  any view fails. In CI it also scans every file version any commit of the pull request
+  (or push) introduced, so a secret added and later removed still fails; locally, pass
+  `provenance --base origin/main --head HEAD`. Inline `gitleaks:allow` markers are ignored.
+  A synthetic example quoted in a review needs a `[[secret_exemption]]` in
+  `xtask/policy/repository.toml` naming the whole detected block (its lines, and for a
+  private key everything through the key's end marker) by `git hash-object` of its text.
 - **Policy paths** (`.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
   `Cargo.toml`, `rust-toolchain.toml`, `docs/security/`) need the policy owner's APPROVED
   review on the exact head. Agents push and open pull requests from the machine account

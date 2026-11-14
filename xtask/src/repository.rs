@@ -900,6 +900,18 @@ pub fn check_paths_with_content(
     records: &[(String, String)],
     sniffed: &BTreeMap<String, &str>,
 ) -> Vec<Finding> {
+    check_paths_inner(paths, document, records, sniffed, true)
+}
+
+/// [`check_paths_with_content`]; without `type_allowlist`, a file is data
+/// only when its content is (history scan, R13-03).
+fn check_paths_inner(
+    paths: &[String],
+    document: &DocumentMut,
+    records: &[(String, String)],
+    sniffed: &BTreeMap<String, &str>,
+    type_allowlist: bool,
+) -> Vec<Finding> {
     let mut findings = Vec::new();
     // A missing list allows nothing (fail closed).
     let list = |key: &str| document.get(key).map(string_array).unwrap_or_default();
@@ -972,7 +984,7 @@ pub fn check_paths_with_content(
                     .chain(&binary_types)
                     .any(|allowed| allowed.eq_ignore_ascii_case(&ext))
             });
-        let is_data = !type_allowed || content.is_some();
+        let is_data = (type_allowlist && !type_allowed) || content.is_some();
         if !is_data || listed_metadata {
             continue;
         }
@@ -1022,8 +1034,24 @@ pub(crate) fn line_blob(repo: &std::path::Path, text: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Whether a detected block of `path` is a reviewed exemption.
+fn exempt_block(
+    repo: &std::path::Path,
+    exemptions: &[(String, String)],
+    path: &str,
+    block: &str,
+) -> bool {
+    let mut blob = None;
+    exemptions.iter().any(|(file, wanted)| {
+        file == path && blob.get_or_insert_with(|| line_blob(repo, block)) == wanted
+    })
+}
+
 /// Synthetic example keys quoted in review reports: each names one exact
-/// line of one file, with a reason (trusted policy; no wildcards).
+/// detected block of one file by the Git blob hash of its text, with a
+/// reason (trusted policy; no wildcards). A block is the whole lines of a
+/// finding and, for a private key header, everything through the end of
+/// that key, so a reviewed header never admits a different key body (R13-01).
 fn load_secret_exemptions(document: &DocumentMut) -> Result<Vec<(String, String)>, String> {
     let mut found = Vec::new();
     if let Some(tables) = document
@@ -1032,7 +1060,12 @@ fn load_secret_exemptions(document: &DocumentMut) -> Result<Vec<(String, String)
     {
         for table in tables {
             let field = |key: &str| table.get(key).and_then(Item::as_str).map(str::to_owned);
-            match (field("path"), field("line_blob"), field("reason")) {
+            if table.contains_key("line_blob") {
+                return Err(format!(
+                    "{POLICY}: secret_exemption.line_blob is no longer accepted; name the whole detected block with block_blob (R13-01)"
+                ));
+            }
+            match (field("path"), field("block_blob"), field("reason")) {
                 (Some(path), Some(blob), Some(reason))
                     if !path.contains(['*', '?', '['])
                         && is_sha(&blob)
@@ -1042,7 +1075,7 @@ fn load_secret_exemptions(document: &DocumentMut) -> Result<Vec<(String, String)
                 }
                 _ => {
                     return Err(format!(
-                        "{POLICY}: every secret_exemption needs one exact path, line_blob and reason"
+                        "{POLICY}: every secret_exemption needs one exact path, block_blob and reason"
                     ));
                 }
             }
@@ -1170,12 +1203,34 @@ pub fn misnamed_manifest(path: &str, text: &str, metadata: &[String]) -> Option<
     })
 }
 
-/// Runs the provenance, secrets and raw-data gate.
+/// Runs the provenance, secrets and raw-data gate on the checkout.
 ///
 /// # Errors
 ///
 /// Fails if Git, file reads or the trusted policy fail.
 pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
+    provenance_range(ctx, None)
+}
+
+/// A commit range for [`provenance_range`]: `base..head`, or every commit
+/// reachable from `head` when there is no base.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct History {
+    /// Commits reachable from here are not scanned.
+    pub base: Option<String>,
+    /// The newest commit of the range.
+    pub head: String,
+}
+
+/// Runs the provenance, secrets and raw-data gate on the checkout and, with
+/// a range, on every file version any commit of the range introduced
+/// (R13-03): a secret or data file added and later deleted or replaced
+/// within the range still fails.
+///
+/// # Errors
+///
+/// Fails if Git, file reads or the trusted policy fail.
+pub fn provenance_range(ctx: &Ctx, range: Option<&History>) -> Result<Vec<Finding>, String> {
     let document = policy(ctx)?;
     let paths = tracked(&ctx.repo)?;
     let mut findings = Vec::new();
@@ -1235,12 +1290,9 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             std::str::from_utf8(&bytes)
                 .map_or_else(|_| String::new(), |text| line_blob(&ctx.repo, text))
         });
-        for hit in secrets.scan(path, &bytes).into_iter().filter(|_| !pinned) {
-            let exempt = hit.line.is_some()
-                && secret_exemptions.iter().any(|(file, blob)| {
-                    file == path && line_blob(&ctx.repo, &hit.line_text) == *blob
-                });
-            if !exempt {
+        if !pinned {
+            let exempt = |block: &str| exempt_block(&ctx.repo, &secret_exemptions, path, block);
+            for hit in secrets.scan_with(path, &bytes, &exempt) {
                 findings.push(Finding::at(path, hit.line, hit.message));
             }
         }
@@ -1253,7 +1305,163 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     findings.extend(check_paths_with_content(
         &paths, &document, &records, &sniffed,
     ));
+    if let Some(range) = range {
+        let scan = HistoryScan {
+            document: &document,
+            records: &records,
+            secrets: &secrets,
+            exemptions: &secret_exemptions,
+            dtd_allowed: &dtd_allowed,
+        };
+        findings.extend(scan.run(ctx, range)?);
+    }
     Ok(findings)
+}
+
+/// The trusted inputs a historical scan shares with the checkout scan.
+struct HistoryScan<'a> {
+    document: &'a DocumentMut,
+    records: &'a [(String, String)],
+    secrets: &'a crate::secrets::Ruleset,
+    exemptions: &'a [(String, String)],
+    dtd_allowed: &'a [String],
+}
+
+impl HistoryScan<'_> {
+    fn run(&self, ctx: &Ctx, range: &History) -> Result<Vec<Finding>, String> {
+        let repo = ctx.repo.as_path();
+        let commit = |revision: &str| -> Result<String, String> {
+            let spec = format!("{revision}^{{commit}}");
+            let out = crate::util::git(
+                repo,
+                &[
+                    "rev-parse",
+                    "--verify",
+                    "--quiet",
+                    "--end-of-options",
+                    &spec,
+                ],
+            )
+            .map_err(|_| format!("history scan: {revision} is not a commit"))?;
+            Ok(String::from_utf8_lossy(&out).trim().to_owned())
+        };
+        let head = commit(&range.head)?;
+        let selector = match &range.base {
+            Some(base) => format!("{}..{head}", commit(base)?),
+            None => head.clone(),
+        };
+        // Objects the range introduced: reachable from head, not from base.
+        let objects = crate::util::git(
+            repo,
+            &["rev-list", "--objects", "--no-object-names", &selector],
+        )?;
+        let new_objects: BTreeSet<String> = String::from_utf8_lossy(&objects)
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect();
+        // File versions at head are the checkout, scanned already.
+        let mut at_head = BTreeSet::new();
+        let listing = crate::util::git(repo, &["ls-tree", "-r", "-z", "--full-tree", &head])?;
+        for entry in listing.split(|b| *b == 0).filter(|e| !e.is_empty()) {
+            let entry = String::from_utf8_lossy(entry);
+            if let Some((meta, path)) = entry.split_once('\t')
+                && let Some(blob) = meta.split(' ').nth(2)
+            {
+                at_head.insert((path.to_owned(), blob.to_owned()));
+            }
+        }
+        // Every (path, blob) any commit added or changed, against each parent.
+        let commits = crate::util::git(repo, &["rev-list", &selector])?;
+        let mut versions: BTreeMap<(String, String), String> = BTreeMap::new();
+        for sha in String::from_utf8_lossy(&commits).split_whitespace() {
+            let raw = crate::util::git(
+                repo,
+                &[
+                    "diff-tree",
+                    "-r",
+                    "-z",
+                    "-m",
+                    "--root",
+                    "--no-renames",
+                    "--no-commit-id",
+                    "--raw",
+                    "--no-abbrev",
+                    sha,
+                ],
+            )?;
+            let mut fields = raw.split(|b| *b == 0);
+            while let Some(meta) = fields.next() {
+                let meta = String::from_utf8_lossy(meta);
+                let Some(meta) = meta.strip_prefix(':') else {
+                    continue;
+                };
+                let Some(path) = fields.next() else { break };
+                let parts: Vec<&str> = meta.split(' ').collect();
+                let (Some(mode), Some(blob), Some(status)) =
+                    (parts.get(1), parts.get(3), parts.get(4))
+                else {
+                    continue;
+                };
+                if status.starts_with('D') || *mode == "160000" {
+                    continue;
+                }
+                let key = (
+                    String::from_utf8_lossy(path).into_owned(),
+                    (*blob).to_owned(),
+                );
+                versions.entry(key).or_insert_with(|| sha[..12].to_owned());
+            }
+        }
+        let mut findings = Vec::new();
+        let mut paths = Vec::new();
+        let mut sniffed = BTreeMap::new();
+        let mut origin: BTreeMap<String, String> = BTreeMap::new();
+        for ((path, blob), sha) in &versions {
+            if at_head.contains(&(path.clone(), blob.clone())) {
+                continue;
+            }
+            paths.push(path.clone());
+            origin.entry(path.clone()).or_insert_with(|| sha.clone());
+            if !new_objects.contains(blob) {
+                continue;
+            }
+            let bytes = crate::util::git(repo, &["cat-file", "blob", blob])?;
+            // Recognised data formats only: the file-type allowlist and the
+            // binary/undecodable class apply to the checkout, not history.
+            let format = data_signature(&bytes).filter(|format| {
+                !(*format == XML_DTD && self.dtd_allowed.iter().any(|f| f == path))
+            });
+            if let Some(format) = format {
+                sniffed.insert(path.clone(), format);
+            }
+            if self.secrets.is_pinned_copy(path, || blob.clone()) {
+                continue;
+            }
+            let exempt = |block: &str| exempt_block(repo, self.exemptions, path, block);
+            for hit in self.secrets.scan_with(path, &bytes, &exempt) {
+                findings.push(Finding::at(
+                    path.clone(),
+                    hit.line,
+                    format!("in commit {sha} (blob {}): {}", &blob[..12], hit.message),
+                ));
+            }
+        }
+        paths.sort();
+        paths.dedup();
+        for finding in check_paths_inner(&paths, self.document, self.records, &sniffed, false) {
+            let sha = finding
+                .file
+                .as_ref()
+                .and_then(|file| origin.get(file))
+                .cloned()
+                .unwrap_or_default();
+            findings.push(Finding {
+                message: format!("in commit {sha}: {}", finding.message),
+                ..finding
+            });
+        }
+        Ok(findings)
+    }
 }
 
 /// Checks that CODEOWNERS assigns every protected path to the owner.

@@ -171,12 +171,17 @@ jobs:
           fetch-depth: 0
       - id: trusted
         uses: ./.github/actions/trusted-policy
+      # Scans the checkout and every file version the event's commits introduced
+      # (R13-03); on a pull request, from current main.
       - name: Provenance gate
         env:
           TRUSTED: ${{ steps.trusted.outputs.dir }}
+          MAIN: ${{ steps.trusted.outputs.main }}
         run: |
           cd "$TRUSTED"
-          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" provenance
+          base=()
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then base=(--base-ref "$MAIN"); fi
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" provenance "${base[@]}"
 
   merge-gates:
     name: merge-gates

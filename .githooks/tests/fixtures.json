@@ -1569,5 +1569,103 @@
     "input": "fix: exercise message policy\n\nIn consultation with the system operator\n",
     "exit": 0,
     "expected": "fix: exercise message policy\n\nIn consultation with the system operator\n"
+  },
+  {
+    "name": "r13-strip-1",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920436f64655177656e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-2",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436f64655177656e203c6e6f7265706c7940616c69626162612e636f6d3e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-3",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564206279205265666163742e61690a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-4",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5769746820617070726563696174696f6e20746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-5",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496e20617070726563696174696f6e206f6620436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-6",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5468616e6b733a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-7",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a41492d417373697374616e63653a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-8",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a41492d47656e6572617465643a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-9",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496e2064697363757373696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-10",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a446973637573736564207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-keep-1",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nThanks: Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThanks: Jane Doe\n"
+  },
+  {
+    "name": "r13-keep-2",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nAppreciation to Ada Lovelace\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nAppreciation to Ada Lovelace\n"
+  },
+  {
+    "name": "r13-keep-3",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nIn discussion with the grid operator\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nIn discussion with the grid operator\n"
+  },
+  {
+    "name": "r13-keep-4",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nAssistance: Jane Doe <jane@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nAssistance: Jane Doe <jane@example.com>\n"
   }
 ]

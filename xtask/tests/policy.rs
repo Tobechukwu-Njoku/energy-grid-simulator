@@ -909,3 +909,147 @@ fn only_the_pinned_vendored_ruleset_is_not_scanned() {
             .is_empty()
     );
 }
+
+// R13-01 (CORE): at 9db2a40 the exemption for the round-12 report named only
+// the indented PuTTY header line, so replacing the synthetic body and MAC
+// below it with a real key still passed. Exemptions now hash the whole block.
+#[test]
+fn r13_01_exempt_header_does_not_admit_a_new_key_body() {
+    const REPORT: &str = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md";
+    let text = std::fs::read_to_string(root().join(REPORT)).expect("report");
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write(REPORT, &text);
+    repo.commit("docs: reviewed report");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert!(found.is_empty(), "{:?}", files(&found));
+    // Same approved headers, a different body and a MAC under ADV23R12-01.
+    let body = "  Private-Lines: 1\n  AAAAYCe\n";
+    assert_eq!(text.matches(body).count(), 1);
+    let changed = text.replace(
+        body,
+        "  Private-Lines: 1\n  AAAAQLnew0therBodyFromARealKey\n  Private-MAC: 5e1a\n",
+    );
+    repo.write(REPORT, &changed);
+    repo.commit("docs: edit report");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert!(
+        found
+            .iter()
+            .any(|f| f.message.contains("local-putty-private-key")),
+        "{:?}",
+        files(&found)
+    );
+}
+
+fn history(repo: &Repo, base: &str) -> Vec<Finding> {
+    let range = repository::History {
+        base: Some(base.to_owned()),
+        head: "HEAD".to_owned(),
+    };
+    repository::provenance_range(&ctx(repo), Some(&range)).expect("provenance")
+}
+
+// R13-03 (CORE): at 9db2a40 a secret added in one commit and deleted (or
+// replaced) in the next left the final tree clean, and provenance passed.
+// Every file version the range introduced is now scanned.
+#[test]
+fn r13_03_secrets_and_data_added_then_removed_in_a_range_fail() {
+    let token = ["gh", "p_", &"0".repeat(36)].concat();
+    let start = || {
+        let repo = Repo::new();
+        repo.write("data/manifest.toml", MANIFEST);
+        let base = repo.commit("docs: start");
+        (repo, base)
+    };
+    // Add, then delete.
+    let (repo, base) = start();
+    repo.write("notes.txt", &format!("service_token={token}\n"));
+    let added = repo.commit("docs: notes");
+    std::fs::remove_file(repo.path().join("notes.txt")).expect("rm");
+    repo.commit("docs: tidy");
+    assert!(
+        repository::provenance(&ctx(&repo))
+            .expect("tree")
+            .is_empty()
+    );
+    let found = history(&repo, &base);
+    assert_eq!(found.len(), 1, "{:?}", files(&found));
+    assert!(found[0].message.contains("local-github-token"));
+    assert!(
+        found[0].message.contains(&added[..12]),
+        "{:?}",
+        files(&found)
+    );
+    // Add, then replace with harmless text.
+    let (repo, base) = start();
+    repo.write("notes.txt", &format!("service_token={token}\n"));
+    repo.commit("docs: notes");
+    repo.write("notes.txt", "harmless\n");
+    repo.commit("docs: reword");
+    assert_eq!(history(&repo, &base).len(), 1);
+    // On a side branch, removed there, then merged.
+    let (repo, base) = start();
+    repo.git(&["checkout", "-q", "-b", "side"]);
+    repo.write("docs/key.md", &format!("token {token}\n"));
+    repo.commit("docs: side");
+    repo.write("docs/key.md", "gone\n");
+    repo.commit("docs: side tidy");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("docs/other.md", "x\n");
+    repo.commit("docs: other");
+    repo.git(&["merge", "-q", "--no-ff", "-m", "merge side", "side"]);
+    let found = history(&repo, &base);
+    assert_eq!(found.len(), 1, "{:?}", files(&found));
+    // Raw and research-only data, added then deleted.
+    let (repo, _) = start();
+    repo.write(
+        "data/manifest.toml",
+        &format!(
+            "{MANIFEST}[[datasets]]\nname = \"prices\"\nfilename = \"prices.csv\"\nlicence_status = \"research-only\"\nlicence = \"Research only\"\n"
+        ),
+    );
+    repo.commit("data: record");
+    let base2 = repo.git(&["rev-parse", "HEAD"]);
+    repo.write("data/raw/dump.txt", "x\n");
+    repo.write("spikes/prices.csv", "a,b\n1,2\n");
+    repo.commit("data: oops");
+    for path in ["data/raw/dump.txt", "spikes/prices.csv"] {
+        std::fs::remove_file(repo.path().join(path)).expect("rm");
+    }
+    repo.commit("data: remove");
+    assert!(
+        repository::provenance(&ctx(&repo))
+            .expect("tree")
+            .is_empty()
+    );
+    let found = history(&repo, &base2);
+    let named: Vec<String> = files(&found);
+    assert!(
+        named.iter().any(|f| f.starts_with("data/raw/dump.txt")),
+        "{named:?}"
+    );
+    assert!(
+        named
+            .iter()
+            .any(|f| f.starts_with("spikes/prices.csv") && f.contains("research-only")),
+        "{named:?}"
+    );
+    // Controls: a clean history passes, and so does a reviewed exempt block
+    // added and later removed at its exempt path.
+    let (repo, base) = start();
+    repo.write("docs/a.md", "one\n");
+    repo.commit("docs: a");
+    repo.write("docs/a.md", "two\n");
+    repo.commit("docs: b");
+    assert!(history(&repo, &base).is_empty());
+    const REPORT: &str = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md";
+    let text = std::fs::read_to_string(root().join(REPORT)).expect("report");
+    let (repo, base) = start();
+    repo.write(REPORT, &text);
+    repo.commit("docs: report");
+    std::fs::remove_file(repo.path().join(REPORT)).expect("rm");
+    repo.commit("docs: drop report");
+    let found = history(&repo, &base);
+    assert!(found.is_empty(), "{:?}", files(&found));
+}

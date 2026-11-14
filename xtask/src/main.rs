@@ -26,7 +26,11 @@ commands:
                  [--target-dir DIR] [--jobs N]. Runs the tree's build scripts and
                  doctests: CI runs it only as the last step of an unprivileged job,
                  never in the trusted gates
-  provenance     dataset manifests, raw/research-only data, secrets (D-56)
+  provenance     dataset manifests, raw/research-only data, secrets (D-56) in the
+                 checkout and in every file version a range introduced (R13-03):
+                   [--base REV] [--head REV]
+                 or, in GitHub Actions, the event's range; --base-ref REV
+                 replaces the event base (CI: current main)
   docs           Markdown links and requirement traceability
   attribution    AI-attribution scan (D-52) of a range:
                    --base REV --head REV [--title T] [--body-file F]
@@ -201,13 +205,46 @@ fn pull_request_event() -> Result<serde_json::Value, String> {
     }
 }
 
+/// The range `provenance` scans history for (R13-03): `--base`/`--head`, or
+/// the GitHub event's range with `--base-ref` replacing its base. In GitHub
+/// Actions a range is required, so the history scan cannot be skipped.
+fn provenance_history(args: &Args) -> Result<Option<repository::History>, String> {
+    if option(args, "--base").is_some() || option(args, "--head").is_some() {
+        return Ok(Some(repository::History {
+            base: option(args, "--base").map(str::to_owned),
+            head: option(args, "--head").unwrap_or("HEAD").to_owned(),
+        }));
+    }
+    if let Some((name, value)) = event()? {
+        let range = attribution::Range::from_event(&name, &value)?;
+        return Ok(Some(repository::History {
+            base: option(args, "--base-ref").map(str::to_owned).or(range.base),
+            head: range.head,
+        }));
+    }
+    if std::env::var_os("GITHUB_ACTIONS").is_some() {
+        return Err("provenance: no event range; the history scan cannot be skipped in GitHub Actions (R13-03)".to_owned());
+    }
+    Ok(None)
+}
+
 fn run(args: &Args) -> Result<bool, String> {
     match args.command.as_str() {
         "policy" => run_policy(&args.ctx),
-        "provenance" => Ok(report(
-            "provenance/secrets/data (D-56)",
-            &repository::provenance(&args.ctx)?,
-        )),
+        "provenance" => {
+            let history = provenance_history(args)?;
+            if let Some(history) = &history {
+                println!(
+                    "history: {}..{}",
+                    history.base.as_deref().unwrap_or("(root)"),
+                    history.head
+                );
+            }
+            Ok(report(
+                "provenance/secrets/data (D-56)",
+                &repository::provenance_range(&args.ctx, history.as_ref())?,
+            ))
+        }
         "docs" => run_docs(&args.ctx),
         "build-gate" => {
             let wrapper = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;

@@ -746,3 +746,39 @@ revision 12. This addendum implements D-56 and D-52 as written and adds no decis
   Sweep or Granite only when written as a product name (capitalised), so
   "Fixed by sweep" and "parameter sweep" prose still pass.
 
+## Addendum — 2026-11-14: block exemptions, match locations, history scan, credential formats (PR #23 revision 14)
+
+- **Exemptions name whole blocks (R13-01).** A `[[secret_exemption]]` now carries a
+  `block_blob`: the Git blob hash of the complete detected block, not one line. A
+  block is the finding's whole lines; when they hold a private key or PuTTY header it
+  runs through the line with the key's end marker (`-----END`, `Private-MAC`,
+  `Private-Hash`) or to the end of the file. Exemptions are checked per text view
+  before views are merged. A reviewed header therefore never admits a different key
+  body or MAC; `line_blob` entries are rejected.
+- **Match locations and markers (R13-02).** As in upstream `detect.go`, newlines a
+  rule consumed at either end of its match are not part of it, so a
+  `regexTarget = "line"` allowlist sees only the matched lines, never the following
+  one. Inline `gitleaks:allow` markers are not honoured; only the trusted exemption
+  file accepts a finding. Upstream's global placeholder allowlist (`x+`, `${VAR}`,
+  stopwords) covers the vendored rules only; the local rules accept examples only by
+  exemption.
+- **History (R13-03).** `provenance` with a range (`--base/--head`, or the GitHub
+  event; CI passes current main as the base of a pull request) also scans every
+  (path, blob) any commit of the range added or changed, against each parent of a
+  merge, for objects not reachable from the base: secrets, `raw/` paths, key files,
+  research-only records and recognised data formats. Versions identical to the
+  checkout are not rescanned. The file-type allowlist and the binary/undecodable
+  class apply to the checkout only, so earlier commits holding an allowed-but-later-
+  removed file type do not fail (accepted limitation). In GitHub Actions a missing
+  range is an error.
+- **Credential formats (ADV23R13-01..03).** Local rules cover passwords in URI user
+  information for any scheme, kubeconfig `client-key-data` and credentials under a
+  `user:` entry, netrc machine/login/password records, pgpass
+  `host:port:database:user:password` records, and keyword assignments longer than the
+  vendored generic rule's 150-character cap (entropy 3.5). No local rule has a length
+  cap or placeholder heuristic.
+- **Attribution (ADV23R13-04..08).** CodeQwen and Refact join the names;
+  appreciation, discussion and conversation phrases, `Discussed with`, and
+  `Thanks:`, `Appreciation:`, `Assistance:`, `AI-Assistance:`, `AI-Generated:`
+  trailers are matched; the value of a trailer must still be a model name, so human
+  credits pass.

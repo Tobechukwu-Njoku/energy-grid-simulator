@@ -76,38 +76,80 @@ data_metadata_files = [
     "spikes/data-gathering/elexon/verification-supplement-2026-11-13.json",
 ]
 
-# Synthetic, non-working example keys quoted in review reports. Each names one
-# exact line of one file by the Git blob hash of the line text (so this file does
-# not repeat the key); never a wildcard.
+# Synthetic, non-working example credentials quoted in review reports. Each
+# names one exact detected block of one file by the Git blob hash of the block
+# text (so this file does not repeat it); never a wildcard. A block is the
+# finding's whole lines and, for a private key header, every line through the
+# end of that key, so a reviewed header never admits another key body (R13-01).
 [[secret_exemption]]
 path = "docs/requirements/reviews/gemini-2026-11-13-pr23-r2.md"
-line_blob = "d38e78289d703f77d3083278ff71cd146aecb5c2"
+block_blob = "d38e78289d703f77d3083278ff71cd146aecb5c2"
 reason = "ADV23R-09 reproduction input; a synthetic hexadecimal sequence, not a credential"
 
 [[secret_exemption]]
 path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
-line_blob = "6a0c486a322d768b9e444b3ada415158736d94af"
-reason = "ADV23R12-01 reproduction: PuTTY key header line quoted in prose, no key body"
+block_blob = "027d0d0b213edf10f2011f857d48f3af13db97f6"
+reason = "ADV23R12-01: header names quoted in prose, through the end of the synthetic key that follows"
 
 [[secret_exemption]]
 path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
-line_blob = "4008fdecffda6aa6bf309962c5d3bd1a6726a782"
-reason = "ADV23R12-01 reproduction: synthetic PuTTY key header (both quoted copies share this line)"
+block_blob = "7345f93be5d7afb04fb47cae06e1b92130a35d15"
+reason = "ADV23R12-01 reproduction: the complete synthetic seven-line PuTTY key block"
 
 [[secret_exemption]]
 path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
-line_blob = "ceddc8d7a84bf800def0f8c47dd80ea8aff066ad"
-reason = "ADV23R12-01 reproduction command: synthetic, truncated PuTTY key"
+block_blob = "cf6296f6375eac81d0a196c3458cdb9262600dff"
+reason = "ADV23R12-01: truncated synthetic PuTTY key block, through the reproduction command"
 
 [[secret_exemption]]
 path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
-line_blob = "dc1907f651103ee19ff1d3b8a8c311b5a14261d0"
+block_blob = "48ddc4d37157073345e30b27645e4d44e3843cfe"
+reason = "ADV23R12-01 reproduction command: synthetic PuTTY key in one printf line"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+block_blob = "dc1907f651103ee19ff1d3b8a8c311b5a14261d0"
 reason = "ADV23R12-02 reproduction command: synthetic GitLab runner token"
 
 [[secret_exemption]]
 path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
-line_blob = "b2777bf78dc8be85a58f89b9430ff1c9ef7d8742"
+block_blob = "b2777bf78dc8be85a58f89b9430ff1c9ef7d8742"
 reason = "ADV23R12-02 reproduction command: synthetic Perplexity key"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "147aff8b0be9e23931730b7cf5741a2320fe646f"
+reason = "ADV23R13-01 description: example connection URI with a placeholder password"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "bd0a83fa433fe96c29df354d962464125c27f805"
+reason = "ADV23R13-01 description: the URI syntax with placeholder user and password"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "a695c1c87f154e8c5bd855ea098989e5f5b27de8"
+reason = "ADV23R13-01 reproduction command: synthetic database password"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "188bb156bc4f84dafde5302fdbd51edec570e35e"
+reason = "ADV23R13-02 reproduction: truncated synthetic kubeconfig client key"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "42390573153f582e31254ee03cc5e2ec9cc0604b"
+reason = "ADV23R13-03 reproduction input: synthetic netrc record"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "6881c40e7d2e909b3100bbf61d92436b54fbca34"
+reason = "ADV23R13-03 reproduction command: synthetic netrc record"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "cab0353426e20dfead33a2a5724689d69527a328"
+reason = "ADV23R13-03 description: netrc syntax with placeholders"
 
 # Committed sample name -> the provenance record (sources.tsv local-name) it was cut from.
 [sample_sources]

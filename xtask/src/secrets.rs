@@ -6,8 +6,9 @@
 //! plus a few local rules in the same schema. This module evaluates that
 //! schema in Rust: `regex`, `secretGroup`, `entropy`, `keywords`, `path` and
 //! per-rule `allowlists` (`regexes` with `regexTarget`, `stopwords`, `paths`,
-//! `condition`). The global allowlist's `regexes` and `stopwords` apply; its
-//! `paths` never match, so every tracked file is scanned. A key this module
+//! `condition`). The global allowlist's `regexes` and `stopwords` apply to
+//! the rules of its own file (or those `targetRules` names); its `paths`
+//! never match, so every tracked file is scanned. A key this module
 //! does not understand, or a regex that does not compile, is an error: the
 //! check fails closed rather than silently skipping a rule.
 //!
@@ -16,6 +17,15 @@
 //! both byte orders at every alignment, ignoring any byte-order mark. A
 //! finding in any view counts, so choosing an encoding can never hide
 //! content that another reading shows.
+//!
+//! Inline allowlist markers in scanned content (gitleaks' `gitleaks:allow`
+//! comment) are ignored (R13-02): the only way to accept a finding is a
+//! reviewed exemption in trusted policy, which names the complete detected
+//! block (the matched lines, extended to the end of a private key block) by
+//! its content hash and is checked per view before views are merged (R13-01).
+//! Match locations follow upstream: newlines a rule consumed at either end
+//! of its match are not part of it, so a `regexTarget = "line"` allowlist
+//! never sees the following line (R13-02).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -45,13 +55,22 @@ struct Allowlist {
     /// Global allowlist: its paths never match (every file is scanned).
     ignore_paths: bool,
     /// Rule ids a global allowlist is limited to (`targetRules`); empty
-    /// means every rule.
+    /// means every rule of the same file.
     target_rules: Vec<String>,
+    /// Index of the ruleset file that declared it.
+    source: usize,
 }
 
 impl Allowlist {
-    fn applies_to(&self, id: &str) -> bool {
-        self.target_rules.is_empty() || self.target_rules.iter().any(|rule| rule == id)
+    /// A global allowlist without `targetRules` covers only the rules of
+    /// its own file: upstream's placeholder allowlist does not silence the
+    /// local rules, whose examples are accepted only by exemption (R13).
+    fn applies_to(&self, rule: &Rule) -> bool {
+        if self.target_rules.is_empty() {
+            self.source == rule.source
+        } else {
+            self.target_rules.contains(&rule.id)
+        }
     }
 
     fn allows(&self, path: &str, secret: &[u8], matched: &[u8], line: &[u8]) -> bool {
@@ -89,6 +108,8 @@ struct Rule {
     entropy: f64,
     keywords: Vec<Vec<u8>>,
     allowlists: Vec<Allowlist>,
+    /// Index of the ruleset file that declared it.
+    source: usize,
 }
 
 /// A compiled secret ruleset.
@@ -105,14 +126,52 @@ pub struct Ruleset {
 pub struct Hit {
     /// One-based line in that view, or `None` for a path rule.
     pub line: Option<usize>,
-    /// That line's text (for exact-line exemptions).
-    pub line_text: String,
     /// Description naming the rules and views.
     pub message: String,
 }
 
-/// Per line: the first view's line text, the rule ids and the view names.
-type LineHits = (String, BTreeSet<String>, BTreeSet<&'static str>);
+/// Per line: the rule ids and the view names.
+type LineHits = (BTreeSet<String>, BTreeSet<&'static str>);
+
+/// One finding in one view: its one-based line, the complete detected block
+/// (whole lines; for a private key header, through the end of the key) and
+/// the rule id.
+type ViewHit = (usize, String, String);
+
+/// Byte range of the whole lines from `line` to `end_line` (zero-based),
+/// extended, when they hold a private key header, through the line that
+/// ends that key (`-----END`, PuTTY `Private-MAC`/`Private-Hash`) or to the
+/// end of the text. An exemption therefore covers a key's body, never only
+/// its header (R13-01).
+fn block_range(
+    text: &[u8],
+    lower: &[u8],
+    newlines: &[usize],
+    line: usize,
+    end_line: usize,
+) -> (usize, usize) {
+    let start = if line == 0 { 0 } else { newlines[line - 1] + 1 };
+    let line_end = |index: usize| newlines.get(index).copied().unwrap_or(text.len());
+    let mut end = line_end(end_line).max(start);
+    let span = &lower[start..end];
+    let header = [&b"private key"[..], b"putty-user-key-file"]
+        .iter()
+        .filter_map(|marker| memchr::memmem::find(span, marker))
+        .min();
+    if let Some(offset) = header {
+        let from = start + offset;
+        let terminator = [&b"-----end"[..], b"private-mac", b"private-hash"]
+            .iter()
+            .filter_map(|marker| memchr::memmem::find(&lower[from..], marker))
+            .min();
+        end = terminator.map_or(text.len(), |at| {
+            let at = from + at;
+            line_end(newlines.partition_point(|n| *n < at))
+        });
+        end = end.max(start);
+    }
+    (start, end)
+}
 
 /// Translates Go RE2 syntax the Rust `regex` crate reads differently: a `{`
 /// that does not start a counted repetition is a literal in Go.
@@ -288,6 +347,7 @@ fn allowlist(table: &dyn TableLike, global: bool, place: &str) -> Result<Allowli
         paths: compile_all("paths")?,
         ignore_paths: global,
         target_rules,
+        source: 0,
     })
 }
 
@@ -371,6 +431,7 @@ fn rule(table: &dyn TableLike, place: &str) -> Result<Rule, String> {
             .map(|word| word.to_ascii_lowercase().into_bytes())
             .collect(),
         allowlists,
+        source: 0,
     })
 }
 
@@ -385,7 +446,7 @@ impl Ruleset {
         let mut rules = Vec::new();
         let mut global = Vec::new();
         let mut ids = BTreeSet::new();
-        for (name, source) in sources {
+        for (index, (name, source)) in sources.iter().enumerate() {
             let document: DocumentMut =
                 source.parse().map_err(|error| format!("{name}: {error}"))?;
             check_keys(
@@ -403,11 +464,14 @@ impl Ruleset {
             )?;
             for key in ["allowlist", "allowlists"] {
                 for table in tables(document.get(key), &format!("{name}: {key}"))? {
-                    global.push(allowlist(table, true, &format!("{name}: {key}"))?);
+                    let mut list = allowlist(table, true, &format!("{name}: {key}"))?;
+                    list.source = index;
+                    global.push(list);
                 }
             }
             for table in tables(document.get("rules"), &format!("{name}: rules"))? {
-                let rule = rule(table, &format!("{name}: rule"))?;
+                let mut rule = rule(table, &format!("{name}: rule"))?;
+                rule.source = index;
                 if !ids.insert(rule.id.clone()) {
                     return Err(format!("{name}: duplicate rule id `{}`", rule.id));
                 }
@@ -479,9 +543,17 @@ impl Ruleset {
     }
 
     /// Secret findings in one file, over every text view of its bytes,
-    /// one per line (the first view that showed it names the line).
+    /// one per line, with no exemptions.
     #[must_use]
     pub fn scan(&self, path: &str, bytes: &[u8]) -> Vec<Hit> {
+        self.scan_with(path, bytes, &|_| false)
+    }
+
+    /// Secret findings in one file, over every text view of its bytes, one
+    /// per line. `exempt` receives each finding's complete block text, per
+    /// view, before views are merged (R13-01); path findings are never exempt.
+    #[must_use]
+    pub fn scan_with(&self, path: &str, bytes: &[u8], exempt: &dyn Fn(&str) -> bool) -> Vec<Hit> {
         let mut found: BTreeMap<Option<usize>, LineHits> = BTreeMap::new();
         for rule in &self.rules {
             if rule.regex.is_none()
@@ -490,21 +562,22 @@ impl Ruleset {
                     .as_ref()
                     .is_some_and(|r| r.is_match(path.as_bytes()))
             {
-                found.entry(None).or_default().1.insert(rule.id.clone());
+                found.entry(None).or_default().0.insert(rule.id.clone());
             }
         }
         for (view, text) in views(bytes) {
-            for (line, line_text, id) in self.scan_view(path, &text) {
-                let entry = found
-                    .entry(Some(line))
-                    .or_insert_with(|| (line_text, BTreeSet::new(), BTreeSet::new()));
-                entry.1.insert(id);
-                entry.2.insert(view);
+            for (line, block, id) in self.scan_view(path, &text) {
+                if exempt(&block) {
+                    continue;
+                }
+                let entry = found.entry(Some(line)).or_default();
+                entry.0.insert(id);
+                entry.1.insert(view);
             }
         }
         found
             .into_iter()
-            .map(|(line, (line_text, ids, views))| {
+            .map(|(line, (ids, views))| {
                 let ids: Vec<String> = ids.into_iter().collect();
                 let views: Vec<&str> = views.into_iter().collect();
                 let message = if line.is_none() {
@@ -519,16 +592,12 @@ impl Ruleset {
                         views.join(", ")
                     )
                 };
-                Hit {
-                    line,
-                    line_text,
-                    message,
-                }
+                Hit { line, message }
             })
             .collect()
     }
 
-    fn scan_view(&self, path: &str, text: &[u8]) -> Vec<(usize, String, String)> {
+    fn scan_view(&self, path: &str, text: &[u8]) -> Vec<ViewHit> {
         let lower = text.to_ascii_lowercase();
         let newlines: Vec<usize> = memchr::memchr_iter(b'\n', text).collect();
         let mut hits = Vec::new();
@@ -569,24 +638,38 @@ impl Ruleset {
                 if rule.entropy > 0.0 && entropy(secret) <= rule.entropy {
                     continue;
                 }
-                let line = newlines.partition_point(|n| *n < whole.start());
+                // R13-02: as upstream (detect.go), newlines the regex consumed
+                // at either end are not part of the match, so its location
+                // and a line allowlist never reach the following line.
+                let (mut from, mut to) = (whole.start(), whole.end());
+                while to > from && matches!(text[to - 1], b'\n' | b'\r') {
+                    to -= 1;
+                }
+                while from < to && text[from] == b'\n' {
+                    from += 1;
+                }
+                let line = newlines.partition_point(|n| *n < from);
+                let end_line = newlines.partition_point(|n| *n < to).max(line);
                 let start = if line == 0 { 0 } else { newlines[line - 1] + 1 };
-                let end_line = newlines.partition_point(|n| *n < whole.end());
                 let end = newlines.get(end_line).copied().unwrap_or(text.len());
                 let lines = &text[start..end.max(start)];
                 if self
                     .global
                     .iter()
-                    .filter(|list| list.applies_to(&rule.id))
+                    .filter(|list| list.applies_to(rule))
                     .chain(&rule.allowlists)
-                    .any(|list| list.allows(path, secret, whole.as_bytes(), lines))
+                    .any(|list| list.allows(path, secret, &text[from..to], lines))
                 {
                     continue;
                 }
-                let first_end = newlines.get(line).copied().unwrap_or(text.len());
-                let first = String::from_utf8_lossy(&text[start..first_end]);
-                let first = first.strip_suffix('\r').unwrap_or(&first).to_owned();
-                hits.push((line + 1, first, rule.id.clone()));
+                let (block_start, block_end) = block_range(text, &lower, &newlines, line, end_line);
+                let block = String::from_utf8_lossy(&text[block_start..block_end]);
+                let block: String = block
+                    .split('\n')
+                    .map(|l| l.strip_suffix('\r').unwrap_or(l))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                hits.push((line + 1, block, rule.id.clone()));
             }
         }
         hits
@@ -811,6 +894,217 @@ mod tests {
             ids("f", format!("sourcegraph token {token}\n").as_bytes()).len(),
             1
         );
+    }
+
+    // R13-01: at 9db2a40 an exemption named only a PuTTY header line, so any
+    // key body below an approved header was exempt too. An exemption now
+    // receives the whole key block, header through its end marker.
+    #[test]
+    fn r13_01_exemption_covers_the_whole_key_block() {
+        let header = ["PuTTY-User-Key-File", "-3: ssh-ed25519"].concat();
+        let body = |private: &str| {
+            format!(
+                "  {header}\n  Encryption: none\n  Public-Lines: 1\n  AAAAC3Nz\n  Private-Lines: 1\n  {private}\n  Private-MAC: 00ff\n"
+            )
+        };
+        let reviewed = body("AAAAYCe");
+        let approved = reviewed.trim_end_matches('\n').to_owned();
+        let doc = |key: &str| format!("# Report\n\n```text\n{key}```\nafter\n");
+        let exempt = |block: &str| block == approved;
+        assert!(
+            rules()
+                .scan_with("docs/r.md", doc(&reviewed).as_bytes(), &exempt)
+                .is_empty()
+        );
+        // Same approved header, different body or MAC: not exempt.
+        for changed in [
+            body("AAAAZZZ"),
+            reviewed.replace("00ff", "1234"),
+            reviewed.replace("Private-MAC: 00ff\n", ""),
+        ] {
+            let found = rules().scan_with("docs/r.md", doc(&changed).as_bytes(), &exempt);
+            assert_eq!(found.len(), 1, "{found:?}");
+            assert!(found[0].message.contains("local-putty-private-key"));
+        }
+        // A header-only exemption never admits the key.
+        let header_only = |block: &str| block == format!("  {header}");
+        assert_eq!(
+            rules()
+                .scan_with("docs/r.md", doc(&reviewed).as_bytes(), &header_only)
+                .len(),
+            1
+        );
+        // PEM: the block runs through the END line.
+        let begin = ["-----BEGI", "N RSA PRIVATE KEY-----"].concat();
+        let pem = |line: &str| format!("{begin}\n{line}\n-----END RSA PRIVATE KEY-----\n");
+        let approved_pem = pem("MIIBOgIBAAJBAKj34GkxFhD9").trim_end().to_owned();
+        let exempt_pem = |block: &str| block == approved_pem;
+        assert!(
+            rules()
+                .scan_with(
+                    "docs/k.md",
+                    pem("MIIBOgIBAAJBAKj34GkxFhD9").as_bytes(),
+                    &exempt_pem
+                )
+                .is_empty()
+        );
+        assert_eq!(
+            rules()
+                .scan_with(
+                    "docs/k.md",
+                    pem("MIIBOgIBAAJBAOTHERBODY99").as_bytes(),
+                    &exempt_pem
+                )
+                .len(),
+            1
+        );
+    }
+
+    /// A 40-character AWS-secret-shaped value with high entropy.
+    fn aws_shaped() -> String {
+        let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        (0..40)
+            .map(|i| char::from(alphabet[(i * 37 + 11) % 64]))
+            .collect()
+    }
+
+    // R13-02: at 9db2a40 the match location included the newline a rule
+    // consumed, so a `regexTarget = "line"` allowlist marker on the FOLLOWING
+    // line suppressed the finding. Inline `gitleaks:allow` markers never count.
+    #[test]
+    fn r13_02_following_line_cannot_allowlist_a_finding() {
+        let value = aws_shaped();
+        let key = ["aws_secret", "_access_key="].concat();
+        let mount = ["# --mount=type", "=secret,"].concat();
+        let import = "import { harmless } from \"module\"";
+        for text in [
+            format!("{key}{value}\n"),
+            format!("{key}{value}\n{mount}\n"),
+            format!("{key}{value}\n{import}\n"),
+            format!("{key}{value}\r\n{mount}\r\n"),
+            format!("{key}{value}\r\n{import}\r\n"),
+            format!("{key}{value}\n\n{mount}\n"),
+            format!("{key}\"{value}\"\n{mount}\n"),
+            format!("{key}{value} # gitleaks:allow\n"),
+            format!("{key}{value} // gitleaks:allow\n{mount}\n"),
+        ] {
+            let found = ids("docs/credentials.txt", text.as_bytes());
+            assert_eq!(found.len(), 1, "{text:?}: {found:?}");
+            assert!(found[0].contains("generic-api-key"), "{found:?}");
+        }
+        // The upstream line allowlist still applies to its own line.
+        let same = format!("RUN {mount}id=aws {key}{value}\n");
+        assert!(ids("Dockerfile", same.as_bytes()).is_empty(), "{same}");
+    }
+
+    // ADV23R13-01..03: credentials in URIs, kubeconfig files, netrc and pgpass
+    // records passed at 9db2a40.
+    #[test]
+    fn adv23r13_01_03_credential_formats_are_detected() {
+        let long_token: String = (0..200)
+            .map(|i| {
+                char::from(
+                    b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
+                        [(i * 7 + 3) % 65],
+                )
+            })
+            .collect();
+        for (text, id) in [
+            (
+                [
+                    "const DB_URL: &str = \"postgres",
+                    "://grid_admin:",
+                    "aB8$kL2#mN9*pQ4!zY1@postgres.prod.internal:5432/energy_grid\";\n",
+                ]
+                .concat(),
+                "local-uri-credentials",
+            ),
+            (
+                [
+                    "url = mongodb+srv",
+                    "://u:",
+                    "s3cret@cluster0.example.net/db\n",
+                ]
+                .concat(),
+                "local-uri-credentials",
+            ),
+            (
+                ["https", "://x-access-token:", "abc@github.com/o/r.git\n"].concat(),
+                "local-uri-credentials",
+            ),
+            (
+                ["custom+scheme", "://:", "pw@host\n"].concat(),
+                "local-uri-credentials",
+            ),
+            // Placeholders are accepted only by a reviewed exemption.
+            (
+                ["postgres", "://u:", "${DB_PASSWORD}@db.example.net/x\n"].concat(),
+                "local-uri-credentials",
+            ),
+            (
+                [
+                    "users:\n- name: admin\n  user:\n      client-key",
+                    "-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVB\n",
+                ]
+                .concat(),
+                "local-kubeconfig-client-key",
+            ),
+            (
+                format!(
+                    "kind: Config\nusers:\n- name: admin\n  us{}\n    token: {long_token}\n",
+                    "er:"
+                ),
+                "local-kubeconfig-user-credential",
+            ),
+            (
+                format!("auth_tok{}: \"{long_token}\"\n", "en"),
+                "local-long-assigned-secret",
+            ),
+            (
+                [
+                    "machine energy-api.example.com login service-user pass",
+                    "word SecretPassword123!\n",
+                ]
+                .concat(),
+                "local-netrc-credentials",
+            ),
+            (
+                ["machine h\n  login u\n  pass", "word p4ss\n"].concat(),
+                "local-netrc-credentials",
+            ),
+            (
+                [
+                    "postgres.prod.internal:5432:energy_grid:grid_user:",
+                    "P@ssw0rd987654321!\n",
+                ]
+                .concat(),
+                "local-pgpass-credentials",
+            ),
+            (
+                ["*:*:*:replicator:", "x\n"].concat(),
+                "local-pgpass-credentials",
+            ),
+        ] {
+            let found = ids("crates/notes.txt", text.as_bytes());
+            assert!(
+                found.iter().any(|f| f.contains(id)),
+                "{id}: {text:?}: {found:?}"
+            );
+        }
+        for harmless in [
+            "see https://example.com:8080/path@v2 and git@github.com:org/repo.git\n",
+            "ssh://git@github.com/org/repo and postgres://localhost:5432/db\n",
+            "mailto:user@example.com\n",
+            "the machine learning model has a password reset page\n",
+            "std::fmt::Display at 12:30:00\n",
+            "user:\n  name: grid\n",
+            "client-certificate-data is public\n",
+        ] {
+            assert!(
+                ids("docs/notes.md", harmless.as_bytes()).is_empty(),
+                "{harmless}"
+            );
+        }
     }
 
     #[test]
