@@ -51,10 +51,15 @@ data_extensions = [
     # Power-system network models and exchange formats (ADV23R8-04): CGMES/CIM
     # RDF-XML and other RDF serialisations, PowerFactory projects and cases,
     # PowerWorld, PSS/E variants, UCTE-DEF, PowSyBl IIDM, OpenDSS, GridLAB-D,
-    # MATPOWER/PSAT cases. CIM/RDF XML is also detected by its content.
+    # MATPOWER/PSAT cases. RDF/XML is also detected by its content (any prefix,
+# encoding or BOM, with or without an XML declaration; R9-03).
     ".rdf", ".owl", ".ttl", ".nt", ".nq", ".trig", ".jsonld", ".cim", ".pfd", ".dz",
     ".dgs", ".pwb", ".pwd", ".seq", ".rawd", ".uct", ".uctx", ".iidm", ".xiidm",
     ".dss", ".glm", ".psse", ".cgmes",
+    # Optimisation problem instances (ADV23R9-05): MPS/free MPS, QPS, CPLEX LP,
+    # AMPL .nl, GAMS models and data, OSiL and conic CBF. MPS, LP and GAMS are
+    # also detected by their content.
+    ".mps", ".qps", ".lp", ".nl", ".gms", ".gdx", ".osil", ".cbf",
 ]
 open_commercial_data = ["spikes/data/samples/*"]
 # Exact paths of provenance records, test fixtures and non-reconstructive

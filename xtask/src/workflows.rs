@@ -59,6 +59,12 @@ struct Graph {
     file: String,
     jobs: Vec<String>,
     aggregator: Option<String>,
+    /// Published check names (`name:`) of gate jobs and the aggregator whose
+    /// name differs from the job id (R9-02, ADV23R9-01/02).
+    names: Vec<(String, String)>,
+    /// The aggregator's `steps` in the trusted tree's copy of this workflow
+    /// (main); `None` when unavailable, which fails closed (ADV23R9-02).
+    trusted_steps: Option<Yaml>,
     /// Triggers allowed for this workflow instead of the global list.
     triggers: Option<Vec<String>>,
     /// Runs from `main` via `pull_request_target` and never runs PR code.
@@ -72,7 +78,34 @@ impl Policy {
     ///
     /// Fails if the trusted file is missing or malformed.
     pub fn load(ctx: &Ctx) -> Result<Self, String> {
-        Self::parse(&ctx.policy_text(GATES)?)
+        let mut policy = Self::parse(&ctx.policy_text(GATES)?)?;
+        for graph in &mut policy.graphs {
+            if graph.aggregator.is_some()
+                && let Ok(text) = std::fs::read_to_string(ctx.policy.join(&graph.file))
+            {
+                policy_steps(graph, &text);
+            }
+        }
+        Ok(policy)
+    }
+
+    /// Takes the aggregator steps of `file` from trusted workflow text (the
+    /// trusted tree's copy, from main).
+    pub fn set_trusted_workflow(&mut self, file: &str, text: &str) {
+        for graph in &mut self.graphs {
+            if graph.file == file {
+                policy_steps(graph, text);
+            }
+        }
+    }
+
+    /// The published check name of a gate job of `graph`.
+    fn check_name<'a>(graph: &'a Graph, job: &'a str) -> &'a str {
+        graph
+            .names
+            .iter()
+            .find(|(id, _)| id == job)
+            .map_or(job, |(_, name)| name.as_str())
     }
 
     /// Parses policy text.
@@ -96,6 +129,19 @@ impl Policy {
                         .ok_or(format!("{GATES}: workflow without file"))?
                         .to_owned(),
                     jobs: table.get("jobs").map(string_array).unwrap_or_default(),
+                    names: table
+                        .get("names")
+                        .and_then(toml_edit::Item::as_table_like)
+                        .map(|names| {
+                            names
+                                .iter()
+                                .filter_map(|(id, name)| {
+                                    name.as_str().map(|name| (id.to_owned(), name.to_owned()))
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    trusted_steps: None,
                     aggregator: table
                         .get("aggregator")
                         .and_then(toml_edit::Item::as_str)
@@ -144,26 +190,29 @@ impl Policy {
     }
 
     /// Every check name the trusted policy defines, with the workflow file
-    /// that owns it: each gate job and aggregator of every gate graph
-    /// (`merge-gates` included) and each `required_checks` entry, which no
-    /// file owns. No other job may use one of these as its id or name
-    /// (ADV23R8-01).
+    /// and job that own it: the id AND the published `name:` of each gate job
+    /// and aggregator of every gate graph (`merge-gates` included, R9-02,
+    /// ADV23R9-01) and each `required_checks` entry, which no job owns. No
+    /// other job may use one of these as its id or name (ADV23R8-01).
     #[must_use]
     pub fn protected_gates(&self) -> Vec<ProtectedGate> {
-        let mut gates: Vec<ProtectedGate> = self
-            .graphs
-            .iter()
-            .flat_map(|graph| {
-                graph
-                    .jobs
-                    .iter()
-                    .chain(graph.aggregator.iter())
-                    .map(|job| ProtectedGate {
-                        file: Some(graph.file.clone()),
-                        name: job.clone(),
-                    })
-            })
-            .collect();
+        let mut gates: Vec<ProtectedGate> = Vec::new();
+        for graph in &self.graphs {
+            for job in graph.jobs.iter().chain(graph.aggregator.iter()) {
+                let display = Self::check_name(graph, job);
+                for name in [job.as_str(), display] {
+                    if !gates.iter().any(|gate| {
+                        gate.name.eq_ignore_ascii_case(name) && gate.job.as_deref() == Some(job)
+                    }) {
+                        gates.push(ProtectedGate {
+                            file: Some(graph.file.clone()),
+                            job: Some(job.clone()),
+                            name: name.to_owned(),
+                        });
+                    }
+                }
+            }
+        }
         for name in &self.required_checks {
             if !gates
                 .iter()
@@ -171,6 +220,7 @@ impl Policy {
             {
                 gates.push(ProtectedGate {
                     file: None,
+                    job: None,
                     name: name.clone(),
                 });
             }
@@ -179,14 +229,30 @@ impl Policy {
     }
 }
 
-/// A check name defined by the trusted policy (ADV23R8-01).
+/// A check name defined by the trusted policy (ADV23R8-01, R9-02).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProtectedGate {
-    /// The workflow file whose job of the same id owns the name; `None` when
-    /// no workflow may define it.
+    /// The workflow file whose job `job` owns the name; `None` when no
+    /// workflow may define it.
     pub file: Option<String>,
-    /// Job id and check name.
+    /// The owning job id; `None` when no job may use the name.
+    pub job: Option<String>,
+    /// A job id or published check name.
     pub name: String,
+}
+
+fn policy_steps(graph: &mut Graph, text: &str) {
+    let Some(aggregator) = graph.aggregator.as_deref() else {
+        return;
+    };
+    graph.trusted_steps = YamlLoader::load_from_str(text)
+        .ok()
+        .and_then(|documents| documents.into_iter().next())
+        .and_then(|workflow| {
+            let jobs = get(&workflow, "jobs")?;
+            let job = get(jobs, aggregator)?;
+            get(job, "steps").cloned()
+        });
 }
 
 fn get<'a>(yaml: &'a Yaml, key: &str) -> Option<&'a Yaml> {
@@ -605,6 +671,52 @@ pub fn is_loader_env(name: &str) -> bool {
     upper.starts_with("LD_") || upper.starts_with("DYLD_")
 }
 
+/// Whether a variable is a shell, interpreter or Git start-up hook that runs
+/// or loads code in every process of a step: `BASH_ENV`, `ENV`, shell
+/// options, `PROMPT_COMMAND`, exported shell functions, Python, Node, Perl,
+/// Ruby, Java, Lua and Tcl start-up and path variables, and every `GIT_*`
+/// variable (configuration injection, hooks, `GIT_SSH_COMMAND`,
+/// `GIT_EXEC_PATH`) (ADV23R9-03). Rejected even when allow-listed.
+#[must_use]
+pub fn is_startup_env(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    matches!(
+        upper.as_str(),
+        "BASH_ENV"
+            | "ENV"
+            | "SHELLOPTS"
+            | "BASHOPTS"
+            | "PROMPT_COMMAND"
+            | "PS4"
+            | "IFS"
+            | "CDPATH"
+            | "GLOBIGNORE"
+            | "NODE_OPTIONS"
+            | "NODE_PATH"
+            | "PERL5LIB"
+            | "PERL5OPT"
+            | "PERLLIB"
+            | "PERL5DB"
+            | "RUBYOPT"
+            | "RUBYLIB"
+            | "JAVA_TOOL_OPTIONS"
+            | "_JAVA_OPTIONS"
+            | "JDK_JAVA_OPTIONS"
+            | "CLASSPATH"
+            | "TCLLIBPATH"
+            | "GCONV_PATH"
+            | "R_PROFILE"
+            | "R_PROFILE_USER"
+    ) || upper.starts_with("BASH_FUNC_")
+        || upper.starts_with("PYTHON")
+        || upper.starts_with("LUA_")
+        || upper.starts_with("GIT_")
+}
+
+/// Workflow, job, step and composite-action `env:` names must be listed in
+/// the trusted `allowed_env` (ADV23R9-03, an allowlist rather than a growing
+/// denylist). Dynamic-loader variables (ADV23R8-02) and start-up hooks are
+/// rejected even when listed.
 fn check_env(path: &str, name: &str, _value: &Yaml, policy: &Policy, findings: &mut Vec<Finding>) {
     if is_loader_env(name) {
         findings.push(Finding::at(
@@ -616,12 +728,27 @@ fn check_env(path: &str, name: &str, _value: &Yaml, policy: &Policy, findings: &
         ));
         return;
     }
-    if is_toolchain_env(name) && !policy.env.iter().any(|allowed| allowed == name) {
+    if is_startup_env(name) {
         findings.push(Finding::at(
             path,
             None,
             format!(
-                "`{name}` may not be set in workflows unless allowed_env in the trusted policy lists it (compiler flags, wrappers and lint levels stay out of CI)"
+                "`{name}` may not be set in workflows: shell, interpreter and Git start-up variables run or load code in every process (ADV23R9-03)"
+            ),
+        ));
+        return;
+    }
+    if !policy.env.iter().any(|allowed| allowed == name) {
+        let why = if is_toolchain_env(name) {
+            "compiler flags, wrappers and lint levels stay out of CI"
+        } else {
+            "every workflow variable is allow-listed, ADV23R9-03"
+        };
+        findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "`{name}` may not be set in workflows unless allowed_env in the trusted policy lists it ({why})"
             ),
         ));
     }
@@ -859,6 +986,13 @@ fn check_graph(path: &str, jobs: &[(String, &Yaml)], policy: &Policy, findings: 
             ));
         }
         if let Some((_, job)) = jobs.iter().find(|(name, _)| name == required) {
+            check_published_name(
+                path,
+                required,
+                Policy::check_name(graph, required),
+                job,
+                findings,
+            );
             if get(job, "if").is_some() {
                 findings.push(Finding::at(
                     path,
@@ -886,6 +1020,45 @@ fn check_graph(path: &str, jobs: &[(String, &Yaml)], policy: &Policy, findings: 
         ));
         return;
     };
+    check_published_name(
+        path,
+        aggregator,
+        Policy::check_name(graph, aggregator),
+        job,
+        findings,
+    );
+    // ADV23R9-02: the aggregator's steps must be exactly main's, which
+    // evaluate every `needs` result; the job may carry nothing that changes
+    // how they run.
+    for (key, _) in entries(job) {
+        if !matches!(
+            key.as_str(),
+            "name" | "if" | "needs" | "runs-on" | "timeout-minutes" | "steps"
+        ) {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!("aggregator `{aggregator}` may not set `{key}`"),
+            ));
+        }
+    }
+    match &graph.trusted_steps {
+        None => findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "aggregator `{aggregator}`: main's copy of this workflow is unavailable, so its steps cannot be verified (fails closed)"
+            ),
+        )),
+        Some(trusted) if get(job, "steps") != Some(trusted) => findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "aggregator `{aggregator}`: steps differ from main's, which evaluate every `needs` result; aggregator steps change only on main"
+            ),
+        )),
+        Some(_) => {}
+    }
     let needs: Vec<String> = match get(job, "needs") {
         Some(Yaml::Array(items)) => items.iter().map(scalar).collect(),
         Some(single) => vec![scalar(single)],
@@ -905,6 +1078,32 @@ fn check_graph(path: &str, jobs: &[(String, &Yaml)], policy: &Policy, findings: 
             path,
             None,
             format!("`{aggregator}` must run with `if: always()`"),
+        ));
+    }
+}
+
+/// A gate job's published check name (`name:`, or its id without one) must
+/// be exactly the trusted policy's (R9-02, ADV23R9-01/02).
+fn check_published_name(
+    path: &str,
+    id: &str,
+    wanted: &str,
+    job: &Yaml,
+    findings: &mut Vec<Finding>,
+) {
+    let published = match get(job, "name") {
+        None => Some(id.to_owned()),
+        Some(Yaml::String(name)) => Some(name.clone()),
+        Some(_) => None,
+    };
+    if published.as_deref() != Some(wanted) {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "gate job `{id}` must publish the check name `{wanted}` from the trusted policy (found {})",
+                published.map_or_else(|| "a non-string name".to_owned(), |name| format!("`{name}`"))
+            ),
         ));
     }
 }
@@ -1024,7 +1223,7 @@ mod tests {
 allowed_triggers = ["pull_request", "push"]
 run_expressions = ["runner.temp"]
 runner_labels = ["ubuntu-*", "macos-*"]
-allowed_env = ["CARGO_TERM_COLOR"]
+allowed_env = ["CARGO_TERM_COLOR", "NEXTEST_VERSION", "T", "TITLE"]
 [[workflow]]
 file = "w.yml"
 jobs = ["a", "b"]
@@ -1061,8 +1260,15 @@ jobs:
       - run: echo ok
 "#;
 
+    /// The test policy, with `GOOD` as main's copy of `w.yml`.
+    fn policy(text: &str) -> Policy {
+        let mut policy = Policy::parse(text).expect("policy");
+        policy.set_trusted_workflow("w.yml", GOOD);
+        policy
+    }
+
     fn run(text: &str) -> Vec<Finding> {
-        check_workflow("w.yml", text, &Policy::parse(POLICY).expect("policy"))
+        check_workflow("w.yml", text, &policy(POLICY))
     }
 
     #[test]
@@ -1392,7 +1598,7 @@ jobs:
 "#;
 
     fn run_as(path: &str, text: &str) -> Vec<Finding> {
-        check_workflow(path, text, &Policy::parse(POLICY).expect("policy"))
+        check_workflow(path, text, &policy(POLICY))
     }
 
     // F1: pull_request_target only in the listed trusted workflow, and a
@@ -1470,7 +1676,7 @@ jobs:
             let policy = POLICY.replace("allowed_env = [", &format!("allowed_env = [\"{name}\", "));
             let text = GOOD.replace("permissions:", &format!("env: {{{name}: x}}\npermissions:"));
             assert_eq!(
-                check_workflow("w.yml", &text, &Policy::parse(&policy).expect("policy")).len(),
+                check_workflow("w.yml", &text, &self::policy(&policy)).len(),
                 1,
                 "{name} allow-listed"
             );
@@ -1495,6 +1701,156 @@ jobs:
             std::ffi::OsStr::new("PATH"),
             Some(std::ffi::OsStr::new("/usr/bin"))
         )));
+    }
+
+    // ADV23R9-03: workflow `env:` is an allowlist. Shell, interpreter and Git
+    // start-up hooks are rejected at every scope even when listed, and any
+    // name the trusted policy does not list is rejected. `BASH_ENV` at job
+    // level passed at e64acc5.
+    #[test]
+    fn adv23r9_03_env_is_allow_listed_and_startup_hooks_rejected() {
+        for name in [
+            "BASH_ENV",
+            "ENV",
+            "SHELLOPTS",
+            "BASHOPTS",
+            "PROMPT_COMMAND",
+            "BASH_FUNC_cargo%%",
+            "PYTHONPATH",
+            "PYTHONSTARTUP",
+            "NODE_OPTIONS",
+            "PERL5LIB",
+            "PERL5OPT",
+            "RUBYOPT",
+            "JAVA_TOOL_OPTIONS",
+            "GIT_CONFIG_COUNT",
+            "GIT_CONFIG_KEY_0",
+            "GIT_SSH_COMMAND",
+            "git_exec_path",
+        ] {
+            for text in [
+                GOOD.replace(
+                    "permissions:",
+                    &format!("env: {{\"{name}\": /tmp/injected.sh}}\npermissions:"),
+                ),
+                GOOD.replace(
+                    "    runs-on: macos-15\n",
+                    &format!("    runs-on: macos-15\n    env: {{\"{name}\": x}}\n"),
+                ),
+                GOOD.replace(
+                    "run: cargo xtask docs",
+                    &format!("run: cargo xtask docs\n        env: {{\"{name}\": x}}"),
+                ),
+            ] {
+                let found = run(&text);
+                assert_eq!(found.len(), 1, "{name}: {found:?}");
+                assert!(found[0].message.contains("start-up"), "{found:?}");
+            }
+            let policy = POLICY.replace("allowed_env = [", &format!("allowed_env = [\"{name}\", "));
+            let text = GOOD.replace(
+                "permissions:",
+                &format!("env: {{\"{name}\": x}}\npermissions:"),
+            );
+            assert_eq!(
+                check_workflow("w.yml", &text, &self::policy(&policy)).len(),
+                1,
+                "{name} allow-listed"
+            );
+        }
+        // Any unlisted name is rejected, too (allowlist, not denylist).
+        let text = GOOD.replace("permissions:", "env: {NEW_HOOK: x}\npermissions:");
+        let found = run(&text);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].message.contains("allowed_env"), "{found:?}");
+        // Listed data variables pass; lookalike names are not hooks.
+        let text = GOOD.replace(
+            "permissions:",
+            "env: {T: x, NEXTEST_VERSION: y}\npermissions:",
+        );
+        assert!(run(&text).is_empty());
+        assert!(!is_startup_env("ENVIRONMENT"));
+        assert!(!is_startup_env("TRUSTED"));
+        // The real workflows use only allow-listed names.
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let policy = Policy::load(&Ctx {
+            repo: root.clone(),
+            policy: root.clone(),
+        })
+        .expect("policy");
+        for file in [
+            ".github/workflows/ci.yml",
+            ".github/workflows/trusted-gates.yml",
+        ] {
+            let text = std::fs::read_to_string(root.join(file)).expect("workflow");
+            let found = check_workflow(file, &text, &policy);
+            assert!(found.is_empty(), "{file}: {found:?}");
+        }
+    }
+
+    // ADV23R9-02: the aggregator publishes the trusted name and runs exactly
+    // main's steps; R9-02: each gate job publishes its trusted check name.
+    #[test]
+    fn adv23r9_02_aggregator_is_main_s() {
+        assert!(run(GOOD).is_empty());
+        let aggregator = "  gate:\n    if: always()\n    needs: [a, b]\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo ok\n";
+        for (variant, wanted) in [
+            (
+                aggregator.replace("echo ok", "echo bypassed"),
+                "steps differ",
+            ),
+            (
+                aggregator.replace("  gate:\n", "  gate:\n    name: random-name\n"),
+                "`gate`",
+            ),
+            (
+                aggregator.replace("  gate:\n", "  gate:\n    env: {T: x}\n"),
+                "may not set `env`",
+            ),
+            (
+                aggregator.replace("  gate:\n", "  gate:\n    defaults: {run: {shell: bash}}\n"),
+                "may not set `defaults`",
+            ),
+            (
+                aggregator.replace(
+                    "      - run: echo ok\n",
+                    "      - run: echo ok\n      - run: exit 0\n",
+                ),
+                "steps differ",
+            ),
+        ] {
+            let text = GOOD.replace(aggregator, &variant);
+            let found = run(&text);
+            assert!(
+                found.iter().any(|f| f.message.contains(wanted)),
+                "{wanted}: {found:?}"
+            );
+        }
+        // Without main's copy, the aggregator fails closed.
+        let bare = Policy::parse(POLICY).expect("policy");
+        assert!(
+            check_workflow("w.yml", GOOD, &bare)
+                .iter()
+                .any(|f| f.message.contains("fails closed"))
+        );
+        // A gate job publishing a name other than the trusted one.
+        let renamed = GOOD.replace("  b:\n    runs-on", "  b:\n    name: other\n    runs-on");
+        assert!(
+            run(&renamed)
+                .iter()
+                .any(|f| f.message.contains("must publish the check name `b`"))
+        );
+        let named = POLICY.replace(
+            "aggregator = \"gate\"",
+            "aggregator = \"gate\"\nnames = {b = \"B check\"}",
+        );
+        let text = GOOD.replace("  b:\n    runs-on", "  b:\n    name: B check\n    runs-on");
+        assert!(check_workflow("w.yml", &text, &policy(&named)).is_empty());
+        assert!(
+            policy(&named)
+                .protected_gates()
+                .iter()
+                .any(|g| g.name == "B check" && g.job.as_deref() == Some("b"))
+        );
     }
 
     // ADV23R7-03: interpreters are matched by command-name family, not by

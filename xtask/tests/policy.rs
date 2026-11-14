@@ -397,3 +397,187 @@ fn adv23r8_01_spoofed_merge_gates_workflow_end_to_end() {
         "{found:?}"
     );
 }
+
+/// A scratch repository holding the real workflows, with `edit` applied to
+/// ci.yml and `extra` added as `.github/workflows/spoof.yml`.
+fn workflow_findings(edit: &dyn Fn(String) -> String, extra: Option<&str>) -> Vec<String> {
+    let repo = Repo::new();
+    for path in [
+        ".github/workflows/ci.yml",
+        ".github/workflows/trusted-gates.yml",
+    ] {
+        let text = std::fs::read_to_string(root().join(path)).expect("workflow");
+        let text = if path.ends_with("ci.yml") {
+            edit(text)
+        } else {
+            text
+        };
+        repo.write(path, &text);
+    }
+    if let Some(extra) = extra {
+        repo.write(".github/workflows/spoof.yml", extra);
+    }
+    repo.commit("ci: workflows");
+    files(&xtask::workflows::check(&ctx(&repo)).expect("workflows"))
+}
+
+// R9-02 / ADV23R9-01: a job of another workflow publishing a gate job's
+// display name (not its id) passed at e64acc5; now every gate's published
+// name is protected, case-insensitively. Controls: the real workflows and an
+// unrelated name pass.
+#[test]
+fn r9_02_adv23r9_01_gate_display_names_are_protected_end_to_end() {
+    assert_eq!(workflow_findings(&|text| text, None), Vec::<String>::new());
+    let spoof = |name: &str| {
+        format!(
+            "name: spoof\non: [pull_request]\npermissions: {{contents: read}}\njobs:\n  spoof:\n    name: {name}\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo bypass\n"
+        )
+    };
+    for name in [
+        "attribution policy (D-52)",
+        "rust (fmt, clippy, nextest incl. xtask and hook tests) linux",
+        "PROVENANCE, SECRETS AND RAW DATA (D-56)",
+        "merge-gates",
+    ] {
+        let found = workflow_findings(&|text| text, Some(&spoof(&format!("\"{name}\""))));
+        assert!(
+            found
+                .iter()
+                .any(|f| f.starts_with(".github/workflows/spoof.yml:")
+                    && f.contains("reuses the check name")),
+            "{name}: {found:?}"
+        );
+    }
+    let found = workflow_findings(&|text| text, Some(&spoof("release notes")));
+    assert!(found.is_empty(), "{found:?}");
+    // A gate job of ci.yml may not change its published name either.
+    let found = workflow_findings(
+        &|text| text.replace("name: attribution policy (D-52)", "name: attribution"),
+        None,
+    );
+    assert!(
+        found
+            .iter()
+            .any(|f| f.contains("must publish the check name")),
+        "{found:?}"
+    );
+}
+
+// ADV23R9-02: the aggregator must publish `merge-gates` and run main's exact
+// steps, which evaluate every `needs` result. A bypass step and a renamed
+// aggregator passed at e64acc5.
+#[test]
+fn adv23r9_02_aggregator_name_and_steps_end_to_end() {
+    let start = "      - name: Require every applicable gate\n";
+    let bypass = |text: String| {
+        let at = text.find(start).expect("aggregator step");
+        format!("{}      - run: echo \"bypassed\"\n", &text[..at])
+    };
+    let found = workflow_findings(&bypass, None);
+    assert!(
+        found.iter().any(|f| f.contains("steps differ from main's")),
+        "{found:?}"
+    );
+    let renamed = |text: String| text.replace("    name: merge-gates\n", "    name: random-name\n");
+    let found = workflow_findings(&renamed, None);
+    assert!(
+        found.iter().any(|f| f.contains("`merge-gates`")),
+        "{found:?}"
+    );
+    let soft = |text: String| {
+        text.replace(
+            "    name: merge-gates\n",
+            "    name: merge-gates\n    continue-on-error: true\n",
+        )
+    };
+    let found = workflow_findings(&soft, None);
+    assert!(
+        found
+            .iter()
+            .any(|f| f.contains("may not set `continue-on-error`")),
+        "{found:?}"
+    );
+    // One changed command inside the step is also a difference.
+    let weakened = |text: String| text.replace("test \"$failed\" -eq 0", "true");
+    let found = workflow_findings(&weakened, None);
+    assert!(
+        found.iter().any(|f| f.contains("steps differ from main's")),
+        "{found:?}"
+    );
+}
+
+// ADV23R9-03: `BASH_ENV` (and any variable not on the trusted allowlist) in a
+// gate job's `env:` passed at e64acc5.
+#[test]
+fn adv23r9_03_startup_env_end_to_end() {
+    for (name, why) in [
+        ("BASH_ENV", "start-up"),
+        ("PYTHONPATH", "start-up"),
+        ("GIT_CONFIG_COUNT", "start-up"),
+        ("SOME_NEW_HOOK", "allowed_env"),
+    ] {
+        let edit = |text: String| {
+            text.replace(
+                "    name: repository policy (unsafe scope, manifests, workflows, Python)\n",
+                &format!(
+                    "    name: repository policy (unsafe scope, manifests, workflows, Python)\n    env:\n      {name}: /tmp/injected.sh\n"
+                ),
+            )
+        };
+        let found = workflow_findings(&edit, None);
+        assert!(
+            found
+                .iter()
+                .any(|f| f.contains(&format!("`{name}`")) && f.contains(why)),
+            "{name}: {found:?}"
+        );
+    }
+}
+
+// R9-03 / ADV23R9-05: the GPT RDF/XML fixture without an XML declaration,
+// a prefixed root, and solver models by extension and content all passed the
+// provenance gate at e64acc5. Control: the same text as Markdown prose passes.
+#[test]
+fn r9_03_adv23r9_05_rdf_and_solver_models_end_to_end() {
+    let rdf = "<RDF xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n     xmlns:cim=\"http://iec.ch/TC57/2013/CIM-schema-cim16#\">\n  <cim:BaseVoltage>\n    <cim:IdentifiedObject.name>400kV</cim:IdentifiedObject.name>\n    <cim:BaseVoltage.nominalVoltage>400</cim:BaseVoltage.nominalVoltage>\n  </cim:BaseVoltage>\n</RDF>\n";
+    let mps = "NAME          UC\nROWS\n N  COST\nCOLUMNS\n    X1        COST         1.0\nENDATA\n";
+    for (path, text) in [
+        ("spikes/network-notes.txt", rdf.to_owned()),
+        (
+            "spikes/prefixed.txt",
+            rdf.replace("<RDF xmlns=", "<r:RDF xmlns:r=")
+                .replace("</RDF>", "</r:RDF>"),
+        ),
+        ("spikes/unit_commitment.mps", mps.to_owned()),
+        (
+            "spikes/europe_opf.lp",
+            "Minimize\n obj: x\nSubject To\n c: x >= 1\nEnd\n".to_owned(),
+        ),
+        ("spikes/uc-model.txt", mps.to_owned()),
+    ] {
+        let repo = Repo::new();
+        repo.write("data/manifest.toml", MANIFEST);
+        repo.write(path, &text);
+        repo.commit("data: model");
+        let found = repository::provenance(&ctx(&repo)).expect("provenance");
+        assert!(
+            found
+                .iter()
+                .any(|f| f.file.as_deref() == Some(path) && f.message.contains("D-56")),
+            "{path}: {:?}",
+            files(&found)
+        );
+    }
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write(
+        "docs/notes.md",
+        "# CIM\nRDF/XML uses `<RDF xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">`.\n",
+    );
+    repo.commit("docs: notes");
+    assert!(
+        repository::provenance(&ctx(&repo))
+            .expect("provenance")
+            .is_empty()
+    );
+}

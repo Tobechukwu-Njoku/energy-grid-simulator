@@ -9,10 +9,17 @@ allowed_triggers = ["pull_request", "push"]
 # "$T" in the script.
 run_expressions = ["runner.temp", "runner.os"]
 runner_labels = ["ubuntu-24.04", "macos-15"]
-# The only Cargo/rustc/rustup variables (CARGO*, RUSTC*, RUSTDOC*, RUSTUP_*,
-# *RUSTFLAGS) a workflow `env:` may set (ADV23R5-01). None of them changes
-# compiler flags, wrappers, linkers or lint levels.
-allowed_env = ["CARGO_TERM_COLOR", "CARGO_INCREMENTAL", "CARGO_DENY_VERSION"]
+# Every variable name a workflow, job, step or local action `env:` may set
+# (ADV23R5-01, ADV23R9-03): an allowlist, so a new start-up hook needs no new
+# rule. Exact, case-sensitive names. The Cargo ones change no compiler flags,
+# wrappers, linkers or lint levels; the others carry step data into scripts.
+# Dynamic-loader (LD_*, DYLD_*) and shell/interpreter/Git start-up variables
+# (BASH_ENV, ENV, PYTHON*, NODE_OPTIONS, PERL5*, RUBYOPT, JAVA_TOOL_OPTIONS,
+# GIT_*, ...) are rejected even if listed here.
+allowed_env = [
+    "CARGO_TERM_COLOR", "CARGO_INCREMENTAL", "CARGO_DENY_VERSION", "NEXTEST_VERSION",
+    "TRUSTED", "MAIN", "GH_TOKEN", "NEEDS", "NUMBER", "HEAD_SHA",
+]
 # Lines a `run:` script may contain that name a GitHub Actions file-command
 # file ($GITHUB_ENV, $GITHUB_PATH, $GITHUB_OUTPUT, $GITHUB_STATE,
 # $GITHUB_STEP_SUMMARY). Exact trimmed lines; empty by default (ADV23R6-03).
@@ -43,9 +50,10 @@ link_search_roots = [
     "/usr/libx32",
 ]
 
-# Check names branch protection requires (ADV23R8-01). Together with every gate
-# job and aggregator below they are protected: no job of any workflow may take
-# one as its id or name except the owning workflow's job of that id.
+# Check names branch protection requires (ADV23R8-01). Together with the id and
+# published name of every gate job and aggregator below they are protected: no
+# job of any workflow may take one as its id or name except the owning
+# workflow's job of that id (compared case-insensitively).
 required_checks = ["merge-gates", "independent-review", "policy-approval"]
 
 # Pull-request gates. They build and test PR code with a read-only token and no
@@ -63,6 +71,18 @@ jobs = [
     "provenance",
 ]
 aggregator = "merge-gates"
+# Published check names (`name:`) of the jobs above whose name is not their id
+# (R9-02, ADV23R9-01). Each gate job must publish exactly this name (or its id
+# when unlisted), and no other job of any workflow may use an id or name here.
+# The aggregator's steps must equal main's copy of this workflow (ADV23R9-02).
+[workflow.names]
+rust-linux = "rust (fmt, clippy, nextest incl. xtask and hook tests) linux"
+rust-macos = "rust (build, nextest) macos"
+licences = "licences and advisories (cargo-deny, trusted deny.toml)"
+attribution = "attribution policy (D-52)"
+docs = "documentation gates"
+policy = "repository policy (unsafe scope, manifests, workflows, Python)"
+provenance = "provenance, secrets and raw data (D-56)"
 
 # Trusted gates: run from main via pull_request_target, read the PR head only as
 # Git data and never check out, build or run PR code (F1, ADV23R-08).

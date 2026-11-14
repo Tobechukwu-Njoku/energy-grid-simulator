@@ -642,9 +642,12 @@ pub fn spoofed_gate_names(
                 continue;
             }
             let same = |text: &str, gate: &str| text.trim().eq_ignore_ascii_case(gate.trim());
+            // Only the owning job (same file, same id) may publish a
+            // protected name; its exact name is checked by the gate graph.
             if let Some(gate) = gates.iter().find(|gate| {
                 (same(id, &gate.name) || same(name, &gate.name))
-                    && !(gate.file.as_deref() == Some(path.as_str()) && same(id, &gate.name))
+                    && !(gate.file.as_deref() == Some(path.as_str())
+                        && gate.job.as_deref() == Some(id))
             }) {
                 findings.push(Finding::at(
                     path.as_str(),
@@ -1109,6 +1112,7 @@ mod tests {
             .iter()
             .map(|name| crate::workflows::ProtectedGate {
                 file: Some(".github/workflows/trusted-gates.yml".to_owned()),
+                job: Some((*name).to_owned()),
                 name: (*name).to_owned(),
             })
             .collect()
@@ -1228,5 +1232,49 @@ mod tests {
         })
         .collect();
         assert!(spoofed_gate_names(&real, &gates).is_empty());
+    }
+
+    // R9-02 / ADV23R9-01: published display names are protected as well as
+    // ids, for every gate job and the aggregator, case-insensitively; the
+    // reviewers' fixtures passed at e64acc5. The policy-approval gate uses the
+    // same list.
+    #[test]
+    fn r9_02_adv23r9_01_display_names_are_protected() {
+        let text = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/gates.toml"),
+        )
+        .expect("gates.toml");
+        let gates = crate::workflows::Policy::parse(&text)
+            .expect("policy")
+            .protected_gates();
+        let spoof = |name: &str| {
+            vec![(
+                ".github/workflows/review-spoof.yml".to_owned(),
+                format!(
+                    "name: spoof\non: [pull_request]\npermissions: {{contents: read}}\njobs:\n  spoof:\n    name: \"{name}\"\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo bypass\n"
+                ),
+            )]
+        };
+        for name in [
+            "attribution policy (D-52)",
+            "rust (fmt, clippy, nextest incl. xtask and hook tests) linux",
+            "rust (build, nextest) macos",
+            "licences and advisories (cargo-deny, trusted deny.toml)",
+            "documentation gates",
+            "repository policy (unsafe scope, manifests, workflows, Python)",
+            "Provenance, Secrets And Raw Data (D-56)",
+            "merge-gates",
+        ] {
+            assert_eq!(spoofed_gate_names(&spoof(name), &gates).len(), 1, "{name}");
+        }
+        // A different job id in the owning file may not take a display name.
+        let other = vec![(
+            ".github/workflows/ci.yml".to_owned(),
+            "jobs:\n  extra:\n    name: attribution policy (D-52)\n    runs-on: ubuntu-24.04\n"
+                .to_owned(),
+        )];
+        assert_eq!(spoofed_gate_names(&other, &gates).len(), 1);
+        // Controls: unrelated names pass.
+        assert!(spoofed_gate_names(&spoof("attribution notes"), &gates).is_empty());
     }
 }

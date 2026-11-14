@@ -709,37 +709,244 @@ pub fn data_signature(bytes: &[u8]) -> Option<&'static str> {
     if is_cim_rdf(bytes) {
         return Some("CIM/RDF XML");
     }
-    None
+    solver_model(bytes)
+}
+
+/// The first 64 KiB of a file as text, decoded from UTF-8, UTF-16 or UTF-32
+/// by byte-order mark or by the zero-byte pattern around a leading `<`
+/// (ADV23R9-05, R9-03), with any BOM removed.
+fn decoded_head(bytes: &[u8]) -> String {
+    let head = &bytes[..bytes.len().min(64 * 1024)];
+    let units = |width: usize, big: bool, skip: usize| -> String {
+        head[skip..]
+            .chunks_exact(width)
+            .map(|chunk| {
+                let value = if big {
+                    chunk
+                        .iter()
+                        .fold(0_u32, |acc, b| (acc << 8) | u32::from(*b))
+                } else {
+                    chunk
+                        .iter()
+                        .rev()
+                        .fold(0_u32, |acc, b| (acc << 8) | u32::from(*b))
+                };
+                char::from_u32(value).unwrap_or('\u{fffd}')
+            })
+            .collect()
+    };
+    match head {
+        [0xef, 0xbb, 0xbf, ..] => String::from_utf8_lossy(&head[3..]).into_owned(),
+        [0xff, 0xfe, 0, 0, ..] => units(4, false, 4),
+        [0, 0, 0xfe, 0xff, ..] => units(4, true, 4),
+        [0xff, 0xfe, ..] => units(2, false, 2),
+        [0xfe, 0xff, ..] => units(2, true, 2),
+        [a, 0, 0, 0, ..] if *a != 0 => units(4, false, 0),
+        [0, 0, 0, b, ..] if *b != 0 => units(4, true, 0),
+        [a, 0, ..] if *a != 0 => units(2, false, 0),
+        [0, b, ..] if *b != 0 => units(2, true, 0),
+        _ => String::from_utf8_lossy(head).into_owned(),
+    }
+}
+
+/// Expands character references and the internal DTD's general entities
+/// (`<!ENTITY rdf "http://...">`, common in RDF/XML and OWL), once.
+fn expand_references(text: &str) -> String {
+    let mut entities: Vec<(String, String)> = Vec::new();
+    let mut rest = text;
+    while let Some(index) = rest.find("<!ENTITY") {
+        rest = &rest[index + 8..];
+        let body = rest.trim_start();
+        let name: String = body
+            .chars()
+            .take_while(|c| !c.is_whitespace() && *c != '"' && *c != '\'')
+            .collect();
+        let after = body[name.len()..].trim_start();
+        if let Some(quote) = after.chars().next().filter(|c| *c == '"' || *c == '\'')
+            && let Some(close) = after[1..].find(quote)
+            && name != "%"
+        {
+            entities.push((format!("&{name};"), after[1..=close].to_owned()));
+        }
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(index) = rest.find('&') {
+        out.push_str(&rest[..index]);
+        rest = &rest[index..];
+        let end = rest.find(';').filter(|end| *end <= 40);
+        let decoded = end.and_then(|end| {
+            let reference = &rest[..=end];
+            let number = reference.strip_prefix("&#").map(|n| &n[..n.len() - 1]);
+            number
+                .and_then(|n| {
+                    n.strip_prefix(['x', 'X']).map_or_else(
+                        || n.parse::<u32>().ok(),
+                        |hex| u32::from_str_radix(hex, 16).ok(),
+                    )
+                })
+                .and_then(char::from_u32)
+                .map(String::from)
+                .or_else(|| {
+                    entities
+                        .iter()
+                        .find(|(name, _)| name == reference)
+                        .map(|(_, value)| value.clone())
+                })
+                .map(|value| (value, end + 1))
+        });
+        match decoded {
+            Some((value, length)) => {
+                out.push_str(&value);
+                rest = &rest[length..];
+            }
+            None => {
+                out.push('&');
+                rest = &rest[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// The qualified name of an XML document's root element, after the prolog
+/// (declaration, processing instructions, comments, doctype with any
+/// internal subset); `None` when the text does not start as XML.
+fn xml_root(text: &str) -> Option<String> {
+    let mut rest = text.trim_start();
+    loop {
+        if !rest.starts_with('<') {
+            return None;
+        }
+        if let Some(after) = rest.strip_prefix("<?") {
+            rest = after.get(after.find("?>")? + 2..)?.trim_start();
+        } else if let Some(after) = rest.strip_prefix("<!--") {
+            rest = after.get(after.find("-->")? + 3..)?.trim_start();
+        } else if rest.len() >= 9 && rest[..9].eq_ignore_ascii_case("<!doctype") {
+            let (mut depth, mut quote, mut end) = (0_i32, None, None);
+            for (index, c) in rest.char_indices().skip(9) {
+                match (quote, c) {
+                    (Some(q), c) if c == q => quote = None,
+                    (Some(_), _) => {}
+                    (None, '"' | '\'') => quote = Some(c),
+                    (None, '[') => depth += 1,
+                    (None, ']') => depth -= 1,
+                    (None, '>') if depth <= 0 => {
+                        end = Some(index);
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            rest = rest.get(end? + 1..)?.trim_start();
+        } else {
+            let name: String = rest[1..]
+                .chars()
+                .take_while(|c| !c.is_whitespace() && !matches!(c, '/' | '>'))
+                .collect();
+            let first = name.chars().next()?;
+            return (first.is_alphabetic() || first == '_' || first == ':').then_some(name);
+        }
+    }
 }
 
 /// Whether a file is an RDF/XML document, such as a CGMES / IEC 61970 CIM
-/// network model, whatever its name (ADV23R8-04): after an optional BOM and
-/// white space it starts as XML (`<?xml`, `<rdf:RDF`, a comment or doctype)
-/// and its first 64 KiB declare the RDF syntax namespace, an `rdf:RDF`
-/// element, or the IEC TC57 CIM or ENTSO-E CGMES namespaces.
+/// network model, whatever its name (ADV23R8-04, R9-03): it is XML in UTF-8,
+/// UTF-16 or UTF-32 (with or without BOM or XML declaration) and either its
+/// root element is `RDF` under any prefix or none, or its first 64 KiB,
+/// after expanding character and entity references, name the RDF syntax
+/// namespace or the IEC TC57 CIM or ENTSO-E CGMES namespaces.
 #[must_use]
 pub fn is_cim_rdf(bytes: &[u8]) -> bool {
-    let head = &bytes[..bytes.len().min(64 * 1024)];
-    let head = head.strip_prefix(b"\xef\xbb\xbf").unwrap_or(head);
-    let start = head
-        .iter()
-        .position(|byte| !byte.is_ascii_whitespace())
-        .unwrap_or(head.len());
-    let head = &head[start..];
-    let lower = head.to_ascii_lowercase();
-    let xml = [&b"<?xml"[..], b"<rdf:", b"<!--", b"<!doctype"]
-        .iter()
-        .any(|prefix| lower.starts_with(prefix));
-    let contains = |needle: &[u8]| lower.windows(needle.len()).any(|window| window == needle);
-    xml && [
-        &b"22-rdf-syntax-ns#"[..],
-        b"<rdf:rdf",
-        b"iec.ch/tc57/",
-        b"entsoe.eu/cim",
-        b"entsoe.eu/ns/cim",
+    let text = decoded_head(bytes);
+    let Some(root) = xml_root(&text) else {
+        return false;
+    };
+    let local = root.rsplit(':').next().unwrap_or(&root);
+    if local.eq_ignore_ascii_case("RDF") {
+        return true;
+    }
+    let lower = expand_references(&text).to_lowercase();
+    [
+        "22-rdf-syntax-ns",
+        "iec.ch/tc57/",
+        "entsoe.eu/cim",
+        "entsoe.eu/ns/cim",
     ]
     .iter()
-    .any(|needle| contains(needle))
+    .any(|needle| lower.contains(needle))
+}
+
+/// The solver model format a text file's content shows (ADV23R9-05): fixed
+/// or free MPS (and QPS), CPLEX LP, or a GAMS model. Comment lines (`*` in
+/// MPS, `\` in LP) are skipped.
+#[must_use]
+pub fn solver_model(bytes: &[u8]) -> Option<&'static str> {
+    let text = decoded_head(bytes);
+    let lines: Vec<&str> = text.lines().map(str::trim_end).collect();
+    let first_token = |skip: char| {
+        lines
+            .iter()
+            .map(|line| line.trim_start())
+            .find(|line| !line.is_empty() && !line.starts_with(skip))
+            .and_then(|line| line.split(|c: char| c.is_whitespace() || c == ':').next())
+            .map(str::to_ascii_lowercase)
+    };
+    // MPS sections start in column 1.
+    let section = |name: &str| {
+        lines
+            .iter()
+            .any(|line| line.split_whitespace().next() == Some(name) && !line.starts_with(' '))
+    };
+    if matches!(first_token('*').as_deref(), Some("name" | "rows"))
+        && section("ROWS")
+        && section("COLUMNS")
+    {
+        return Some("MPS solver model");
+    }
+    let lower: Vec<String> = lines
+        .iter()
+        .map(|l| l.trim().to_ascii_lowercase())
+        .collect();
+    if matches!(
+        first_token('\\').as_deref(),
+        Some(
+            "minimize"
+                | "maximize"
+                | "minimise"
+                | "maximise"
+                | "minimum"
+                | "maximum"
+                | "min"
+                | "max"
+        )
+    ) && lower.iter().any(|line| {
+        ["subject to", "such that", "st", "s.t."]
+            .iter()
+            .any(|key| line == key || line.starts_with(&format!("{key} ")))
+    }) && lower.iter().any(|line| line == "end")
+    {
+        return Some("LP solver model");
+    }
+    let declares = lower.iter().any(|line| {
+        line.split_whitespace()
+            .next()
+            .is_some_and(|word| ["variables", "variable", "equations", "equation"].contains(&word))
+    });
+    let solves = lower.iter().any(|line| {
+        let words: Vec<&str> = line
+            .split(|c: char| c.is_whitespace() || c == ';')
+            .filter(|w| !w.is_empty())
+            .collect();
+        words.iter().position(|w| *w == "solve").is_some_and(|at| {
+            words[at..].contains(&"using")
+                && words[at..]
+                    .iter()
+                    .any(|w| matches!(*w, "minimizing" | "maximizing" | "min" | "max"))
+        })
+    });
+    (declares && solves).then_some("GAMS solver model")
 }
 
 /// Checks tracked paths for data and key files. `records` are the
@@ -1705,6 +1912,109 @@ mod tests {
             &b"# Notes\nCGMES uses <rdf:RDF> with http://iec.ch/TC57/ namespaces.\n"[..],
             b"let ns = \"http://www.w3.org/1999/02/22-rdf-syntax-ns#\";\n",
             b"<?xml version=\"1.0\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n",
+        ] {
+            assert_eq!(data_signature(text), None, "{text:?}");
+        }
+    }
+
+    // R9-03 / ADV23R9-05: RDF/XML is recognised by its root element or RDF
+    // namespace whatever the prefix, declaration, encoding or BOM; solver
+    // model formats are gated by extension and (MPS, LP, GAMS) by content.
+    // The GPT fixture (default namespace, no declaration) passed at e64acc5.
+    #[test]
+    fn r9_03_adv23r9_05_rdf_and_solver_models_are_gated() {
+        let document: DocumentMut = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/repository.toml"),
+        )
+        .expect("policy")
+        .parse()
+        .expect("toml");
+        let gpt = "<RDF xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n     xmlns:cim=\"http://iec.ch/TC57/2013/CIM-schema-cim16#\">\n  <cim:BaseVoltage>\n    <cim:IdentifiedObject.name>400kV</cim:IdentifiedObject.name>\n  </cim:BaseVoltage>\n</RDF>\n";
+        let prefixed = "<r:RDF xmlns:r=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"/>\n";
+        let bare_root = "<RDF><Description about=\"x\"/></RDF>";
+        let node_root = "<ex:Node xmlns:ex=\"urn:x\" xmlns:q=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" q:about=\"x\"/>";
+        let entity = "<?xml version=\"1.0\"?>\n<!DOCTYPE r [\n  <!ENTITY ns \"http://www.w3.org/1999/02/&#50;2-rdf-syntax-ns#\">\n]>\n<x:Thing xmlns:x=\"&ns;\"/>";
+        let charref = "<x:Thing xmlns:x=\"http://www.w3.org/1999/02/&#x32;2-rdf-syntax-ns#\"/>";
+        let utf16 = |text: &str, big: bool, bom: bool| -> Vec<u8> {
+            let mut out = Vec::new();
+            if bom {
+                out.extend(if big { [0xfe, 0xff] } else { [0xff, 0xfe] });
+            }
+            for unit in text.encode_utf16() {
+                out.extend(if big {
+                    unit.to_be_bytes()
+                } else {
+                    unit.to_le_bytes()
+                });
+            }
+            out
+        };
+        let utf32: Vec<u8> = prefixed
+            .chars()
+            .flat_map(|c| (c as u32).to_le_bytes())
+            .collect();
+        let samples: Vec<Vec<u8>> = vec![
+            gpt.as_bytes().to_vec(),
+            prefixed.as_bytes().to_vec(),
+            bare_root.as_bytes().to_vec(),
+            node_root.as_bytes().to_vec(),
+            entity.as_bytes().to_vec(),
+            charref.as_bytes().to_vec(),
+            [b"\xef\xbb\xbf".as_slice(), gpt.as_bytes()].concat(),
+            utf16(gpt, false, true),
+            utf16(gpt, true, true),
+            utf16(gpt, false, false),
+            utf16(prefixed, true, false),
+            utf32,
+            format!("<!-- c -->\n<!DOCTYPE a [<!ELEMENT a ANY>]>\n{prefixed}").into_bytes(),
+        ];
+        for bytes in &samples {
+            assert_eq!(data_signature(bytes), Some("CIM/RDF XML"), "{bytes:?}");
+        }
+        let mps = "* unit commitment\nNAME          UC\nROWS\n N  COST\n L  LIM1\nCOLUMNS\n    X1        COST         1.0   LIM1         1.0\nRHS\n    RHS       LIM1         4.0\nENDATA\n";
+        let free_mps = "ROWS\n N obj\nCOLUMNS\n x obj 1\nENDATA\n";
+        let lp = "\\ Problem name: opf\nMinimize\n obj: x + y\nSubject To\n c1: x + y >= 1\nEnd\n";
+        let lp_short = "max: 3x + 2y\nst\n c1: x <= 4\nend\n";
+        let gams = "Sets i / a, b /;\nVariables z;\nEquations cost;\ncost.. z =e= 1;\nModel m / all /;\nSolve m using lp minimizing z;\n";
+        for (text, format) in [
+            (mps, "MPS solver model"),
+            (free_mps, "MPS solver model"),
+            (lp, "LP solver model"),
+            (lp_short, "LP solver model"),
+            (gams, "GAMS solver model"),
+        ] {
+            assert_eq!(data_signature(text.as_bytes()), Some(format), "{text}");
+            let path = "spikes/notes.txt".to_owned();
+            let sniffed = BTreeMap::from([(path.clone(), format)]);
+            assert_eq!(
+                check_paths_with_content(&[path], &document, &[], &sniffed).len(),
+                1
+            );
+        }
+        for path in [
+            "spikes/unit_commitment.mps",
+            "spikes/europe_opf.lp",
+            "spikes/model.qps",
+            "spikes/model.nl",
+            "spikes/model.gms",
+            "spikes/model.gdx",
+        ] {
+            assert_eq!(
+                check_paths(&paths(&[path]), &document, &[]).len(),
+                1,
+                "{path}"
+            );
+        }
+        // Controls: documentation, code and ordinary XML are not models.
+        for text in [
+            &b"# Notes\nCGMES uses <rdf:RDF> with http://iec.ch/TC57/ namespaces.\n"[..],
+            b"let ns = \"http://www.w3.org/1999/02/22-rdf-syntax-ns#\";\n",
+            b"<?xml version=\"1.0\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n",
+            b"<html><body>RDF</body></html>",
+            b"# MPS\nThe NAME, ROWS and COLUMNS sections hold the model.\n",
+            b"Minimize the cost subject to limits.\nThe end.\n",
+            b"fn solve() { /* solve m using lp minimizing z */ }\n",
+            b"NAME\n  ROWS are indented here\n",
         ] {
             assert_eq!(data_signature(text), None, "{text:?}");
         }
