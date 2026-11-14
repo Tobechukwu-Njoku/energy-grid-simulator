@@ -7,6 +7,16 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 revision-13 review:** exact head `9db2a40a88aa9e4f1400f0417a4e188389c72653`
+re-reviewed; verdict **must-fix**. All 224 submitted tests and the original round-12
+reproductions pass. Three CORE gaps remain: an exempt PuTTY header permits a real
+private body, a following-line allowlist marker suppresses an AWS-secret-shaped
+assignment, and add-then-delete PR history is not scanned for secrets/data. Do not
+attest this head as the one-time bootstrap seed. R13-04's lowercase attribution
+coverage and documented bounded follow-ups need not block independently.
+Evidence, regressions, adversarial triage and M0 assessment:
+[revision-13 report](reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
+
 ## Snapshot of what's decided
 
 Research + market-forecasting simulator (short-term and seasonal, D-25) of **GB + all-island
