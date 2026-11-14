@@ -11,7 +11,7 @@ Revised and verified on **2026-11-14** following independent verification report
 - **Interconnector Geography (FR-1.AC3):** The 10 interconnector boundaries comprise:
   - **7 GB-to-external-system links:** France (IFA, IFA2, ElecLink), Netherlands (BritNed), Belgium (Nemo Link), Norway (North Sea Link / NSL), Denmark (Viking Link).
   - **3 GB-to-Ireland internal links:** Moyle (Scotland $\leftrightarrow$ Northern Ireland), East–West / EWIC (Wales $\leftrightarrow$ Republic of Ireland), Greenlink (Wales $\leftrightarrow$ Republic of Ireland). These three internal links couple the two modelled transmission geographies.
-  - *Greenlink baseline qualification:* Greenlink (`INTGRNL`) commissioning occurred in early 2025; 2024 records contain only 7,102 sparse observations. Their count and sparsity are verified, but their causal interpretation as 7,102 commissioning tests is unverified. They must not be treated as a fully commissioned operational baseline for the 2024 historical holdout.
+  - *Greenlink baseline qualification:* Greenlink (`INTGRNL`) recorded 7,102 sparse observations in 2024; cause unverified; not a fully commissioned 2024 baseline. Commercial commissioning was announced in early 2025; count and sparsity are verified from Elexon BMRS flow records, but operational cause is unverified from flow counts alone. They must not be treated as a fully commissioned operational baseline for the 2024 historical holdout.
 - **Physics Formulation (FR-8, FR-21, D-55):** DC network model augmented by published operational security and stability constraint proxies (boundary transfer limits, regional inertia floors, minimum units, Irish SNSP limits). Full AC power flow and dynamic simulation stay in P2/P4.
 - **Market & Operational Rules (FR-7, D-15, D-59):** GB national market scheduling and I-SEM ex-ante trading, followed by cost-based redispatch against physical constraints. Historical bid/offer replay is not used; redispatch is driven by estimated generator operating costs.
 - **Validation Holdout (FR-12, D-66, D-70):** Pinned historical baseline year 2024 (leap year: 366 days, 17,568 half-hour settlement periods). Reconstructions are distinguished from as-of forecast backtests. Known gaps in historical validation series (such as missing intervals in SEMO imbalance archives) are explicitly tracked rather than assumed complete.
@@ -19,7 +19,7 @@ Revised and verified on **2026-11-14** following independent verification report
 - **Internally Produced Artifacts:** Simulator schemas, timezone conversions, and interval engines are internally authored simulator specifications, not acquired external datasets, and are not assigned an external license.
 
 ### Auditable Candidate Source Register & Classification Breakdown
-To ensure full auditability (Finding 18), candidate sources are tracked with stable IDs (`SRC-01` through `SRC-34` for external datasets, `INT-01` and `INT-02` for internal specifications):
+To ensure full auditability (Findings 18, R2-05), candidate sources are tracked at resource level with stable IDs (`SRC-01` through `SRC-50`, splitting mixed-licence or multi-stream families into distinct sub-resource rows `SRC-16a/b`, `SRC-36a/b`, `SRC-37a/b`, and `SRC-38a/b` for 54 total external candidate resources; plus `INT-01` and `INT-02` for internal specifications):
 
 | Stable ID | Candidate Source Name | Primary Publisher | D-56 Classification | Access Requirement |
 |---|---|---|---|---|
@@ -28,18 +28,19 @@ To ensure full auditability (Finding 18), candidate sources are tracked with sta
 | `SRC-03` | NGED LTDS Tabular Model (4 areas) | NGED | `open-commercial` | Open direct download |
 | `SRC-04` | NGED LTDS CIM XML Models | NGED | `open-commercial` | Open direct download |
 | `SRC-05` | SSEN SEPD LTDS Tables & CIM EQ | SSEN Distribution | `open-commercial` | Open direct download (signed S3) |
-| `SRC-06` | UKPN LTDS Tabular Circuit Data (3 areas) | UK Power Networks | `open-commercial` | Registered user login (HTTP 403 unauthenticated) |
-| `SRC-07` | UKPN LTDS CIM Network Models | UK Power Networks | `research-only` (PC-5) | Registered user login & CIM request approval |
-| `SRC-08` | SPEN SPM LTDS Tabular Data (1 area) | SP Energy Networks | `open-commercial` | Registered user login (HTTP 403 unauthenticated) |
-| `SRC-09` | SPEN SPM CIM Network Models | SP Energy Networks | `research-only` (PC-5) | Registered user login & Data Request approval |
-| `SRC-10` | NPg LTDS Tabular & CIM Models (2 areas) | Northern Powergrid | `open-commercial` | Registered user login (HTTP 403 unauthenticated) |
-| `SRC-11` | ENWL LTDS Tables & CIM Models (1 area) | Electricity North West | `research-only` (PC-5) | Secure Area user registration & approval |
+| `SRC-06` | UKPN LTDS Tabular Circuit Data (3 areas) | UK Power Networks | `open-commercial` | Registered user login prerequisite (HTTP 403 unauthenticated) |
+| `SRC-07` | UKPN LTDS CIM Network Models | UK Power Networks | `research-only` (PC-5) | User registration & formal CIM request prerequisite |
+| `SRC-08` | SPEN SPM LTDS Tabular Data (1 area) | SP Energy Networks | `open-commercial` | Registered user login prerequisite (HTTP 403 unauthenticated) |
+| `SRC-09` | SPEN SPM CIM Network Models | SP Energy Networks | `research-only` (PC-5) | User registration & Data Request prerequisite |
+| `SRC-10` | NPg LTDS Tabular & CIM Models (2 areas) | Northern Powergrid | `open-commercial` | Registered user login prerequisite (HTTP 403 unauthenticated) |
+| `SRC-11` | ENWL LTDS Tables & CIM Models (1 area) | Electricity North West | `research-only` (PC-5) | Secure Area user registration & approval prerequisite |
 | `SRC-12` | TYTFS 2024 Study Files (WP/SV RAW/SEQ) | EirGrid & SONI | `research-only` (PC-2) | Open direct download |
 | `SRC-13` | NIE Networks Open Data Portal | NIE Networks | `open-commercial` | Open CKAN API |
 | `SRC-14` | ESB Networks Network Maps & Publications | ESB Networks | `research-only` (PC-5) | Web access only (no machine-readable model) |
 | `SRC-15` | Elexon BMRS Reference Interconnectors | Elexon Limited | `open-commercial` | Open REST API |
-| `SRC-16` | ENTSO-E Scheduled Exchanges & Flows (A09/A11) | ENTSO-E | `open-commercial` (A11 non-IFA/Nemo) / `research-only` (A09 & IFA/Nemo, PC-5) | Personal API Security Token required |
-| `SRC-17` | NESO Transmission Entry Capacity (TEC) Register | NESO | `open-commercial` | Open CKAN API |
+| `SRC-16a` | ENTSO-E Physical Flows (A11, non-IFA/Nemo) | ENTSO-E | `open-commercial` | Personal API Security Token prerequisite |
+| `SRC-16b` | ENTSO-E Scheduled Exchanges (A09) & IFA/Nemo Flows (A11) | ENTSO-E | `research-only` (PC-5) | Personal API Security Token prerequisite |
+| `SRC-17` | NESO Transmission Entry Capacity (TEC) Register | NESO | `open-commercial` | Open CKAN API (cached Nov 10 hash pinned; live URL mutable) |
 | `SRC-18` | DESNZ Renewable Energy Planning Database (REPD) | DESNZ | `open-commercial` | Open direct download |
 | `SRC-19` | DESNZ DUKES Table 5.11 (Power Stations in the UK) | DESNZ | `open-commercial` | Open direct download |
 | `SRC-20` | Elexon BM Unit Reference Register (`bmunits`) | Elexon Limited | `open-commercial` | Open REST API |
@@ -48,49 +49,90 @@ To ensure full auditability (Finding 18), candidate sources are tracked with sta
 | `SRC-23` | NESO 24-Months-Ahead Constraint Limits | NESO | `open-commercial` | Open CKAN API |
 | `SRC-24` | EirGrid / SONI System Data Quarter-Hourly (SNSP) | EirGrid & SONI | `research-only` (PC-2) | Open direct download |
 | `SRC-25` | NESO Operability Strategy (Inertia & Voltage) | NESO | `research-only` (PC-5) | Web access (URL unresolved / 404) |
-| `SRC-26` | Balancing and Settlement Code (BSC) Baseline Text | Elexon Limited | `research-only` (PC-5) | Open web access |
-| `SRC-27` | I-SEM Trading & Settlement Code (Part B) | SEM Committee / SEMO | `research-only` (PC-5) | Web access (URL unresolved / 404) |
+| `SRC-26` | Balancing and Settlement Code (BSC) Baseline Text | Elexon Limited | `research-only` (PC-5) | Open web access (statutory code hub) |
+| `SRC-27` | I-SEM Trading & Settlement Code (Part B) | SEMO | `research-only` (PC-5) | Web access (URL unresolved / 404) |
 | `SRC-28` | JAO Capacity Allocation Rules | JAO S.A. | `research-only` (PC-5) | Open web access |
 | `SRC-29` | NESO Historic Demand Data (2024) | NESO | `open-commercial` | Open CKAN API |
 | `SRC-30` | Elexon Initial Demand Outturn (`demand_outturn`) | Elexon Limited | `open-commercial` | Open REST API |
 | `SRC-31` | Elexon Half-Hourly Fuel Outturn (`fuelhh`) | Elexon Limited | `open-commercial` | Open REST API |
-| `SRC-32` | Interconnector Technical Loss Specifications | Operators (BritNed, ElecLink, etc.) | `research-only` (PC-5) | Public filings / operator sites |
+| `SRC-32` | Interconnector Technical Loss Specifications | Interconnector Operators | `research-only` (PC-5) | Public filings / operator sites (parameters MISSING) |
 | `SRC-33` | GOV.UK Bank Holidays JSON | UK Cabinet Office | `open-commercial` | Open REST API |
 | `SRC-34` | Irish Public Holiday Text | Government of Ireland | `research-only / unverified` (PC-5) | Web access (HTTP 403 unverified) |
 | `SRC-35` | IANA Time Zone Database (`tzdata`) | IANA | `open-commercial` | Standard system library / open download |
-| `SRC-36` | UK ETS & EU ETS Auction Clearing Prices | DESNZ / ICE / EEX | `open-commercial` (UK) / `research-only / unverified` (EU) | Web download (UK URL unresolved / 404) |
-| `SRC-37` | DESNZ Assumptions & World Bank Commodity Prices | DESNZ / World Bank | `open-commercial` (WB CC BY 4.0 / DESNZ OGL) | Open direct download |
-| `SRC-38` | CfD Strike Prices & RO Buyout Parameters | LCCC & Ofgem | `research-only / unverified` (PC-5) | Web download (LCCC HTTP 403 unverified) |
-| `SRC-39` | Copernicus CDS ERA5 Reanalysis (Single Levels) | ECMWF / Copernicus | `open-commercial` | Registered CDS user account & API key required |
-| `SRC-40` | Met Office MIDAS Open Surface Observations | UK Met Office / CEDA | `open-commercial` | Free CEDA user registration required |
+| `SRC-36a` | UK ETS Auction Clearing Prices | ICE Futures Europe / UK ETS Authority | `research-only / unverified` (PC-5) | Web download (URL unresolved / 404; rights unverified) |
+| `SRC-36b` | EU ETS Auction & Spot Prices | EEX / European Commission | `research-only / unverified` (PC-5) | Web download / unacquired |
+| `SRC-37a` | DESNZ Fossil Fuel Price Assumptions | DESNZ | `open-commercial` | Open direct download (OGL v3.0) |
+| `SRC-37b` | World Bank Commodity Price Data (Pink Sheet) | World Bank | `open-commercial` | Open direct download (CC BY 4.0; monthly) |
+| `SRC-38a` | CfD Strike Prices | Low Carbon Contracts Company | `research-only / unverified` (PC-5) | Web download (portal HTTP 403 unverified) |
+| `SRC-38b` | Renewables Obligation (RO) Buyout Price & Parameters | Ofgem | `research-only / unverified` (PC-5) | Administrative notices (dataset location unidentified) |
+| `SRC-39` | Copernicus CDS ERA5 Reanalysis (Single Levels) | ECMWF / Copernicus | `open-commercial` | Registered CDS user account & API key prerequisite |
+| `SRC-40` | Met Office MIDAS Open Surface Observations | UK Met Office / CEDA | `open-commercial` | Free CEDA user registration prerequisite |
 | `SRC-41` | Met Éireann MÉRA Reanalysis & Open Data | Met Éireann | `research-only / unverified` (PC-5) | Web download (MÉRA ends 2019; GRIB 1) |
-| `SRC-42` | Renewables.ninja Simulated Benchmark Series | Renewables.ninja | `research-only` (PC-5) | Free user registration & API token |
+| `SRC-42` | Renewables.ninja Simulated Benchmark Series | Renewables.ninja | `research-only` (PC-5) | Free user registration & API token prerequisite |
 | `SRC-43` | Elexon BMRS 2024 Market & Operational Streams | Elexon Limited | `open-commercial` | Open REST API |
 | `SRC-44` | SEMO / SEMOpx 2024 Pinned Price Archives | SEMO & SEMOpx | `research-only` (PC-3) | Open direct download |
 | `SRC-45` | NESO Outturn Thermal Constraint Costs | NESO | `open-commercial` | Open CKAN API |
 | `SRC-46` | ECB Euro Foreign Exchange Reference Rates | European Central Bank | `open-commercial` | Open direct download |
 | `SRC-47` | Bank of England Database Series | Bank of England | `research-only` (PC-5) | Open direct download |
+| `SRC-48` | NESO ETYS Appendix G (GSP Peak Demand Snapshots) | NESO | `research-only` (PC-1) | Open direct download |
+| `SRC-49` | DNO LTDS Table 7 (GSP Substation Demands) | DNOs (14 licence areas) | `research-only / unverified` (PC-5) | Portal logins / data requests (varies by DNO) |
+| `SRC-50` | Elexon BMRS Settlement Stack API (Candidate TLM) | Elexon Limited | `open-commercial` | Open REST API candidate |
 | `INT-01` | Canonical Scenario Schema & Checks Specification | Internal Simulator | N/A (Internal Code/Schema) | Internal repository specification |
 | `INT-02` | ISO 8601 Continuous Interval Engine | Internal Simulator | N/A (Mathematical Algorithm) | Internal repository code |
 
-### Classification Totals (External Candidate Sources `SRC-01`–`SRC-47`):
-- **Total External Candidate Sources:** 47 distinct dataset/source entries across 22 publishers.
+### Classification Totals (External Candidate Resources `SRC-01`–`SRC-50`, 54 Resource Rows):
+- **Total External Candidate Resources:** 54 distinct resource entries mapped to 31 normalised publishers.
 - **Classification Breakdown:**
-  - `open-commercial`: 25 sources (53.2%)
-  - `research-only` (including unverified grants): 22 sources (46.8%)
+  - `open-commercial`: 29 resources (53.7%)
+  - `research-only` (including unverified grants): 25 resources (46.3%)
 - **Internal Simulator Specifications:** 2 internal artifacts (`INT-01`, `INT-02`), not classified as acquired external datasets.
+
+### Normalised Publisher Mapping (31 Publishers):
+To ensure full auditability and eliminate ambiguous multi-owner labels (Finding R2-05), the 54 external candidate resources are mapped to 31 distinct normalised publisher entities:
+1. **National Energy System Operator (NESO):** 9 resources (`SRC-01`, `SRC-02`, `SRC-17`, `SRC-22`, `SRC-23`, `SRC-25`, `SRC-29`, `SRC-45`, `SRC-48`)
+2. **National Grid Electricity Distribution (NGED):** 2 resources (`SRC-03`, `SRC-04`)
+3. **Scottish and Southern Electricity Networks (SSEN Distribution):** 1 resource (`SRC-05`)
+4. **UK Power Networks (UKPN):** 2 resources (`SRC-06`, `SRC-07`)
+5. **SP Energy Networks (SPEN):** 2 resources (`SRC-08`, `SRC-09`)
+6. **Northern Powergrid (NPg):** 1 resource (`SRC-10`)
+7. **Electricity North West Limited (ENWL):** 1 resource (`SRC-11`)
+8. **EirGrid & SONI:** 2 resources (`SRC-12`, `SRC-24`)
+9. **Northern Ireland Electricity Networks (NIE Networks):** 1 resource (`SRC-13`)
+10. **ESB Networks:** 1 resource (`SRC-14`)
+11. **Elexon Limited:** 7 resources (`SRC-15`, `SRC-20`, `SRC-26`, `SRC-30`, `SRC-31`, `SRC-43`, `SRC-50`)
+12. **ENTSO-E:** 2 resources (`SRC-16a`, `SRC-16b`)
+13. **Department for Energy Security and Net Zero (DESNZ):** 3 resources (`SRC-18`, `SRC-19`, `SRC-37a`)
+14. **Single Electricity Market Operator (SEMO):** 2 resources (`SRC-21`, `SRC-27`)
+15. **SEMO & SEMOpx:** 1 resource (`SRC-44`)
+16. **Joint Allocation Office (JAO S.A.):** 1 resource (`SRC-28`)
+17. **Interconnector Operators (BritNed, ElecLink, Greenlink, Moyle, etc.):** 1 resource (`SRC-32`)
+18. **UK Cabinet Office:** 1 resource (`SRC-33`)
+19. **Government of Ireland:** 1 resource (`SRC-34`)
+20. **Internet Assigned Numbers Authority (IANA):** 1 resource (`SRC-35`)
+21. **ICE Futures Europe / UK ETS Authority:** 1 resource (`SRC-36a`)
+22. **European Energy Exchange (EEX) / European Commission:** 1 resource (`SRC-36b`)
+23. **World Bank:** 1 resource (`SRC-37b`)
+24. **Low Carbon Contracts Company (LCCC):** 1 resource (`SRC-38a`)
+25. **Office of Gas and Electricity Markets (Ofgem):** 1 resource (`SRC-38b`)
+26. **ECMWF / Copernicus Climate Change Service:** 1 resource (`SRC-39`)
+27. **UK Met Office / CEDA Archive:** 1 resource (`SRC-40`)
+28. **Met Éireann:** 1 resource (`SRC-41`)
+29. **Renewables.ninja (Imperial / ETH):** 1 resource (`SRC-42`)
+30. **European Central Bank (ECB):** 1 resource (`SRC-46`)
+31. **Bank of England (BoE):** 1 resource (`SRC-47`)
+32. *(DNO licence areas collective candidate):* 1 resource (`SRC-49`)
 
 ### Field-Level Deficit Backlog
 The claim of "zero unsourced inputs" is retracted (Finding 18). While candidate source families have been identified for high-level categories, an explicit field-level deficit backlog remains missing or unverified before M1 ingestion can be considered complete:
 1. **Commissioned 2024 Network Fleet & Asset Denominators (Finding 7):** ETYS 2025/26 and DNO 2025/26 releases are forward snapshots, not 2024 historical commissioned baselines. GSP and BMU crosswalks, rating definitions (post-fault vs continuous), unit bases (% vs pu on 100 MVA vs ohms), and 132-kV circuit denominators across all 14 DNO areas remain incomplete.
 2. **Proxy Rule Parameters and Cut-Sets (Finding 6):** Boundary constraint groups lack explicit signed electrical branch cut-sets. Regional inertia floors, unit groups, minimum-unit requirements, and Irish SNSP operational limits are unverified narrative figures or realised outturns rather than verified operational rules.
-3. **Embedded Generation Decomposition (Finding 3):** Elexon FUELHH does not provide embedded solar or wind output. Embedded estimates must be sourced from NESO historic demand columns; Irish embedded components remain unacquired; net/underlying demand formulation must be tested against double-counting.
-4. **Directional Interconnector Losses & TLM Source (Findings 4, 5):** Directional loss parameters for the 10 interconnector links are missing from operator homepages. The claimed Elexon TLM dataset is not present in the 12 gathered settlement streams and was not acquired; Elexon's settlement stack API remains an unverified candidate.
+3. **Embedded Generation Decomposition & Demand Equation (Findings 3, R2-02):** Elexon FUELHH does not provide embedded solar or wind output. Embedded estimates must be sourced from NESO historic demand columns (`EMBEDDED_SOLAR_GENERATION`, `EMBEDDED_WIND_GENERATION`); Irish embedded components remain unacquired. In NESO Historic Demand data, National Demand (`ND`) already excludes station load, pumped storage pumping, and interconnector exports (which Transmission System Demand, `TSD`, adds back). Therefore, pumping must not be subtracted from `ND`. The starting accounting identity is $\text{Gross Underlying Demand} = \text{National Demand} (\text{ND}) + \text{Embedded Solar} + \text{Embedded Wind}$. Double-counting checks, station-load reconciliation, and MWh integration fixtures remain pending.
+4. **Directional Interconnector Losses & TLM Source (Findings 4, 5, R2-03):** Directional physical loss parameters for all 10 interconnector links are missing from operator sources; unsupported numeric default percentages have been replaced with MISSING across all links. Converter and cable loss separation, distinct forward/reverse flow parameters, and sending/receiving metering conventions remain unverified pending primary regulatory filings. The claimed Elexon TLM dataset is not present in the 12 gathered settlement streams and was not acquired; Elexon's settlement stack API (`SRC-50`) remains an unacquired candidate.
 5. **Dated Market Rules (Finding 11):** BSC Section T settlement cashout provisions and SEMOpx auction rules (DAM, IDA1–3, IDC) need dated, version-pinned 2024 releases rather than current website legal hubs.
-6. **Fuel, Carbon, and Subsidy Vectors (Finding 10):** UK ETS auction URL is dead (404); EU ETS source is unacquired; World Bank series are monthly (resampling required); DESNZ assumptions are forward projections; LCCC portal is gated (403); technology heat rates and variable O&M are unacquired.
+6. **Fuel, Carbon, and Subsidy Vectors (Findings 10, R2-01, R2-05):** UK ETS auction URL is dead (404), licence is unverified (PC-5), and third-party auction rights are not established; EU ETS source is unacquired; World Bank series are monthly (resampling required); DESNZ assumptions are forward projections; LCCC portal is gated (403); Ofgem RO buyout parameters lack an identified machine-readable dataset; technology heat rates and variable O&M are unacquired.
 7. **Weather Reanalysis Acquisition (Findings 14, 16):** Zero bytes of ERA5 weather data have been downloaded (requires owner CDS credentials); MÉRA does not cover 2024; power-curve conversion software is unintegrated.
 8. **Statutory and Market Calendars (Finding 13):** Irish public holiday dataset access is unverified (403); trading settlement calendars and tzdata versions must be pinned to immutable repository artifacts.
-9. **Scenario Schema & Fixtures (Finding 15):** The canonical scenario schema, immutable lock files, and test fixtures exist only as conceptual designs in ADR 0002, not as an implemented schema or test suite.
+9. **Scenario Schema, Identity Inputs & Fixtures (Findings 15, R2-07):** The canonical scenario schema exists only as a conceptual architecture in ADR 0002. A complete scenario input inventory requires: separate hashing of scenario input identity and execution identity; knowledge mode distinction (as-of forecast backtest vs historical reconstruction); typed domain entities with permanent opaque UUIDs; three distinct timestamps (effective time `[from, to)`, publication/revision time, and acquisition time); versioned mappings for calendar/tzdata, transformations, cost models, FX vectors, and constraint proxies; rights lineage tracking with PC-1–PC-7 clearance tags; and schema migration vectors with deterministic manifest hashes. The Rust serde deserializer, JSON-schema validation, immutable locks, and test fixtures remain to be implemented in M1.
 
 ---
 
@@ -280,33 +322,33 @@ Per D-60, all 14 DNO areas must be addressed. Note that there are **12 England/W
   - **Licence Name & Link:** [Licence to use BMRS open data](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/)
   - **D-56 Classification:** `open-commercial`
   - **Access Requirement:** Open REST API (no credentials required)
-  - **Evidence State:** Raw acquired / hash-verified in cache (`spikes/data-gathering/elexon/COVERAGE.md`).
-  - **Remaining Gaps:** Reference list does not provide historical commissioning dates; Greenlink commissioning in early 2025 means 2024 has 7,102 sparse records that must not be treated as a fully commissioned baseline.
+  - **Evidence State:** Source identified / reference endpoint verified (flow time-series acquired in `spikes/data-gathering/elexon/COVERAGE.md`, but static reference snapshot payload is not hash-verified in cache).
+  - **Remaining Gaps:** Reference list does not provide historical commissioning dates; Greenlink recorded 7,102 sparse observations in 2024 (cause unverified; not a fully commissioned 2024 baseline).
 
-- **Candidate Source (`SRC-16`):** ENTSO-E Transparency Platform (Scheduled Exchanges & Physical Flows)
+- **Candidate Sources (`SRC-16a`, `SRC-16b`):** ENTSO-E Transparency Platform (Scheduled Exchanges & Physical Flows)
   - **Publisher:** ENTSO-E
   - **URL:** Platform: [https://transparency.entsoe.eu/](https://transparency.entsoe.eu/); Official Terms API: [https://transparencyplatform.zendesk.com/api/v2/help_center/en-us/articles/40921911218961.json](https://transparencyplatform.zendesk.com/api/v2/help_center/en-us/articles/40921911218961.json); Reuse List PDF: [https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729](https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729)
   - **Format:** XML REST API (Document types `A09` scheduled exchanges, `A11` physical flows)
   - **Coverage:** Cross-border exchanges across all European borders, including GB↔France, GB↔Belgium, GB↔Netherlands, GB↔Norway, GB↔Denmark, GB↔IE/NI.
   - **Update Cadence:** Hourly / Half-hourly
   - **Licence Name & Link:** [ENTSO-E Free Re-use List (18 Oct 2023)](https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729) incorporates CC BY 4.0 for physical flows (`A11`), but **explicitly excludes IFA and Nemo Link**, and does not list scheduled commercial exchanges (`A09`).
-  - **D-56 Classification:** `A11` physical flows (non-excluded borders): `open-commercial`; `A11` (IFA and Nemo Link) and all `A09` scheduled exchanges: `research-only` ([PC-5 in TODO-pre-commercial.md](../requirements/TODO-pre-commercial.md)).
-  - **Access Requirement:** **Owner credentials / security token required**. REST API requires personal token obtained via account registration and email request to `transparency@entsoe.eu`.
+  - **D-56 Classification:** `SRC-16a` (`A11` physical flows on non-excluded borders): `open-commercial`; `SRC-16b` (`A11` on IFA and Nemo Link, and all `A09` scheduled commercial exchanges): `research-only` ([PC-5 in TODO-pre-commercial.md](../requirements/TODO-pre-commercial.md)).
+  - **Access Requirement:** **Owner credentials / security token required**. REST API requires personal token obtained via account registration and email request to `transparency@entsoe.eu` (prerequisite; zero authenticated payloads retrieved).
   - **Evidence State:** Terms and API structure verified; zero authenticated payloads retrieved (unauthenticated requests return HTTP 401).
   - **Remaining Gaps:** Owner token must be provisioned to unlock automated validation downloads.
 
 #### 1.5 Generation, Storage, and Resource Fleets
 - **Candidate Source (`SRC-17`):** NESO Transmission Entry Capacity (TEC) Register
   - **Publisher:** NESO
-  - **URL:** Package: [https://api.neso.energy/api/3/action/package_show?id=cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1](https://api.neso.energy/api/3/action/package_show?id=cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1); Direct Resource: [https://api.neso.energy/dataset/cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1/resource/17becbab-e3e8-473f-b303-3806f43a6a10/download/tec-register-10-november-2026.csv](https://api.neso.energy/dataset/cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1/resource/17becbab-e3e8-473f-b303-3806f43a6a10/download/tec-register-10-november-2026.csv)
+  - **URL:** Package: [https://api.neso.energy/api/3/action/package_show?id=cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1](https://api.neso.energy/api/3/action/package_show?id=cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1); Direct Resource: [https://api.neso.energy/dataset/cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1/resource/17becbab-e3e8-473f-b303-3806f43a6a10/download/tec-register-10-november-2026.csv](https://api.neso.energy/dataset/cbd45e54-e6e2-4a38-99f1-8de6fd96d7c1/resource/17becbab-e3e8-473f-b303-3806f43a6a10/download/tec-register-10-november-2026.csv) (Note: live resource URL is mutable and redirects to subsequent signed snapshots, e.g. 13 November 2026; only the cached sample is pinned by hash).
   - **Format:** CSV
   - **Coverage:** GB transmission-connected generation and storage projects (snapshot 10 November 2026: 2,220 project rows, 1,759 direct agreements, 461 embedded agreements, 389 marked Built/Operational).
   - **Update Cadence:** Monthly
   - **Licence Name & Link:** [National Energy SO Open Data Licence v1.0](https://www.neso.energy/data-portal/neso-open-licence)
   - **D-56 Classification:** `open-commercial`
   - **Access Requirement:** Open direct download via CKAN API
-  - **Evidence State:** Raw acquired / hash-verified in cache (`spikes/data-gathering/network-ie/manifest.toml`).
-  - **Remaining Gaps:** Current snapshot includes future connection queues; filtering to historical 2024 operational fleet requires effective date cross-referencing.
+  - **Evidence State:** Cached snapshot (10 November 2026) acquired and hash-verified in `spikes/data-gathering/network-ie/manifest.toml`. The live CKAN resource URL is mutable and does not constitute an immutable November 10 release lock or 2024 fleet baseline.
+  - **Remaining Gaps:** Live resource is mutable and redirects to subsequent snapshots. Current snapshot includes future connection queues; filtering to historical 2024 operational fleet requires effective date cross-referencing and cannot be established by the register alone.
 
 - **Candidate Source (`SRC-18`):** DESNZ Renewable Energy Planning Database (REPD)
   - **Publisher:** Department for Energy Security and Net Zero (DESNZ)
@@ -421,7 +463,7 @@ Per D-60, all 14 DNO areas must be addressed. Note that there are **12 England/W
   - **Licence Name & Link:** BSC legal code is published for code administration; statutory documentation does **not** confer an open commercial database redistribution licence (Finding 1).
   - **D-56 Classification:** `research-only` ([PC-5 in TODO-pre-commercial.md](../requirements/TODO-pre-commercial.md))
   - **Access Requirement:** Open web access
-  - **Evidence State:** Rules documented and referenced in architecture ADR 0006.
+  - **Evidence State:** Source identified / reference-only (statutory digital code hub identified; per [ADR 0006's evidence limits](../architecture/adr/0006-market-design-plugin-model.md#primary-references-and-evidence-limits), specific BSC clauses and historical 2024 rules archive are not verified or acquired).
   - **Remaining Gaps (Finding 11):** Current legal code hub does not pin dated 2024 baseline provisions; Section T cashout rules must be version-pinned for 2024.
 
 - **Candidate Source (`SRC-27`):** I-SEM Trading & Settlement Code (Part B) & Industry Guide
@@ -433,7 +475,7 @@ Per D-60, all 14 DNO areas must be addressed. Note that there are **12 England/W
   - **Licence Name & Link:** Published for market participants; standard website disclaimers.
   - **D-56 Classification:** `research-only` (PC-5)
   - **Access Requirement:** Web access (URL returns 404; location unresolved)
-  - **Evidence State:** Analysed in [spikes/data-gathering/semo-2024/COVERAGE.md](../../spikes/data-gathering/semo-2024/COVERAGE.md).
+  - **Evidence State:** Source identified / reference-only (URL returns 404; [spikes/data-gathering/semo-2024/COVERAGE.md](../../spikes/data-gathering/semo-2024/COVERAGE.md) analysed market archive payloads and settlement cadence, not the statutory Part B legal text).
   - **Remaining Gaps (Finding 11):** Part B alone does not specify SEMOpx auction rules (DAM, IDA1–3, IDC); working URL and dated 2024 auction rule documents must be identified.
 
 - **Candidate Source (`SRC-28`):** Joint Allocation Office (JAO) Explicit Capacity Allocation Rules
@@ -488,13 +530,27 @@ Per D-60, all 14 DNO areas must be addressed. Note that there are **12 England/W
   - **D-56 Classification:** `open-commercial`
   - **Access Requirement:** Open REST API stream
   - **Evidence State:** Raw acquired / hash-verified in cache (`spikes/data-gathering/elexon/COVERAGE.md`, 366 files, 58.91 MiB).
-  - **Correction (Finding 3):** FUELHH does **not** provide embedded solar or embedded wind decomposition; there is **no SOLAR category** in FUELHH, and its `WIND` series is an aggregate. GB embedded estimates must be taken from the explicit NESO Historic Demand Data (`SRC-29`) columns `EMBEDDED_SOLAR_GENERATION` and `EMBEDDED_WIND_GENERATION`. The Irish equivalent embedded series is currently unacquired.
-  - **Remaining Gaps:** Formulate exact net/underlying demand equation:
-    $$\text{Gross Underlying Demand} = \text{National Demand} + \text{Embedded Solar} + \text{Embedded Wind} - \text{Pumping}$$
-    GSP allocation factors and double-counting checks remain to be implemented.
+  - **Correction (Findings 3, R2-02):** FUELHH does **not** provide embedded solar or embedded wind decomposition; there is **no SOLAR category** in FUELHH, and its `WIND` series is an aggregate. GB embedded estimates must be taken from the explicit NESO Historic Demand Data (`SRC-29`) columns `EMBEDDED_SOLAR_GENERATION` and `EMBEDDED_WIND_GENERATION`. The Irish equivalent embedded series is currently unacquired.
+  - **Demand Accounting & Boundaries (Finding R2-02):** In the NESO Historic Demand dataset, National Demand (`ND`) is defined as transmission-supplied demand excluding power station transmission-connected load (station load), pumped storage pumping, and interconnector exports; Transmission System Demand (`TSD`) adds station load and pumping back. Consequently, subtracting pumping from `ND` subtracts pumping twice. The starting accounting identity for gross underlying demand is:
+    $$\text{Gross Underlying Demand (starting accounting identity)} = \text{National Demand} (\text{ND}) + \text{Embedded Solar} + \text{Embedded Wind}$$
+    *Boundary qualifications:* This formulation is a starting accounting identity, not proof that all gross-demand, station-load, transmission loss, import/export, and battery storage charging/discharging boundaries are resolved. Pumping and storage withdrawals must be recorded once as distinct demand components rather than deducted from `ND`. GSP allocation factors, station load reconciliation, energy integration (MW power to MWh per half-hour interval), and double-counting verification test fixtures remain explicitly pending.
 
 #### 3.3 Nodal and Grid Supply Point (GSP) Demand
-- Candidate sources include NESO ETYS Appendix G (`research-only`, PC-1) for peak snapshots and DNO Table 7 registers. Peak snapshots must be synthesized with half-hourly profiles to create nodal time-series.
+- **Candidate Source (`SRC-48`):** NESO ETYS Appendix G (GSP Peak Demand Snapshots)
+  - **Publisher:** NESO
+  - **Format:** Tabular Excel / CSV
+  - **Coverage:** Peak winter/summer transmission-system GSP demand snapshots across Great Britain.
+  - **D-56 Classification:** `research-only` (PC-1)
+  - **Access Requirement:** Open direct download
+  - **Evidence State:** Source identified; parameters unextracted.
+- **Candidate Source (`SRC-49`):** DNO Long Term Development Statement Table 7 (GSP Substation Demands)
+  - **Publisher:** Distribution Network Operators (14 licence areas)
+  - **Format:** Tabular CSV / Excel
+  - **Coverage:** Distribution-level GSP capacities, transformer ratings, and peak demand data.
+  - **D-56 Classification:** `research-only / unverified` (PC-5)
+  - **Access Requirement:** Portal logins / data requests (varies by DNO)
+  - **Evidence State:** Source identified; parameters unextracted.
+  - **Remaining Gaps:** Peak snapshots must be synthesized with half-hourly national and zonal profiles to create nodal time-series; GSP naming crosswalks, bus attachments, and synthetic distribution models remain to be implemented.
 
 ---
 
@@ -502,37 +558,44 @@ Per D-60, all 14 DNO areas must be addressed. Note that there are **12 England/W
 
 #### 4.1 Interconnector Losses (FR-1.AC3)
 - **Candidate Source (`SRC-32`):** Interconnector Technical Specifications & Loss Factor Filings
-  - **Publisher:** Operators (BritNed, National Grid Interconnectors, EirGrid, Moyle Interconnector Ltd, Greenlink Interconnector Ltd)
+  - **Publisher:** Interconnector Operators (BritNed, National Grid Interconnectors, EirGrid, Moyle Interconnector Ltd, Greenlink Interconnector Ltd)
   - **URL:** BritNed: [https://www.britned.com/](https://www.britned.com/); ElecLink: [https://www.eleclink.co.uk/](https://www.eleclink.co.uk/); Greenlink: [https://greenlink.ie/operations/](https://greenlink.ie/operations/)
   - **Licence Name & Link:** Public regulatory filings / statutory rules (does not confer open commercial reuse rights, Finding 1)
   - **D-56 Classification:** `research-only` ([PC-5 in TODO-pre-commercial.md](../requirements/TODO-pre-commercial.md))
   - **Access Requirement:** Public web access
   - **Evidence State:** Source identified; parameters incomplete.
-  - **Per-Interconnector Loss Model Status Ledger (Finding 5):**
+  - **Per-Interconnector Loss Model Status Ledger (Findings 5, R2-03, R2-06):**
     
-    | Interconnector Link | Direction | Converter Loss | Cable Loss | Total Loss Factor | Source Status |
+    | Interconnector Link | Directional Flow & Metering Conventions | Converter Loss (Fwd / Rev) | Cable Loss (Fwd / Rev) | Total Loss Factor / Function | Source Status & Derivation |
     |---|---|---|---|---|---|
-    | **IFA (GB $\leftrightarrow$ France)** | Bidirectional | Unverified | Unverified | Estimated ~2.5% | **MISSING** (No dated 2024 coefficient table) |
-    | **IFA2 (GB $\leftrightarrow$ France)** | Bidirectional | Unverified | Unverified | Estimated ~2.3% | **MISSING** |
-    | **ElecLink (GB $\leftrightarrow$ France)** | Bidirectional | Unverified | Unverified | Estimated ~2.1% | **MISSING** |
-    | **BritNed (GB $\leftrightarrow$ Netherlands)** | Bidirectional | Unverified | Unverified | Estimated ~3.0% | **MISSING** |
-    | **Nemo Link (GB $\leftrightarrow$ Belgium)** | Bidirectional | Unverified | Unverified | Estimated ~2.2% | **MISSING** |
-    | **North Sea Link (GB $\leftrightarrow$ Norway)** | Bidirectional | Unverified | Unverified | Estimated ~4.2% | **MISSING** |
-    | **Viking Link (GB $\leftrightarrow$ Denmark)** | Bidirectional | Unverified | Unverified | Estimated ~4.5% | **MISSING** |
-    | **Moyle (Scotland $\leftrightarrow$ NI)** | Bidirectional | Unverified | Unverified | Estimated ~2.5% | **MISSING** |
-    | **EWIC (Wales $\leftrightarrow$ Ireland)** | Bidirectional | Unverified | Unverified | Estimated ~3.2% | **MISSING** |
-    | **Greenlink (Wales $\leftrightarrow$ Ireland)** | Bidirectional | Unverified | Unverified | Estimated ~2.8% | **MISSING** (Test operations only in 2024) |
+    | **IFA (GB $\leftrightarrow$ France)** | Forward: GB $\rightarrow$ FR; Reverse: FR $\rightarrow$ GB; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **IFA2 (GB $\leftrightarrow$ France)** | Forward: GB $\rightarrow$ FR; Reverse: FR $\rightarrow$ GB; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **ElecLink (GB $\leftrightarrow$ France)** | Forward: GB $\rightarrow$ FR; Reverse: FR $\rightarrow$ GB; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **BritNed (GB $\leftrightarrow$ Netherlands)** | Forward: GB $\rightarrow$ NL; Reverse: NL $\rightarrow$ GB; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **Nemo Link (GB $\leftrightarrow$ Belgium)** | Forward: GB $\rightarrow$ BE; Reverse: BE $\rightarrow$ GB; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **North Sea Link (GB $\leftrightarrow$ Norway)** | Forward: GB $\rightarrow$ NO; Reverse: NO $\rightarrow$ GB; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **Viking Link (GB $\leftrightarrow$ Denmark)** | Forward: GB $\rightarrow$ DK; Reverse: DK $\rightarrow$ GB; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **Moyle (Scotland $\leftrightarrow$ NI)** | Forward: SCO $\rightarrow$ NI; Reverse: NI $\rightarrow$ SCO; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **EWIC (Wales $\leftrightarrow$ Ireland)** | Forward: WAL $\rightarrow$ IE; Reverse: IE $\rightarrow$ WAL; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (No dated 2024 coefficient table; uncited defaults removed) |
+    | **Greenlink (Wales $\leftrightarrow$ Ireland)** | Forward: WAL $\rightarrow$ IE; Reverse: IE $\rightarrow$ WAL; Metering boundary unverified | **MISSING** | **MISSING** | **MISSING** | **MISSING** (7,102 sparse observations in 2024; cause unverified; not a fully commissioned 2024 baseline) |
 
-  - **Remaining Gaps:** All directional physical loss parameters are currently **MISSING** as explicit coefficient tables. Engineering approximations must be explicitly labelled as such and not described as "parameters documented".
+  - **Remaining Gaps (Finding R2-03):** All directional physical loss parameters are currently **MISSING** as explicit, dated 2024 coefficient tables. Unsupported numeric percentage defaults have been removed across all 10 links. Metering conventions (whether losses are attributed at the sending bus, receiving bus, or split mid-interconnector) and distinct directional parameters (forward vs reverse flow) are not documented on public landing pages and must be extracted from formal operator regulatory filings. Converter and cable losses must be separated, and interconnector losses must not be double-counted against onshore transmission branch losses.
 
 #### 4.2 Transmission & Distribution Branch Losses (FR-8, FR-10, ADR 0003)
 - Resistances from ETYS Appendix B (`SRC-01`) and DNO Table 1 (`SRC-03`, `SRC-05`) provide positive sequence resistance $R_1$. Affine piecewise loss approximations must conserve active power.
 
 #### 4.3 System Loss Accounting and Outturns (TLM)
-- **Candidate Source Status (Finding 4):**
+- **Candidate Source (`SRC-50`):** Elexon BMRS Settlement Stack API (`transmissionLossMultiplier` Candidate)
+  - **Publisher:** Elexon Limited
+  - **URL:** [https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/stack/all/](https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/stack/all/) (per `{bidOffer}/{settlementDate}/{settlementPeriod}`)
+  - **Format:** JSON REST API
+  - **D-56 Classification:** `open-commercial`
+  - **Access Requirement:** Open REST API
+  - **Evidence State:** Source identified (candidate only; not acquired in gathered streams).
+- **Candidate Source Status & Corrections (Findings 4, R2-04):**
   - The previous URL (`https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/system-prices/`) returns HTTP 404; when dated, it returns prices and NIV, **not** a delivering/offtaking BMU TLM panel.
   - None of the 12 gathered Elexon settlement streams contains a TLM panel.
-  - Elexon's OpenAPI does expose a `transmissionLossMultiplier` in the settlement stack response at `/balancing/settlement/stack/all/{bidOffer}/{settlementDate}/{settlementPeriod}`. This is an unacquired candidate to investigate.
+  - Elexon's OpenAPI does expose a `transmissionLossMultiplier` in the settlement stack response at `/balancing/settlement/stack/all/{bidOffer}/{settlementDate}/{settlementPeriod}` (`SRC-50`). This is an unacquired candidate to investigate.
   - **Correction:** Prior claims of "included within settlement streams" and "downloaded for 2024" are **retracted**. Transmission loss multipliers are currently **UNVERIFIED / missing**.
 
 ---
@@ -584,17 +647,85 @@ Per D-60, all 14 DNO areas must be addressed. Note that there are **12 England/W
 
 #### 6.1 Canonical Scenario Definition & Execution Settings (FR-4, NFR-1)
 - **Internal Artifact (`INT-01`):** Canonical Scenario Schema & Checksum Specification
-  - **Publisher:** Internal repository specification (ADR 0002, [04-requirements.md](../requirements/04-requirements.md) FR-4)
+  - **Publisher:** Internal simulator specification (ADR 0002, [04-requirements.md](../requirements/04-requirements.md) FR-4)
   - **Classification:** Internal simulator specification (not an acquired dataset; no external licence invented, Finding 1, 15).
-  - **Remaining Backlog (Finding 15):** The schema exists only as a conceptual specification in ADR 0002. The Rust serde deserializer, JSON-schema validation, immutable release locks, patch identities, network fidelity modes, and round-trip fixtures are **missing** and remain to be implemented in M1.
+  - **Scenario Identity & Specification Inventory Checklist (Findings 15, R2-07):**
+    Per ADR 0002, a complete canonical scenario definition requires the following identity and specification artifacts:
+    1. **Independent Identity Hashing:** Distinct content hashes for scenario input identity and execution identity; separate tracking of operational run ID and attempt ID (equal inputs do not collapse separate execution attempts).
+    2. **Knowledge Modes:** Explicit declaration of run mode: *as-of forecast backtest* (selecting only entity revisions provably published before a knowledge cut timestamp) versus *historical reconstruction* (used when publication history is unknown or retrospective data is selected).
+    3. **Semantic Canonicalisation:** Typed domain entities (substations, buses, circuits, transformers, generators, storage, demand attachments, interconnectors) with permanent opaque UUIDs independent of mutable names or row positions, plus external alias mappings.
+    4. **Three Distinct Timestamps:** Explicit half-open UTC effective intervals `[from, to)`, source publication/revision time (where known), and system acquisition time.
+    5. **Versioned Dependency Artifacts:** Version-pinned mappings for:
+       - Civil-to-market calendars and tzdata (settlement date/period, DST fold, leap year);
+       - Transformation, resampling, and spatial aggregation policies;
+       - Generator operating cost models (heat rates, fuel price mappings, variable O&M, carbon intensities);
+       - Foreign exchange rate vectors;
+       - Published operational security and stability constraint proxies (boundary limits, SNSP ceilings, inertia floors).
+    6. **Rights Lineage & Clearances:** Provenance manifests capturing dataset licence status (`open-commercial` vs `research-only`) and canonical pre-commercial clearance IDs (`PC-1` through `PC-7`).
+    7. **Migration & Hash Vectors:** Schema migration framework and deterministic manifest hashes over all tabular and time-series inputs.
+  - **Remaining Backlog:** The scenario schema exists as an architectural design in ADR 0002. The Rust serde deserializer, JSON-schema validation, immutable release locks, and round-trip test fixtures remain to be implemented in M1.
 
 #### 6.2 Fuel, Carbon, and Variable Operating Costs (FR-7, D-59)
-- **Candidate Sources (`SRC-36`–`SRC-38`):**
-  - **UK ETS Auction Clearing Prices (`SRC-36a`):** URL `https://www.gov.uk/government/publications/uk-ets-auction-results` returns HTTP 404 (dead link; location unresolved). Auction clearing prices are bi-weekly/periodic, not daily spot prices. Licence: OGL v3.0 (`open-commercial`).
-  - **EU ETS Auction / Spot Prices (`SRC-36b`):** Source not yet identified or acquired. `research-only / unverified`.
-  - **DESNZ Fossil Fuel Price Assumptions (`SRC-37a`):** URL `https://www.gov.uk/government/collections/fossil-fuel-price-assumptions`. These are scenario projections, not historical 2024 market outturns. OGL v3.0 (`open-commercial`).
-  - **World Bank Commodity Price Data (`SRC-37b`):** URL `https://www.worldbank.org/en/research/commodity-markets`. Monthly and annual series (Pink Sheet), not daily spot series. CC BY 4.0 (`open-commercial`). Any expansion to daily resolution must be explicitly labelled as resampled.
-  - **CfD Strike Prices & RO Buyout Parameters (`SRC-38`):** LCCC Data Portal (`https://www.lowcarboncontracts.uk/data-portal`) returns HTTP 403 (unverified access/licence). Ofgem RO buyout price is published annually in administrative notices. `research-only / unverified` (PC-5).
+- **Candidate Sources (`SRC-36a`–`SRC-38b`):**
+  - **UK ETS Auction Clearing Prices (`SRC-36a`):**
+    - *Publisher / Host:* ICE Futures Europe / UK ETS Authority (DESNZ)
+    - *URL:* [https://www.gov.uk/government/publications/uk-ets-auction-results](https://www.gov.uk/government/publications/uk-ets-auction-results) (returns HTTP 404; location unresolved)
+    - *Release / Product:* UK Allowance (UKA) primary auction clearing results
+    - *Units:* £/tCO2e (Pounds sterling per metric tonne of CO2 equivalent)
+    - *Currency:* GBP (£)
+    - *Frequency:* Bi-weekly / periodic auctions (not daily spot prices)
+    - *Licence Name & Link:* Unverified. Third-party auction data rights held by ICE Futures Europe are not cleared by GOV.UK portal hosting or general OGL website footers (Findings 1, 10, R2-01).
+    - *D-56 Classification:* `research-only / unverified` ([PC-5 in TODO-pre-commercial.md](../requirements/TODO-pre-commercial.md))
+    - *Access Requirement:* Web download (URL unresolved / 404)
+    - *Evidence State:* Source identified; location unresolved; parameters unacquired.
+  - **EU ETS Auction / Spot Prices (`SRC-36b`):**
+    - *Publisher:* European Energy Exchange (EEX) / European Commission
+    - *URL:* Platform: [https://www.eex.com/](https://www.eex.com/)
+    - *Format:* Web / CSV download
+    - *Release / Product:* EU Allowance (EUA) primary auction and secondary spot prices
+    - *Units:* €/tCO2e
+    - *Currency:* EUR (€)
+    - *Frequency:* Daily / auction periods
+    - *Licence Name & Link:* EEX Market Data terms (exchange market data requires commercial licence; third-party reuse unverified)
+    - *D-56 Classification:* `research-only / unverified` (PC-5)
+    - *Access Requirement:* Unacquired
+    - *Evidence State:* Source identified; unacquired.
+  - **DESNZ Fossil Fuel Price Assumptions (`SRC-37a`):**
+    - *Publisher:* DESNZ
+    - *URL:* [https://www.gov.uk/government/collections/fossil-fuel-price-assumptions](https://www.gov.uk/government/collections/fossil-fuel-price-assumptions)
+    - *Format:* Spreadsheet / PDF
+    - *Coverage:* Long-term oil, gas, and coal price scenario projections (not historical 2024 spot outturns).
+    - *Licence Name & Link:* [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
+    - *D-56 Classification:* `open-commercial`
+    - *Access Requirement:* Open direct download
+    - *Evidence State:* Source identified; scenario assumptions only.
+  - **World Bank Commodity Price Data (`SRC-37b`):**
+    - *Publisher:* World Bank
+    - *URL:* [https://www.worldbank.org/en/research/commodity-markets](https://www.worldbank.org/en/research/commodity-markets)
+    - *Format:* Excel / CSV (Pink Sheet)
+    - *Coverage:* Monthly and annual historical global commodity prices (natural gas, coal, crude oil).
+    - *Licence Name & Link:* [World Bank Dataset Terms of Use](https://data.worldbank.org/summary-terms-of-use) (CC BY 4.0 with additional condition terms)
+    - *D-56 Classification:* `open-commercial`
+    - *Access Requirement:* Open direct download
+    - *Evidence State:* Metadata inspected (CC BY 4.0 confirmed). Note: Series are monthly; any expansion to daily or half-hourly resolution must be explicitly labelled as resampled.
+  - **CfD Strike Prices (`SRC-38a`):**
+    - *Publisher:* Low Carbon Contracts Company (LCCC)
+    - *URL:* [https://www.lowcarboncontracts.uk/data-portal](https://www.lowcarboncontracts.uk/data-portal) (returns HTTP 403 on automated probe)
+    - *Format:* Web / CSV data portal
+    - *Coverage:* Contracts for Difference strike prices, market reference prices, and generation payments.
+    - *Licence Name & Link:* Portal terms unverified (HTTP 403)
+    - *D-56 Classification:* `research-only / unverified` (PC-5)
+    - *Access Requirement:* Web download (unverified access)
+    - *Evidence State:* Source identified; portal access unverified.
+  - **Renewables Obligation (RO) Buyout Price & Parameters (`SRC-38b`):**
+    - *Publisher:* Office of Gas and Electricity Markets (Ofgem)
+    - *URL:* Scheme publications: [https://www.ofgem.gov.uk/environmental-and-social-schemes/renewables-obligation-ro](https://www.ofgem.gov.uk/environmental-and-social-schemes/renewables-obligation-ro)
+    - *Format:* Annual administrative guidance documents / circulars
+    - *Coverage:* Annual RO buyout price (£/ROC) and obligation levels for 2024.
+    - *Licence Name & Link:* Crown copyright / OGL v3.0 on Ofgem portal, but exact machine-readable dataset location is unidentified (parameters published in policy circulars).
+    - *D-56 Classification:* `research-only / unverified` (PC-5)
+    - *Access Requirement:* Web access; exact machine-readable dataset location unidentified
+    - *Evidence State:* Source identified; statutory parameters published in circulars; machine-readable dataset location unidentified.
   - **Technology SRMC Parameters (Finding 10):** Generator heat rates, emissions factors, and variable O&M are unacquired / assumed. No complete daily SRMC vector exists in the repository.
 
 #### 6.3 Weather-Derived Renewable Resource Profiles (FR-3, FR-17)
@@ -699,21 +830,21 @@ Per D-60, all 14 DNO areas must be addressed. Note that there are **12 England/W
 
 ## 3. Owner Credentials Summary & Capability Unlock Matrix
 
-Several candidate sources require owner actions (account creation, API key generation, or formal data request approval). In accordance with Finding 14, prerequisites are separated by action type, credentials are never committed to git, and D-65 runner provisioning is maintained separately from source data credentials:
+Several candidate sources require owner actions (account creation, API key generation, or formal data request approval). In accordance with Findings 14 and R2-04, portal registrations and application forms are listed as **prerequisites only**; actual access permissions, request approval processes, request form availability, and whether requested payloads (such as CIM models or full row tables) are provided to research users remain **unverified**. Credentials are never committed to git. In accordance with D-65 and NFR-12.AC1/AC2, isolation and resource tests on dedicated runner environments must be completed prior to executing any heavy data processing jobs:
 
 | Required Credential / Account | Target Service / Portal | Access Type | What It Unlocks for Milestone M1 | Action Required by Owner |
 |---|---|---|---|---|
-| **ENTSO-E API Security Token** | ENTSO-E Transparency Platform ([transparency.entsoe.eu](https://transparency.entsoe.eu/)) | Personal API token (`securityToken`) | Unlocks automated REST API retrieval of scheduled commercial interconnector exchanges (`A09`) and cross-border physical flows (`A11`) for independent validation. | 1. Register free account on [transparency.entsoe.eu](https://transparency.entsoe.eu/).<br>2. Email `transparency@entsoe.eu` with subject `RESTful API access`.<br>3. Generate token under "My Account" and set environment variable. |
-| **Copernicus CDS Account & API Key** | Copernicus Climate Data Store ([cds.climate.copernicus.eu](https://cds.climate.copernicus.eu/)) | API Key via `~/.cdsapirc` | Unlocks automated submission and downloading of ERA5 gridded hourly weather data (wind, solar radiation, temperature) for 2024 to generate renewable generator profiles. | 1. Create free account at [cds.climate.copernicus.eu](https://cds.climate.copernicus.eu/).<br>2. Accept online dataset terms for ERA5 single levels.<br>3. Copy API key from user profile into `~/.cdsapirc`. |
-| **CEDA User Registration** | CEDA Archive ([catalogue.ceda.ac.uk](https://catalogue.ceda.ac.uk/)) | Registered user account | Unlocks automated download of Met Office MIDAS Open hourly weather station observations for validating ERA5 ground accuracy. | 1. Register free account on [services.ceda.ac.uk](https://services.ceda.ac.uk/).<br>2. Agree to OGL terms for MIDAS Open dataset. |
-| **Renewables.ninja User Account & Token** | Renewables.ninja ([renewables.ninja](https://www.renewables.ninja/)) | Registered user API token | Unlocks automated API access to simulated regional wind and solar capacity factors for offline benchmark comparison. | 1. Register free account on [renewables.ninja](https://www.renewables.ninja/).<br>2. Obtain API token from user profile. |
-| **UK Power Networks Open Data Login** | UK Power Networks Portal ([ukpowernetworks.opendatasoft.com](https://ukpowernetworks.opendatasoft.com/)) | Registered user account | Unlocks row-level API queries and exports for LTDS Table 1 (Circuits) and Table 2 (Transformers) for EPN, LPN, and SPN licence areas (5,076 records). | 1. Register free account on UKPN portal.<br>2. Log in to bypass HTTP 403 Forbidden on row export queries. |
-| **UK Power Networks CIM Request** | UK Power Networks SharePoint | Formal access approval | Unlocks download of proprietary CIM XML models covering EPN, LPN, and SPN. | 1. Submit [CIM Access Request Form](https://ukpowernetworks.opendatasoft.com/explore/forms/cim-access-request-form/).<br>2. Await approval and download deliverables. |
-| **SP Energy Networks Open Data Login** | SP Energy Networks Portal ([spenergynetworks.opendatasoft.com](https://spenergynetworks.opendatasoft.com/)) | Registered user account | Unlocks row-level download of SP Manweb (SPM) 132 kV circuit and transformer tables (1,798 records). | 1. Register free account on SPEN portal.<br>2. Log in to bypass HTTP 403 on row queries. |
-| **SP Energy Networks Data Request** | SP Energy Networks Shared Data Portal | Formal Data Request approval | Unlocks download of SPM CIM EQ profile cases under ENA Shared Data Licence. | 1. Submit Data Request form under ENA Shared Data Licence.<br>2. Receive and extract CIM cases. |
-| **Northern Powergrid Open Data Portal Login** | Northern Powergrid Portal ([northernpowergrid.opendatasoft.com](https://northernpowergrid.opendatasoft.com/)) | Registered user account | Unlocks row-level export and API queries for LTDS Appendix 3 (Circuits) and Appendix 4 (Transformers) for Northeast and Yorkshire licence areas (1,670 records). | 1. Register free account on Northern Powergrid portal.<br>2. Export Appendix 3 and Appendix 4 CSV files. |
-| **Electricity North West Secure Area Login** | ENWL Secure Portal ([enwl.co.uk](https://www.enwl.co.uk/get-connected/network-information/long-term-development-statement/login-to-ltds-secure-area/)) | Secure area username & password | Unlocks access to download ENWL's Long Term Development Statement tables, schematics, and CIM models covering North West England 132 kV. | 1. Register on ENWL website for LTDS Secure Area access.<br>2. Download November 2025 statement tables and models. |
-| **D-65 Target Runner Provisioning** | Dedicated Linux Benchmark/Run Machine (D-48, D-65) | Host SSH access / self-hosted GitHub Actions runner | Unlocks execution of heavy M1 data processing jobs, PostgreSQL database population, and large-scale validation runs outside the lightweight coding container. | 1. Confirm target runner hardware specifications (Q-N-7).<br>2. Configure and attach GitHub self-hosted runner with NFR-12 isolation tests. |
+| **ENTSO-E API Security Token** | ENTSO-E Transparency Platform ([transparency.entsoe.eu](https://transparency.entsoe.eu/)) | Personal API token (`securityToken`) | Prerequisite for automated REST API retrieval of scheduled commercial interconnector exchanges (`A09`) and cross-border physical flows (`A11`) for independent validation. | 1. Register free account on [transparency.entsoe.eu](https://transparency.entsoe.eu/).<br>2. Email `transparency@entsoe.eu` with subject `RESTful API access`.<br>3. Generate token under "My Account" and set environment variable. |
+| **Copernicus CDS Account & API Key** | Copernicus Climate Data Store ([cds.climate.copernicus.eu](https://cds.climate.copernicus.eu/)) | API Key via `~/.cdsapirc` | Prerequisite for automated submission and downloading of ERA5 gridded hourly weather data (wind, solar radiation, temperature) for 2024 to generate renewable generator profiles. | 1. Create free account at [cds.climate.copernicus.eu](https://cds.climate.copernicus.eu/).<br>2. Accept online dataset terms for ERA5 single levels.<br>3. Copy API key from user profile into `~/.cdsapirc`. |
+| **CEDA User Registration** | CEDA Archive ([catalogue.ceda.ac.uk](https://catalogue.ceda.ac.uk/)) | Registered user account | Prerequisite for automated download of Met Office MIDAS Open hourly weather station observations for validating ERA5 ground accuracy. | 1. Register free account on [services.ceda.ac.uk](https://services.ceda.ac.uk/).<br>2. Agree to OGL terms for MIDAS Open dataset. |
+| **Renewables.ninja User Account & Token** | Renewables.ninja ([renewables.ninja](https://www.renewables.ninja/)) | Registered user API token | Prerequisite for automated API access to simulated regional wind and solar capacity factors for offline benchmark comparison. | 1. Register free account on [renewables.ninja](https://www.renewables.ninja/).<br>2. Obtain API token from user profile. |
+| **UK Power Networks Open Data Login** | UK Power Networks Portal ([ukpowernetworks.opendatasoft.com](https://ukpowernetworks.opendatasoft.com/)) | Registered user account prerequisite | Prerequisite for authenticated access; whether user registration alone enables bulk row exports without organizational role approval is unverified. | 1. Register free account on UKPN portal.<br>2. Test whether login permits row export queries without HTTP 403. |
+| **UK Power Networks CIM Request** | UK Power Networks SharePoint | Formal access application prerequisite | Prerequisite application form for CIM access; approval criteria, review turnaround, and whether requested CIM XML models are released for non-licensee research remain unverified. | 1. Submit [CIM Access Request Form](https://ukpowernetworks.opendatasoft.com/explore/forms/cim-access-request-form/).<br>2. Await determination and verify deliverable availability. |
+| **SP Energy Networks Open Data Login** | SP Energy Networks Portal ([spenergynetworks.opendatasoft.com](https://spenergynetworks.opendatasoft.com/)) | Registered user account prerequisite | Prerequisite for portal access; whether user registration alone enables bulk row-level downloads without additional permissions is unverified. | 1. Register free account on SPEN portal.<br>2. Test whether login permits row queries. |
+| **SP Energy Networks Data Request** | SP Energy Networks Shared Data Portal | Formal Data Request prerequisite | Prerequisite application for ENA Shared Data Licence; request form location, approval requirements, and availability of SPM CIM EQ profiles remain unverified. | 1. Submit Data Request form under ENA Shared Data Licence.<br>2. Await review and verify payload availability. |
+| **Northern Powergrid Open Data Portal Login** | Northern Powergrid Portal ([northernpowergrid.opendatasoft.com](https://northernpowergrid.opendatasoft.com/)) | Registered user account prerequisite | Prerequisite for portal access; row-level download permissions and table export access remain unverified. | 1. Register free account on Northern Powergrid portal.<br>2. Test export permissions for Appendix 3 and Appendix 4. |
+| **Electricity North West Secure Area Login** | ENWL Secure Portal ([enwl.co.uk](https://www.enwl.co.uk/get-connected/network-information/long-term-development-statement/login-to-ltds-secure-area/)) | Secure area registration prerequisite | Prerequisite registration for secure portal; approval criteria, account verification, and availability of full CIM models remain unverified. | 1. Register on ENWL website for LTDS Secure Area access.<br>2. Await account verification and inspect available models. |
+| **D-65 Target Runner Provisioning** | Dedicated Linux Benchmark/Run Machine (D-48, D-65) | Host SSH access / self-hosted GitHub Actions runner | Unlocks execution of heavy M1 data processing jobs, PostgreSQL database population, and large-scale validation runs outside the lightweight coding container. | 1. Confirm target runner hardware specifications (Q-N-7).<br>2. Configure and attach GitHub self-hosted runner with NFR-12 isolation tests before running heavy jobs. |
 
 ---
 
@@ -727,7 +858,7 @@ Per D-56, all research-only datasets are admitted for non-commercial research an
 | **PC-2** | EirGrid / SONI TYTFS 2024 Study Files | EirGrid Group & SONI Ltd | Website disclaimer forbids public/commercial use without authorization. Formal written request required to EirGrid/SONI Open Data and Regulation teams for commercial derivative modelling rights. |
 | **PC-3** | SEMO & SEMOpx Market Price Datasets | SEMO & SEMOpx | Standard market report disclaimers; express open licence grant unverified on archive download pages. Seek formal confirmation from SEMO/SEMOpx that published historical settlement and auction reports are covered by group open data terms. |
 | **PC-4** | GB Day-Ahead Power Exchange Prices | Nord Pool N2EX & EPEX SPOT | Commercial price-feed and redistribution rights are unverified and may be paid. Under D-57, default to free historical proxies (Elexon Market Index Data and imbalance prices); procure paid commercial exchange feed only if customer funding is secured. |
-| **PC-5** | Review of every dataset in provenance manifest marked `research-only` | All applicable rights holders (ENWL, BSC legal text, operator loss specs, Met Éireann, BoE series, CfD/RO, etc.) | Comprehensive review of all research-only datasets: clear with publisher, replace with open alternative, or remove from commercial distribution prior to launch. |
+| **PC-5** | Review of every dataset in provenance manifest marked `research-only` | All applicable rights holders (ENWL, BSC legal text, operator loss specs, Met Éireann, BoE series, CfD/RO, UK ETS auction results, etc.) | Comprehensive review of all research-only datasets: clear with publisher, replace with open alternative, or remove from commercial distribution prior to launch. |
 | **PC-6** | Dependency licences for closed SaaS | Software dependency authors (Valkey default under D-67, TimescaleDB TSL, solvers) | Confirm permissiveness of runtime dependencies and solver terms. |
 | **PC-7** | Legal review of all of the above | Independent legal counsel | Formal legal review of provenance and licensing clearances prior to commercial launch. |
 
@@ -749,47 +880,63 @@ To replace unsupported readiness conclusions (Findings 9, 18), input categories 
 | **Dated Scottish 132 kV Network** | `SRC-01` (ETYS SHE / SPT) | Raw Acquired / Content Audited | Post-fault vs continuous ratings; 2024 baseline reconciliation; PC-1 clearance. |
 | **Dated E&W DNO 132 kV Networks (12 areas)** | `SRC-03`–`SRC-11` (DNO LTDS) | Mixed (NGED/SSEN Raw Acquired; UKPN/SPEN/NPg/ENWL Metadata Inspected) | 4 DNO groups require owner logins; unit bases (% vs pu vs ohms) unverified; 132-kV circuit denominators incomplete. |
 | **Dated All-Island Ireland Network (400/220/275/110 kV)** | `SRC-12` (TYTFS 2024 RAW/SEQ) | Raw Acquired / Content Audited | Forecast cases (WP/SV) vs operational baseline; 132 zero-rating branches; 3W star conversion; PC-2 clearance. |
-| **Interconnector Boundaries & Flows (10 links)** | `SRC-15` (Elexon), `SRC-16` (ENTSO-E) | Raw Acquired (Elexon flows); Metadata Inspected (ENTSO-E) | Greenlink 2024 sparse test flows; ENTSO-E personal API token required; A09/IFA/Nemo PC-5 clearance. |
+| **Interconnector Boundaries & Flows (10 links)** | `SRC-15` (Elexon), `SRC-16a/b` (ENTSO-E) | Raw Acquired (Elexon flows); Metadata Inspected (ENTSO-E) | Greenlink 2024 recorded 7,102 sparse observations (cause unverified; not a fully commissioned 2024 baseline); ENTSO-E personal API token prerequisite; A09/IFA/Nemo PC-5 clearance. |
 | **Generation & Storage Fleet Registers** | `SRC-17`–`SRC-21` (TEC, REPD, DUKES, BMU, SEMO) | Raw Acquired / Content Audited | Filtering forward queues to 2024 operational baseline; asset-to-BMU-to-bus crosswalk. |
 | **Security & Stability Proxies (Boundary Limits)** | `SRC-22`, `SRC-23` (NESO Constraints) | Raw Acquired / Hash-Verified | Signed electrical branch cut-sets missing; fall-back autumn hours must retain interval IDs. |
 | **Stability Proxies (SNSP & Inertia)** | `SRC-24` (EirGrid), `SRC-25` (NESO) | Raw Acquired (SNSP outturns); Identified (Inertia dead link) | SNSP outturns are not ceiling rules; numeric inertia floors and unit groups are UNVERIFIED / missing. |
-| **Market Trading & Redispatch Rules** | `SRC-26`–`SRC-28` (BSC, I-SEM, JAO) | Documented / Analysed in Spikes | BSC Section T cashout rules and SEMOpx auction rules need dated 2024 version pinning; PC-5 clearance. |
+| **Market Trading & Redispatch Rules** | `SRC-26`–`SRC-28` (BSC, I-SEM, JAO) | Source Identified / Reference-Only | Per ADR 0006 evidence limits, specific BSC clauses and historical 2024 rules archive are not verified; SEMO Part B URL 404; SEMOpx auction rules and JAO border regimes need dated 2024 version pinning; PC-5 clearance. |
 | **National & Transmission Demand Outturn** | `SRC-29` (NESO Demand), `SRC-30` (Elexon) | Raw Acquired / Content Audited | Reconciling initial demand outturns against final settlement runs. |
-| **Embedded Generation Decomposition** | `SRC-29` (NESO Demand), `SRC-31` (Elexon) | Raw Acquired (NESO Demand & FUELHH) | FUELHH lacks solar/embedded decomposition; gross demand formula and Irish embedded data missing. |
-| **Nodal / GSP Peak Demand** | NESO ETYS App G, DNO Table 7 | Raw Acquired / Hash-Verified | Peak snapshots must be combined with half-hourly profiles; GSP naming crosswalk. |
-| **Interconnector Loss Models** | `SRC-32` (Operator specifications) | Source Identified | Directional loss parameters for all 10 links are MISSING; PC-5 clearance. |
+| **Embedded Generation Decomposition** | `SRC-29` (NESO Demand), `SRC-31` (Elexon) | Raw Acquired (NESO Demand & FUELHH) | FUELHH lacks solar/embedded decomposition; gross demand starting identity (ND + embedded solar + embedded wind) pending double-counting and station load verification; Irish embedded data missing. |
+| **Nodal / GSP Peak Demand** | `SRC-48` (NESO ETYS App G), `SRC-49` (DNO Table 7) | Source Identified | Peak snapshots must be combined with half-hourly profiles; GSP naming crosswalk and bus attachments missing. |
+| **Interconnector Loss Models** | `SRC-32` (Operator specifications) | Source Identified | Directional physical loss parameters for all 10 links are MISSING; uncited percentage defaults removed; converter/cable separation unverified; PC-5 clearance. |
 | **Branch Resistances / Loss Segments** | `SRC-01`, `SRC-03`, `SRC-05`, `SRC-12` | Raw Acquired / Content Audited | DC OPF piecewise-affine loss segments must conserve power (ADR 0003). |
-| **Settlement Loss Outturns (TLM)** | Elexon OpenAPI settlement stack | Source Identified (Candidate only) | Not in gathered streams; acquisition is UNVERIFIED / missing. |
+| **Settlement Loss Outturns (TLM)** | `SRC-50` (Elexon Settlement Stack API) | Source Identified (Candidate only) | Not in gathered streams; acquisition is UNVERIFIED / missing. |
 | **Calendar, Bank Holidays & Clock Changes** | `SRC-33` (GOV.UK), `SRC-34` (IE), `SRC-35` (tzdata) | Metadata Inspected / Arithmetic Verified | Irish holiday access unverified (403); statutory and market settlement calendars must be pinned. |
-| **Canonical Scenario Identity Schema** | `INT-01` (Internal specification) | Conceptual Architecture (ADR 0002) | Rust serde schema, JSON-schema validation, immutable locks, and test fixtures missing. |
-| **Fuel & Carbon Commodity Costs** | `SRC-36`–`SRC-38` (ETS, DESNZ, World Bank) | Source Identified / Metadata Inspected | UK ETS URL dead (404); EU ETS unacquired; WB monthly resampled; daily SRMC vector missing. |
+| **Canonical Scenario Identity Schema** | `INT-01` (Internal specification) | Conceptual Architecture (ADR 0002) | Scenario/input/execution identities, knowledge mode, canonicalisation, versions, and hash vectors checklist added; Rust serde schema, JSON-schema validation, immutable locks, and test fixtures missing. |
+| **Fuel & Carbon Commodity Costs** | `SRC-36a/b`–`SRC-38a/b` (ETS, DESNZ, World Bank, LCCC, Ofgem) | Source Identified / Metadata Inspected | UK ETS URL dead (404), licence unverified (PC-5), third-party auction rights unestablished; EU ETS unacquired; WB monthly resampled; LCCC 403; Ofgem RO dataset unidentified; daily SRMC vector missing. |
 | **Weather & Renewable Resource Profiles** | `SRC-39`–`SRC-42` (ERA5, MIDAS, MÉRA, Ninja) | Template in Repo; 0 bytes downloaded | Owner CDS credentials required; MÉRA ends 2019; power-curve conversion module unintegrated. |
 | **Historical Validation Holdouts (2024)** | `SRC-43` (Elexon 12 streams), `SRC-44` (SEMO) | Raw Acquired / Hash-Verified in Cache | 61 missing 30-min intervals and 9,261 missing 5-min intervals in SEMO; MID is not day-ahead auction price. |
 | **Foreign Exchange Rates (EUR/GBP)** | `SRC-46` (ECB), `SRC-47` (BoE) | Metadata Inspected | Forward-fill non-trading days into continuous 366-day UTC series; BoE series unverified. |
 
 ---
 
-## 6. Response to Independent Review (PR #52 Verification Report)
+## 6. Response to Independent Review
 
-Every finding from the independent verification report ([docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md)) has been evaluated and applied in this revision:
+### 6.1 Round 1 Verification Disposition Summary (PR #52 Round 1 Report)
 
-| Finding ID | Title / Topic | Disposition | Action Applied in this Revision |
+The independent verification report for round 1 ([docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md)) identified 18 findings. As evaluated in the round 2 re-check ([docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md)), 9 findings were applied at the inventory/planning level in the first revision, and 9 were partially applied. The round 1 disposition table below truthfully reflects those outcomes, with each partial finding fully resolved in revision 2:
+
+| Finding ID | Title / Topic | Round 1 Disposition | Final Resolution & Cross-Reference |
 |---|---|---|---|
-| **F-01** | Unverified commercial permission is labelled cleared | **applied** | Downgraded BSC text, operator loss specs, Citizens Information Irish holiday text, BoE series, CfD/RO, and Met Éireann general products to `research-only` or `unverified`. Clarified that internal specifications are internal simulator artifacts without an invented project licence. |
-| **F-02** | Several source URLs do not yield claimed dataset | **applied** | Replaced dead NESO `/dataset/...` redirect URLs with public `package_show` APIs and direct resource URLs from committed manifests. Marked 404 URLs (Operability Strategy, I-SEM code, UK ETS) as unresolved. Corrected dated Elexon system-prices route and documented that SEMO daily register returns an empty error envelope live while preserved in cache. |
-| **F-03** | FUELHH does not supply embedded solar/wind decomposition | **applied** | Removed claim that FUELHH provides embedded solar/wind breakdown. Explicitly designated NESO Historic Demand Data columns (`EMBEDDED_SOLAR_GENERATION`, `EMBEDDED_WIND_GENERATION`) as the GB embedded source; noted that Irish embedded output is missing; declared gross demand formula; downgraded readiness. |
-| **F-04** | TLM acquisition falsely reported complete | **applied** | Retracted claims of "included within settlement streams" and "downloaded for 2024". Identified Elexon OpenAPI settlement stack (`/balancing/settlement/stack/all/...`) as an unacquired candidate to investigate; marked TLM acquisition as UNVERIFIED / missing. |
-| **F-05** | Directional physical loss models not sourced per link | **applied** | Added a complete 10-link interconnector ledger detailing sending/receiving conventions and loss factors; marked all directional coefficients as MISSING; labelled narrative loss figures as engineering approximations. |
-| **F-06** | Published proxy rules confused with observations | **applied** | Distinguished realised SNSP outturns from operational ceiling rules; retracted national inertia "~140 GVA·s" narrative approximation; noted dead Operability Strategy URL; marked boundary cut-sets, regional unit groups, and inertia rules as UNVERIFIED / missing. |
-| **F-07** | Dated full-network/asset input not established | **applied** | Distinguished forecast study cases (ETYS 2025/26, TYTFS WP/SV2024) from historical 2024 operating fleet. Corrected DNO licence count to 12 England/Wales distribution areas + 2 Scottish distribution areas (with Scottish 132 kV under transmission); separated 7 external from 3 internal interconnectors; documented Greenlink 2024 data as sparse test records. |
-| **F-08** | Irish price source is wrong lookback file; gaps hidden | **applied** | Replaced `lookback_mkt.xlsx` (2018–2020) with the two pinned archives from the SEMO manifest (`Lookback_Market October2026.zip` and `Imbalance_Price_YTD_2020-2024.zip`). Documented exact measured gaps: 61 missing 30-min intervals and 9,261 missing 5-min intervals. Preserved €108.91/MWh UTC-year DAM mean statistic. |
-| **F-09** | "Already in repo / downloaded / verified" overclaimed | **applied** | Introduced strict evidence states (Source Identified, Metadata Inspected, Raw Acquired, Content Audited, Parameters Extracted, Ingest Validated). Downgraded unsupported "downloaded/verified" assertions to match actual repository artifacts. |
-| **F-10** | Fuel/carbon/subsidy coverage claims mismatched | **applied** | Split commodity, carbon, and subsidy inputs into separate entries (UK ETS, EU ETS, DESNZ, World Bank, CfD, RO). Noted dead UK ETS URL; required explicit resampling labels for monthly series; tracked SRMC formula parameters (heat rates, variable O&M) as unacquired / missing. |
+| **F-01** | Unverified commercial permission labelled cleared | **partial** | Downgraded BSC text, operator loss specs, Irish holiday text, BoE, CfD/RO, and Met Éireann. UK ETS remained partially applied in round 1; fully applied in round 2 under **R2-01** by retracting OGL/open-commercial and assigning `research-only / unverified` (PC-5). |
+| **F-02** | Several source URLs do not yield claimed dataset | **applied** | Replaced dead NESO `/dataset/...` redirect URLs with public `package_show` APIs and direct resource URLs from committed manifests. Marked 404 URLs as unresolved; documented SEMO daily register live empty error. |
+| **F-03** | FUELHH does not supply embedded solar/wind decomposition | **partial** | Removed solar/embedded-wind claims from FUELHH and pointed GB estimates to NESO columns. Demand formula in round 1 subtracted pumping twice; fully applied in round 2 under **R2-02** by removing double-subtraction and establishing the starting accounting identity. |
+| **F-04** | TLM acquisition falsely reported complete | **applied** | Retracted claims of "included within settlement streams" and "downloaded for 2024". Identified Elexon OpenAPI settlement stack (`SRC-50`) as an unacquired candidate to investigate; marked TLM acquisition as UNVERIFIED / missing. |
+| **F-05** | Directional physical loss models not sourced per link | **partial** | Added 10-link ledger, but assigned uncited default percentages. Fully applied in round 2 under **R2-03** by replacing all numeric percentages with MISSING, adding directional flow and metering conventions, and separating converter and cable losses. |
+| **F-06** | Published proxy rules confused with observations | **applied** | Distinguished realised SNSP outturns from operational ceiling rules; retracted national inertia "~140 GVA·s" narrative approximation; marked boundary cut-sets, regional unit groups, and inertia rules as UNVERIFIED / missing. |
+| **F-07** | Dated full-network/asset input not established | **partial** | Corrected 12 E&W + 2 Scottish DNO areas and separated 7 external from 3 internal links. Greenlink test interpretations persisted; fully applied in round 2 under **R2-06** by standardising to 7,102 sparse observations with unverified cause. |
+| **F-08** | Irish price source is wrong lookback file; gaps hidden | **applied** | Pinned the two SEMO archives from manifest (`Lookback_Market October2026.zip` and `Imbalance_Price_YTD_2020-2024.zip`). Documented exact measured gaps (61 30-min intervals; 9,261 5-min intervals) and preserved €108.91/MWh UTC-year DAM mean statistic. |
+| **F-09** | "Already in repo / downloaded / verified" overclaimed | **partial** | Introduced 6-tier evidence vocabulary. Evidence claims for BMRS reference interconnectors, BSC text, and I-SEM Part B remained overclaimed; fully applied in round 2 under **R2-04** by downgrading to reference-only and distinguishing TEC cached hash from mutable live URL. |
+| **F-10** | Fuel/carbon/subsidy coverage claims mismatched | **partial** | Separated projections, commodities, and auctions. UK ETS rights and combined CfD/RO remained partially applied; fully applied in round 2 under **R2-01** and **R2-05** by downgrading UK ETS, splitting products, and adding Ofgem reference. |
 | **F-11** | Rule documents not version-pinned | **applied** | Identified Section T for BSC cashout rules; required dated 2024 versions for BSC and SEMO/SEMOpx trading procedures; noted that JAO terms establish platform use, not border-specific capacity-allocation regimes. |
-| **F-12** | Deduplicating local fall-back hour discards intervals | **applied** | Corrected clock-transition handling: source interval identifiers, offset/fold, and revisions must be preserved when mapping to UTC. Repeated local timestamps during the autumn transition represent distinct physical intervals and must NOT be deduplicated. |
+| **F-12** | Deduplicating local fall-back hour discards intervals | **applied** | Corrected clock-transition handling: source interval identifiers, offset/fold, and revisions must be preserved when mapping to UTC. Repeated local timestamps during autumn transition represent distinct physical intervals and must NOT be deduplicated. |
 | **F-13** | Calendar sourcing and versioning incomplete | **applied** | Separated civil bank holidays from market trading and settlement calendars. Documented Irish holiday URL as HTTP 403 / unverified access; required pinning tzdata and holiday captures to versioned repository artifacts. |
-| **F-14** | Credentials matrix omits sources; overstates outcomes | **applied** | Added CEDA registration (for MIDAS Open) and Renewables.ninja registration/token to credentials matrix. Corrected CDS API key format. Clarified that login gating does not turn open licences into `research-only`, but row access requires registration. Separated D-65 runner provisioning from source credentials. |
-| **F-15** | Scenario identity is architectural design, not schema | **applied** | Classified scenario definition as an internal specification (`INT-01`), not a downloaded dataset or project licence. Explicitly inventoried missing schema components (serde deserializer, JSON-schema, immutable locks, round-trip fixtures). |
+| **F-14** | Credentials matrix omits sources; overstates outcomes | **partial** | Added CEDA and Renewables.ninja; separated D-65 runner provisioning. Matrix still guaranteed row exports and CIM receipt; fully applied in round 2 under **R2-04** by describing accounts and forms as prerequisites with approvals and payloads unverified. |
+| **F-15** | Scenario identity is architectural design, not schema | **partial** | Reclassified scenario definition as internal specification (`INT-01`) and acknowledged missing implementation. Checklist of identity inputs remained incomplete; fully applied in round 2 under **R2-07** by detailing the complete ADR 0002 scenario identity checklist. |
 | **F-16** | Weather format and cadence need narrower descriptions | **applied** | Clarified consolidated ERA5 vs near-real-time ERA5T; verified CC BY 4.0 via CDS API; confirmed MÉRA reanalysis covers 1981–Aug 2019 only (GRIB 1 sample) and does not cover 2024; confirmed Renewables.ninja licence is CC BY-NC 4.0. |
-| **F-17** | Stable clearance IDs and procurement misrepresented | **applied** | Restored canonical pre-commercial IDs (`PC-1` through `PC-7`) from [TODO-pre-commercial.md](../requirements/TODO-pre-commercial.md). Restored PC-5 as review of all research-only datasets. Clarified that commercial exchange power feeds are unverified and may be paid, without quoting universal figures. Noted Elexon MID is not a day-ahead auction price. |
-| **F-18** | Summary statistics and zero-unsourced claim not auditable | **applied** | Created an explicit candidate source register (`SRC-01`–`SRC-47` and `INT-01`–`INT-02`) with auditable classification totals. Replaced the "0 unsourced inputs" conclusion with an honest 9-point field-level deficit backlog. |
+| **F-17** | Stable clearance IDs and procurement misrepresented | **applied** | Restored canonical pre-commercial IDs (`PC-1` through `PC-7`) from [TODO-pre-commercial.md](../requirements/TODO-pre-commercial.md). Restored PC-5 as review of all research-only datasets. Clarified that commercial exchange power feeds are unverified and may be paid. |
+| **F-18** | Summary statistics and zero-unsourced claim not auditable | **partial** | Replaced zero-unsourced claim with 9-point backlog. Register row counting and publisher aggregation remained unauditable; fully applied in round 2 under **R2-05** with 54 resource rows, 31 normalised publishers, and exact 29/25 totals. |
+
+### 6.2 Round 2 Verification Response Table (PR #52 Round 2 Report, R2-01 through R2-07)
+
+The independent re-check report ([docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md)) delivered a verdict of **must-fix** with 7 remaining findings (`R2-01` through `R2-07`). Every remaining finding has been evaluated and applied in this second revision:
+
+| Finding ID | Topic / Key Blocker | Disposition | Action Applied in Revision 2 |
+|---|---|---|---|
+| **R2-01** | UK ETS still has an invented clearance label (`SRC-36a`) | **applied** | Retained `research-only / unverified` (PC-5) for UK ETS Auction Clearing Prices (`SRC-36a`). Retracted OGL v3.0 and `open-commercial` assertions. Clarified that UK Allowance auction data rights held by ICE Futures Europe are not cleared by GOV.UK portal hosting or general website footers. Separated publisher/host (ICE Futures Europe / UK ETS Authority), release (UKA auction clearing), units (£/tCO2e), currency (GBP), and frequency (bi-weekly auctions, not daily spot prices) from licence determination. Updated candidate register row and category details safely without asserting third-party clearance. |
+| **R2-02** | New demand equation double-subtracts pumping | **applied** | Removed the incorrect demand equation `ND + embedded solar + embedded wind - pumping`. Sourced official NESO definitions confirming that National Demand (`ND`) already excludes power station transmission-connected load (station load), pumped storage pumping, and interconnector exports (which Transmission System Demand, `TSD`, adds back). Established the starting accounting identity $\text{Gross Underlying Demand} = \text{National Demand} (\text{ND}) + \text{Embedded Solar} + \text{Embedded Wind}$. Qualified that this is a starting accounting identity, not proof that all gross-demand, station load, and loss boundaries are resolved; recorded pumping/storage withdrawals as distinct components; left reconciliation, MWh integration, and double-counting verification test fixtures explicitly pending. |
+| **R2-03** | Loss ledger introduces ten unsupported numeric defaults | **applied** | Removed all 10 uncited numeric percentage defaults (e.g. IFA ~2.5%, IFA2 ~2.3%, Greenlink ~2.8%) from the interconnector loss ledger, replacing every total loss factor with **MISSING**. Added explicit directional flow and metering conventions (forward vs reverse flow, sending vs receiving bus boundary) for each link. Separated converter loss and cable loss stages, marking both as MISSING. Preserved the requirement to prevent double-counting against onshore transmission branch losses pending primary operator regulatory filings. |
+| **R2-04** | Evidence/access claims still exceed their cited artifacts | **applied** | Downgraded evidence assertions across four areas to match verified artifacts: (1) `SRC-15` downgraded from "raw acquired / hash-verified in cache" to "source identified / reference endpoint verified", since BMRS gathering acquired flow time-series rather than a cached static `/reference/interconnectors/all` payload; (2) `SRC-17` TEC register explicitly distinguishes the cached 10 November 2026 hash from the mutable live CKAN resource URL which redirects to later signed snapshots; (3) `SRC-26` BSC and `SRC-27` I-SEM Part B legal texts downgraded from "rules documented / analysed" to "source identified / reference-only", explicitly acknowledging ADR 0006 evidence limits and the 404 URL for Part B; (4) Section 3 credentials matrix rewritten to treat portal registrations and data requests as prerequisites only, with access permissions, approval turnaround, and actual payload delivery explicitly marked unverified. Retained D-65/NFR-12 isolation tests before heavy jobs. |
+| **R2-05** | Source register totals remain unauditable | **applied** | Established an auditable resource-level candidate register (`SRC-01` through `SRC-50`, splitting mixed families into `SRC-16a/b`, `SRC-36a/b`, `SRC-37a/b`, and `SRC-38a/b` for 54 total external candidate resources). Added previously unlisted candidate and backlog sources: `SRC-48` (NESO ETYS Appendix G GSP peak snapshots, `research-only` PC-1), `SRC-49` (DNO Table 7 GSP substation demands, `research-only / unverified` PC-5), and `SRC-50` (Elexon BMRS Settlement Stack API candidate TLM, `open-commercial`). Recomputed exact totals: 29 `open-commercial` (53.7%) and 25 `research-only` (46.3%), plus 2 internal specifications (`INT-01`, `INT-02`). Added an explicit normalised publisher mapping defining all 31 distinct legal/operational publisher entities and their mapped resources. Separated CfD (`SRC-38a`) from RO (`SRC-38b`), adding an official Ofgem scheme reference and noting that the machine-readable dataset location is unidentified. |
+| **R2-06** | Greenlink's unverified causal interpretation survives | **applied** | Standardised Greenlink 2024 description across the entire inventory (Executive Summary, `SRC-15` remaining gaps, Interconnector Loss Ledger, Completeness Assessment table, and review response tables) to: `"7,102 sparse observations in 2024; cause unverified; not a fully commissioned 2024 baseline"`. Removed all unverified causal assertions of "commissioning tests", "test operations", and "test records", noting that while observation count and sparsity are verified, operational cause is unverified from flow data alone. |
+| **R2-07** | Scenario-input inventory and closure summary need completion | **applied** | Expanded Section 6.1 with an explicit scenario identity and specification checklist cross-referencing ADR 0002 requirements: (1) independent content hashing of scenario input identity and execution identity; (2) knowledge mode distinction between as-of forecast backtests and historical reconstructions; (3) semantic canonicalisation of typed domain entities with permanent opaque UUIDs; (4) three distinct timestamps (effective range `[from, to)`, publication/revision time, acquisition time); (5) version-pinned mappings for calendars/tzdata, transformations, generator cost models, FX vectors, and proxy constraints; (6) rights lineage with PC-1–PC-7 clearance tags; and (7) schema migration vectors with deterministic manifest hashes. Updated Section 6 with a truthful round-1 status table (9 applied, 9 partial) and this dedicated round-2 response table with all 7 remaining findings applied. |
