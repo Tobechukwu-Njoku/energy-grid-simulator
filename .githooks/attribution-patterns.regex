@@ -21,7 +21,7 @@
 # an optional possessive (`Claude's help`, ADV23R6-08).
 define DASH = \-\x{2010}-\x{2015}\x{2043}\x{2212}\x{2796}\x{02D7}\x{FE58}\x{FE63}\x{FF0D}
 define VENDOR = (?:google|alphabet|deepmind|openai|anthropic|meta|facebook|microsoft|github|amazon|aws|mistral|xai|x\.ai|deepseek|alibaba|cognition|cursor|codeium|nvidia|ibm|cohere|perplexity|apple|moonshot|zhipu|sourcegraph|vercel|augment(?:[\s_-]*code)?|replit|stackblitz|all[\s_-]*hands|jetbrains|blackbox|sweep)
-define MODEL = (?:claude|chatgpt|gpt|codex|gemini|gemma|bard|copilot|cursor|grok|sonnet|opus|haiku|deepseek|qwen|qwq|llama|mistral|mixtral|codestral|devin|aider|windsurf|codeium|amazon[\s_-]*q|jules|openai|anthropic|antigravity|cline|tabnine|phind|kimi|cody|codewhisperer|(?:chat)?glm|command[\s_-]*r\b|roo[\s_-]*(?:code|cline)|supermaven|continue(?:\.dev)?(?![\p{L}\p{N}])|code[\s_-]*rabbit|v0(?:\.dev)?(?![\p{L}\p{N}]|\.[\p{L}\p{N}])|augment(?:[\s_-]*code|(?![\p{L}\p{N}]))|open[\s_-]*(?:hands|devin)|(?:stackblitz[\s_-]+)?bolt(?:\.new|[\s_-]+(?:ai|agent))(?![\p{L}\p{N}])|stackblitz[\s_-]+bolt(?![\p{L}\p{N}])|replit|jetbrains[\s_-]*(?:ai|junie)(?![\p{L}\p{N}])|junie(?![\p{L}\p{N}])|blackbox[\s_-]*ai(?![\p{L}\p{N}])|sweep[\s_-]*ai(?![\p{L}\p{N}])|code[\s_-]*llama|star[\s_-]*coder|code[\s_-]*geex|ibm[\s_-]*granite|granite[\s_-]*code|o[1-9])
+define MODEL = (?:claude|chatgpt|gpt|codex|gemini|gemma|bard|copilot|cursor|grok|sonnet|opus|haiku|deepseek|qwen|qwq|llama|mistral|mixtral|codestral|devin|aider|windsurf|codeium|amazon[\s_-]*q|jules|openai|anthropic|antigravity|cline|tabnine|phind|kimi|cody|codewhisperer|(?:chat)?glm|command[\s_-]*r\b|roo[\s_-]*(?:code|cline)|supermaven|continue(?:\.dev)?(?![\p{L}\p{N}])|code[\s_-]*rabbit|v0(?:\.dev)?(?![\p{L}\p{N}]|\.[\p{L}\p{N}])|augment(?:[\s_-]*code|(?![\p{L}\p{N}]))|open[\s_-]*(?:hands|devin)|(?:stackblitz[\s_-]+)?bolt(?:\.new|[\s_-]+(?:ai|agent))(?![\p{L}\p{N}])|stackblitz[\s_-]+bolt(?![\p{L}\p{N}])|replit|jetbrains[\s_-]*(?:ai|junie)(?![\p{L}\p{N}])|junie(?![\p{L}\p{N}])|blackbox[\s_-]*ai(?![\p{L}\p{N}])|sweep[\s_-]*ai(?![\p{L}\p{N}])|code[\s_-]*llama|star[\s_-]*coder|code[\s_-]*geex|ibm[\s_-]*granite|granite[\s_-]*code|code[\s_-]*gemma|wizard[\s_-]*coder|yi[\s_-]*coder|o[1-9])
 define WORD = [\p{L}\p{N}][\p{L}\p{N}.+'\x{2019}]*
 define SEP = [\s_{{DASH}}:/,&()]
 define AINAME = (?:(?:{{VENDOR}}(?:[\s_-]*ai)?(?:['\x{2019}]s)?[\s_-]+)*{{MODEL}}[\p{L}\p{N}.+]*(?:['\x{2019}]s)?(?:{{SEP}}+{{WORD}})*{{SEP}}*)
@@ -38,14 +38,18 @@ define NAME = (?:(?:an?|the|my|our|some)\s+)?(?:{{AINAME}}|{{GENERICNAME}})
 # ADV23R8-07/08: reviewed/fixed verbs, `under` and supervision nouns.
 # ADV23R9-08/09: optimised/polished/completed; recommendation, coaching,
 # prompt and instruction nouns.
-define ATTRIBUTE = (?:generated|produced|written|wrote|authored|assisted|powered|created|made|drafted|built|crafted|developed|coded|implemented|prepared|composed|designed|engineered|edited|refactored|reviewed|fixed|debugged|rewritten|rewrote|pair[{{DASH}}\s]*programm?(?:ed|ing)|co[{{DASH}}\s]*(?:written|authored|developed|created|programm?ed|wrote)|collaborated|collaboration|paired|partnered|teamed(?:[{{DASH}}\s]*up)?|helped|aided|supported|prompted|guided|suggested|summary|summari[sz]ed|optimi[sz]ed|polished|completed|tested|verified|documented|analy[sz]ed)
-define BY = (?:with|by|via|using|through|from|under|thanks\s+to|courtesy\s+of|alongside|(?:together|jointly)\s+with|in\s+(?:collaboration|partnership|cooperation|conjunction|tandem)\s+with)
-define HELP = (?:(?:the\s+|some\s+)?(?:help|assistance|aid|support|input|guidance|suggestions?|contributions?|feedback|ideas?|advice|hints?|review|supervision|oversight|direction|recommendations?|coaching|prompts?|instructions?)\s+(?:of|from)\s+)
+define ATTRIBUTE = (?:generated|produced|written|wrote|authored|assisted|powered|created|made|drafted|built|crafted|developed|coded|implemented|prepared|composed|designed|engineered|edited|refactored|reviewed|fixed|debugged|rewritten|rewrote|pair[{{DASH}}\s]*programm?(?:ed|ing)|co[{{DASH}}\s]*(?:written|authored|developed|created|programm?ed|wrote)|collaborated|collaboration|paired|partnered|teamed(?:[{{DASH}}\s]*up)?|helped|aided|supported|prompted|guided|suggested|summary|summari[sz]ed|optimi[sz]ed|polished|completed|tested|verified|documented|analy[sz]ed|acknowledged|consulted)
+define BY = (?:with|by|via|using|through|from|under|thanks\s+to|courtesy\s+of|alongside|(?:together|jointly)\s+with|in\s+(?:collaboration|partnership|cooperation|conjunction|tandem|consultation)\s+with)
+define HELP = (?:(?:the\s+|some\s+)?(?:help|assistance|aid|support|input|guidance|suggestions?|contributions?|feedback|ideas?|advice|hints?|review|supervision|oversight|direction|recommendations?|coaching|prompts?|instructions?|consultation|acknowledge?ments?)\s+(?:of|from)\s+)
 define DECOR = (?:>\s*)?(?:#{1,6}\s+)?(?:[\p{So}\p{Sk}\x{FE0F}\x{200D}]\s*)*
 # TOOLNAME: tools whose bare name is also an ordinary word (a parameter
 # sweep, black-box testing, granite), matched only as a trailer value or
 # directly after an authorship verb (ADV23R10-04, R11-02, ADV23R11-03/06).
 define TOOLNAME = (?:(?:blackbox|sweep|granite)(?:{{SEP}}+(?:{{QUALIFIER}}|{{VERSION}})(?![\p{L}\p{N}]))*{{SEP}}*)
+# TOOLCAP: the same tools written as a product name (capitalised), for review,
+# test, fix and gratitude phrases where the lower-case word is ordinary prose
+# (`Fixed by sweep` stays allowed; R12-02, ADV23R12-08).
+define TOOLCAP = (?:(?-i:Blackbox|BlackBox|BLACKBOX|Sweep|SWEEP|Granite|GRANITE)(?:{{SEP}}+(?:{{QUALIFIER}}|{{VERSION}})(?![\p{L}\p{N}]))*{{SEP}}*)
 
 ^\s*{{DECOR}}(?:[\w{{DASH}}]*[{{DASH}}]|(?:co[{{DASH}}\s]*)?(?:authored|written|assisted|generated|created|developed|helped|signed[{{DASH}}\s]*off|pair[{{DASH}}\s]*programmed)\s+)(?:by|with|from)\s*:\s*(?:{{NAME}}|{{TOOLNAME}}(?:<[^<>\r\n]+>)?|{{IDNAME}}\s*<[^<>\r\n]+>|[^\r\n]*<?(?:[^<>\s]+@(?:[\w-]+\.)*(?:anthropic\.com|claude\.ai|openai\.com|chatgpt\.com|gemini\.google|cursor\.(?:com|sh)|anysphere\.co|codeium\.com|windsurf\.com|deepseek\.com|mistral\.ai|aider\.chat|x\.ai|cognition\.ai|cognition-labs\.com|cohere\.com|perplexity\.ai|qwen\.ai|moonshot\.ai|antigravity\.google|sourcegraph\.com|zhipuai\.cn|bigmodel\.cn|continue\.dev|supermaven\.com|coderabbit\.ai|v0\.dev|augmentcode\.com|tabnine\.com|phind\.com|all-hands\.dev|replit\.com|stackblitz\.com|bolt\.new|blackbox\.ai|sweep\.dev)|(?<![^<\s:])(?:[^<>\s@]*[._+-])?(?:{{MODEL}}|assistant|agent)(?:[._+\d-][^<>\s@]*)?@(?:[\w-]+\.)*(?:google\.com|googlemail\.com|deepmind\.com|microsoft\.com|meta\.com|fb\.com|amazon\.com|nvidia\.com|ibm\.com|apple\.com|alibaba-inc\.com|vercel\.com|jetbrains\.com)|(?<![\w.-])(?:agent|{{MODEL}})(?:\[bot\])?@(?:users\.)?noreply\.(?:github\.com|google\.com)|[^<>\s]*{{MODEL}}[^<>\s]*\[bot\]@[^<>\s]+)>?)\s*$
 # Any other `<Words> by:` / `with:` / `from:` trailer (ADV23R5-10, ADV23R6-09):
@@ -57,15 +61,21 @@ define TOOLNAME = (?:(?:blackbox|sweep|granite)(?:{{SEP}}+(?:{{QUALIFIER}}|{{VER
 # A credit phrase without a verb: `With help from <name>` (ADV23R10-03).
 ^\s*{{DECOR}}(?:\*{1,2})?{{BY}}\s+{{HELP}}(?:{{NAME}}|\[{{NAME}}\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
 # Gratitude and credit phrases: `Thanks to <name>`, `Courtesy of <name>`,
-# `Credited to <name>`, `With credit to <name>` (ADV23R11-04/05).
-^\s*{{DECOR}}(?:\*{1,2})?(?:(?:(?:special|many|big|huge)\s+)?thanks\s+(?:go(?:es)?\s+)?to|courtesy\s+of|(?:with\s+)?(?:co[{{DASH}}\s]*)?credit(?:s|ed)?\s+(?:goes\s+)?to)\s+{{HELP}}?(?:{{NAME}}|\[{{NAME}}\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
-# Credit trailers: `Credit: <name>`, `Credits:`, `Co-credit:` (ADV23R11-05).
+# `Credited to <name>`, `With credit to <name>` (ADV23R11-04/05); `Thank you
+# <name>`, `Kudos to`, `Shoutout to`, `With acknowledgment to`, `In consultation
+# with` (ADV23R12-05..07).
+^\s*{{DECOR}}(?:\*{1,2})?(?:(?:(?:special|many|big|huge)\s+)?thanks\s+(?:go(?:es)?\s+)?to|(?:(?:a\s+)?(?:big|huge|special)\s+)?thank\s+you,?(?:\s+(?:so\s+much\s+)?to)?|kudos\s+to|shout[{{DASH}}\s]*outs?\s+to|courtesy\s+of|(?:with\s+)?(?:co[{{DASH}}\s]*)?credit(?:s|ed)?\s+(?:goes\s+)?to|(?:with\s+)?acknowledge?ments?\s+(?:to|of)|in\s+consultation\s+with)\s+{{HELP}}?(?:{{NAME}}|{{TOOLCAP}}|\[(?:{{NAME}}|{{TOOLCAP}})\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
+# Credit trailers: `Credit: <name>`, `Credits:`, `Co-credit:` (ADV23R11-05),
+# `Acknowledgment:`, `Acknowledgements:` (ADV23R12-06).
 # As in other trailers, a human name that starts like a model stays allowed.
-^\s*{{DECOR}}(?:co[{{DASH}}\s]*)?credit(?:s|ed)?(?:\s+to)?\s*:\s*(?:(?:an?|the|my|our|some)\s+)?(?:{{IDNAME}}(?:<[^<>\r\n]+>)?|{{TOOLNAME}}(?:<[^<>\r\n]+>)?|{{GENERICNAME}})\s*$
+^\s*{{DECOR}}(?:(?:co[{{DASH}}\s]*)?credit(?:s|ed)?(?:\s+to)?|acknowledge?ments?|acknowledged)\s*:\s*(?:(?:an?|the|my|our|some)\s+)?(?:{{IDNAME}}(?:<[^<>\r\n]+>)?|{{TOOLNAME}}(?:<[^<>\r\n]+>)?|{{GENERICNAME}})\s*$
 # A bare tool name that is also a word, directly after an authorship verb:
 # `Generated by <tool>`; `Generated by the parameter sweep` and `Fixed by
 # sweep` stay allowed (R11-02, ADV23R11-03/06).
 ^\s*{{DECOR}}(?:\*{1,2})?(?:generated|written|wrote|authored|produced|created|assisted|coded|implemented|drafted|co[{{DASH}}\s]*(?:written|authored))\s+(?:by|with|using|via)\s*:?\s*(?:{{TOOLNAME}}|\[{{TOOLNAME}}\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
+# Review, test and maintenance verbs with a capitalised bare tool name:
+# `Reviewed by Blackbox`, `Tested by Sweep` (R12-02, ADV23R12-08).
+^\s*{{DECOR}}(?:\*{1,2})?(?:reviewed|fixed|tested|debugged|refactored|edited|verified|validated|checked|maintained|optimi[sz]ed|documented|analy[sz]ed|improved|updated|acknowledged|consulted)\s+(?:by|with|using|via)\s*:?\s*(?:{{TOOLCAP}}|\[{{TOOLCAP}}\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
 # An HTML comment marker (in a PR body) that credits a named tool, such as a
 # review bot's auto-generated summary marker (R7-03).
 ^\s*<!--(?=[^\r\n]*?(?<![\p{L}\p{N}]){{ATTRIBUTE}}(?![\p{L}\p{N}]))(?=[^\r\n]*?(?<![\p{L}\p{N}]){{MODEL}}(?![\p{L}]))[^\r\n]*-->\s*$

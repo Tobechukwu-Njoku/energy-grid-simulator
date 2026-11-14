@@ -31,6 +31,17 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
 
+**PR #23 revision 13 (implementation, 2026-11-14):** R12-01..02 (GPT) and
+ADV23R12-01..08 (Gemini) addressed (ADR 0001 revision-13 addendum). The secrets scan
+runs over every text view of a file (raw bytes, UTF-8, UTF-16/32 both byte orders and
+alignments); any view's finding fails. Secret formats now come from the gitleaks
+v8.30.1 default ruleset (MIT), vendored unchanged in `xtask/policy/gitleaks.toml`,
+pinned by blob id and evaluated in Rust, plus local rules (PEM header, PuTTY, `.ppk`,
+earlier prefixes); unsupported rules or keys fail closed. Update procedure in
+CONTRIBUTING.md. Attribution adds CodeGemma/WizardCoder/Yi-Coder, thank-you/kudos/
+shout-out/acknowledgment/consultation phrases and capitalised bare tools after review
+verbs. Next: round-13 review; the bootstrap seed waits for a clean review.
+
 **PR #23 revision 12 (implementation, 2026-11-14):** R11-01..02 (GPT) and
 ADV23R11-01..06 (Gemini) addressed (ADR 0001 revision-12 addendum). Files are decoded
 (UTF-8/16/32, BOM or NUL pattern) before the secrets, manifest and shebang checks; a

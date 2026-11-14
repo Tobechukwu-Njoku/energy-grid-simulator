@@ -66,6 +66,12 @@ on the separate target system (D-65).
   `_`/`-` word is `file`, `files`, `filename`, `path`, `paths` or `name` (for example
   `sha256_index_file`, `relative_path`, `local_name`), at any depth; any value shaped like
   a file name is also registered (ADV23R3-06).
+- **Secrets:** `cargo xtask provenance` evaluates the [gitleaks](https://github.com/gitleaks/gitleaks)
+  default ruleset (MIT), vendored unchanged in `xtask/policy/gitleaks.toml`, plus local rules
+  in the same schema in `xtask/policy/secret-rules.toml`. Every file is scanned as raw bytes
+  and as UTF-8, UTF-16 and UTF-32 text in both byte orders and every alignment; a finding in
+  any view fails. A synthetic example key quoted in a review needs an exact-line
+  `[[secret_exemption]]` in `xtask/policy/repository.toml`.
 - **Policy paths** (`.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
   `Cargo.toml`, `rust-toolchain.toml`, `docs/security/`) need the policy owner's APPROVED
   review on the exact head. Agents push and open pull requests from the machine account
@@ -86,3 +92,24 @@ on yet): `merge-gates` (all automated gates, listing the ones not yet applicable
 `independent-review` and `policy-approval` (both in `trusted-gates.yml`, which runs from
 `main` and never runs pull-request code). The last two fail until the review evidence,
 triage or owner approval exists for the current head; re-run them after it lands.
+
+## Updating the gitleaks ruleset
+
+New secret formats come from upstream gitleaks, not from local prefixes. To update (a
+protected policy change that needs the owner's approval):
+
+1. Pick a gitleaks release tag at least two weeks old and resolve it to a commit:
+   `gh api repos/gitleaks/gitleaks/commits/<tag> --jq .sha`.
+2. Replace `xtask/policy/gitleaks.toml` with `config/gitleaks.toml` from that commit,
+   byte for byte, and `xtask/policy/gitleaks.LICENSE` with its `LICENSE`.
+3. In `xtask/policy/secret-rules.toml` set `[vendor]` `version`, `commit`, `source` and
+   `blob` (`git hash-object xtask/policy/gitleaks.toml`). A copy that differs from the
+   pinned blob fails the check.
+4. Run `cargo nextest run -p xtask` and `cargo xtask provenance`. A rule whose Go regex
+   does not compile in Rust, or a schema key xtask does not evaluate (for example
+   `[[rules.required]]` or `[extend]`), fails closed: extend `xtask/src/secrets.rs` (and
+   its Go-to-Rust `translate`) with a test, never drop the rule. Triage new findings:
+   fix real secrets; add a narrow `[[allowlists]]` with `targetRules` for a false-positive
+   class, or an exact-line exemption for a quoted synthetic example.
+5. Remove a local rule from `secret-rules.toml` only when an upstream rule detects
+   the same tokens, including the low-entropy synthetic tokens in the xtask tests.

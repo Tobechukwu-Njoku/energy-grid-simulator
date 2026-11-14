@@ -1443,5 +1443,131 @@
     "input": "fix: exercise message policy\n\nCredit: Jane Doe\n",
     "exit": 0,
     "expected": "fix: exercise message policy\n\nCredit: Jane Doe\n"
+  },
+  {
+    "name": "r12-strip-1",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920436f646547656d6d610a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-2",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792057697a617264436f6465720a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-3",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792059692d436f6465720a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-4",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5468616e6b20796f7520746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-5",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a4b75646f7320746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-6",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a53686f75746f757420746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-7",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a41636b6e6f776c6564676d656e743a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-8",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a576974682061636b6e6f776c6564676d656e7420746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-9",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496e20636f6e73756c746174696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-10",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e20696e20636f6e73756c746174696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-11",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a526576696577656420627920426c61636b626f780a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-12",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5465737465642062792053776565700a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-13",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5468616e6b7320746f204772616e6974650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-14",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a4669786564206279204772616e6974650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-keep-1",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nTested by sweep\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nTested by sweep\n"
+  },
+  {
+    "name": "r12-keep-2",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nThank you to Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThank you to Jane Doe\n"
+  },
+  {
+    "name": "r12-keep-3",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nAcknowledgment: Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nAcknowledgment: Jane Doe\n"
+  },
+  {
+    "name": "r12-keep-4",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nIn consultation with the system operator\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nIn consultation with the system operator\n"
   }
 ]

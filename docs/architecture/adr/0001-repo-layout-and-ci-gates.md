@@ -710,3 +710,38 @@ new data formats no longer need a policy change to be caught.
   to) and credit trailers (credit, credits, co-credit) are matched; trailers use
   the human-safe name form of other trailers. CodeGeeX, IBM Granite and Granite
   Code join the model names.
+
+## Addendum — 2026-11-14: every text view is scanned; vendored gitleaks ruleset (PR #23 revision 13)
+
+Round-12 reviews (GPT R12-01..02, Gemini ADV23R12-01..08) found false negatives in
+revision 12. This addendum implements D-56 and D-52 as written and adds no decision.
+
+- **No decoding choice hides content (R12-01).** Revision 12 scanned only the one
+  decoding it selected, so a two-byte `41 00` prefix hid a raw ASCII token. The
+  secrets scan now runs over every plausible view of a file and any finding fails:
+  the raw bytes, lossy UTF-8 (when the bytes are not valid UTF-8), and lossy
+  UTF-16 and UTF-32 in both byte orders at every alignment, from the first byte,
+  with any BOM read as an ordinary character. The strict decoder of the revision-12
+  addendum still decides what is text for the data gate, manifests and shebangs.
+- **Secret formats come from gitleaks (ADV23R12-01/02, rule 6 of AGENTS.md).** The
+  hand-written prefix list is replaced by the gitleaks default ruleset (v8.30.1,
+  MIT), vendored unchanged and pinned by Git blob id in
+  `xtask/policy/secret-rules.toml`; `xtask` evaluates its regexes, `secretGroup`,
+  `entropy`, `keywords`, `path` rules and allowlists in Rust (it does not run the
+  gitleaks binary). Go regex syntax is translated where the Rust `regex` crate
+  differs; a rule that does not compile, a schema key xtask does not evaluate or a
+  copy that differs from the pin fails the check closed. Differences from gitleaks:
+  the global allowlist's path list is not applied (every tracked file is scanned),
+  and its commit allowlists are rejected. Local rules in the same schema cover a
+  private-key armour header alone, PuTTY key headers and `.ppk` files, and keep the
+  earlier prefix rules without entropy thresholds. One local allowlist exempts bare
+  40-digit hexadecimal strings (Git commit ids) from `sourcegraph-access-token`
+  only. GitLab runner (`glrt-`) and Perplexity (`pplx-`) tokens are covered
+  upstream. The update procedure is in CONTRIBUTING.md.
+- **Attribution (R12-02, ADV23R12-03..08).** CodeGemma, WizardCoder and Yi-Coder
+  join the model names. Thank-you, kudos, shout-out, acknowledgment and
+  in-consultation-with phrases and acknowledgment trailers are matched. Review,
+  test, fix and maintenance verbs, and gratitude phrases, match a bare Blackbox,
+  Sweep or Granite only when written as a product name (capitalised), so
+  "Fixed by sweep" and "parameter sweep" prose still pass.
+
