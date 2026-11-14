@@ -7,6 +7,16 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #52 M1 inventory review (2026-11-14 UTC):** exact head
+`e7e992e3f213a8d8645bb5e58ea1d7592c55a908` independently checked under D-51;
+verdict **must-fix**. All 77 external link URLs and 15 repository-relative
+targets checked; 30 network/Irish captures and two SEMO archives match their
+committed hashes. Unsupported commercial-clearance labels, broken/misdirected
+dataset links, incorrect FUELHH/TLM claims and overstated M1 completeness must
+be corrected before reliance. Gated sources and missing dated rules/losses/
+decomposition remain explicit gaps. No inventory edits or M1 acceptance claimed.
+Evidence and corrections: [review report](reviews/gpt-2026-11-14-pr52-m1-inventory.md).
+
 **PR #23 revision-14 review:** exact head `112de8d2b7452ecfcb45b79f91d96841add16954`
 re-reviewed; verdict **must-fix**. Original round-13 CORE and adversarial
 reproductions are addressed, but three CORE gaps remain: historical research-only
