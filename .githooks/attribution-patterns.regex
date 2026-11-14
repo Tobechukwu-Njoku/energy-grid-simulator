@@ -74,7 +74,7 @@ define TOOLCAP = (?:(?-i:Blackbox|BlackBox|BLACKBOX|Sweep|SWEEP|Granite|GRANITE)
 # sweep` stay allowed (R11-02, ADV23R11-03/06).
 ^\s*{{DECOR}}(?:\*{1,2})?(?:generated|written|wrote|authored|produced|created|assisted|coded|implemented|drafted|co[{{DASH}}\s]*(?:written|authored))\s+(?:by|with|using|via)\s*:?\s*(?:{{TOOLNAME}}|\[{{TOOLNAME}}\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
 # Review, test and maintenance verbs with a capitalised bare tool name:
-# `Reviewed by Blackbox`, `Tested by Sweep` (R12-02, ADV23R12-08).
+# The verb, a preposition, then the product-name spelling (R12-02, ADV23R12-08).
 ^\s*{{DECOR}}(?:\*{1,2})?(?:reviewed|fixed|tested|debugged|refactored|edited|verified|validated|checked|maintained|optimi[sz]ed|documented|analy[sz]ed|improved|updated|acknowledged|consulted)\s+(?:by|with|using|via)\s*:?\s*(?:{{TOOLCAP}}|\[{{TOOLCAP}}\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
 # An HTML comment marker (in a PR body) that credits a named tool, such as a
 # review bot's auto-generated summary marker (R7-03).
