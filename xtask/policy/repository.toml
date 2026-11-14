@@ -48,6 +48,13 @@ data_extensions = [
     ".xlsb", ".xlsm", ".rds", ".rdata", ".rda", ".dta", ".sas7bdat", ".nc4", ".he5",
     ".zarr", ".msgpack", ".bson", ".protobuf", ".pb", ".tfrecord", ".pt", ".pth",
     ".safetensors", ".onnx", ".joblib",
+    # Power-system network models and exchange formats (ADV23R8-04): CGMES/CIM
+    # RDF-XML and other RDF serialisations, PowerFactory projects and cases,
+    # PowerWorld, PSS/E variants, UCTE-DEF, PowSyBl IIDM, OpenDSS, GridLAB-D,
+    # MATPOWER/PSAT cases. CIM/RDF XML is also detected by its content.
+    ".rdf", ".owl", ".ttl", ".nt", ".nq", ".trig", ".jsonld", ".cim", ".pfd", ".dz",
+    ".dgs", ".pwb", ".pwd", ".seq", ".rawd", ".uct", ".uctx", ".iidm", ".xiidm",
+    ".dss", ".glm", ".psse", ".cgmes",
 ]
 open_commercial_data = ["spikes/data/samples/*"]
 # Exact paths of provenance records, test fixtures and non-reconstructive

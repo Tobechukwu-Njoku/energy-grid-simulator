@@ -706,7 +706,40 @@ pub fn data_signature(bytes: &[u8]) -> Option<&'static str> {
     if bytes.get(8..12) == Some(b"DUCK") {
         return Some("duckdb");
     }
+    if is_cim_rdf(bytes) {
+        return Some("CIM/RDF XML");
+    }
     None
+}
+
+/// Whether a file is an RDF/XML document, such as a CGMES / IEC 61970 CIM
+/// network model, whatever its name (ADV23R8-04): after an optional BOM and
+/// white space it starts as XML (`<?xml`, `<rdf:RDF`, a comment or doctype)
+/// and its first 64 KiB declare the RDF syntax namespace, an `rdf:RDF`
+/// element, or the IEC TC57 CIM or ENTSO-E CGMES namespaces.
+#[must_use]
+pub fn is_cim_rdf(bytes: &[u8]) -> bool {
+    let head = &bytes[..bytes.len().min(64 * 1024)];
+    let head = head.strip_prefix(b"\xef\xbb\xbf").unwrap_or(head);
+    let start = head
+        .iter()
+        .position(|byte| !byte.is_ascii_whitespace())
+        .unwrap_or(head.len());
+    let head = &head[start..];
+    let lower = head.to_ascii_lowercase();
+    let xml = [&b"<?xml"[..], b"<rdf:", b"<!--", b"<!doctype"]
+        .iter()
+        .any(|prefix| lower.starts_with(prefix));
+    let contains = |needle: &[u8]| lower.windows(needle.len()).any(|window| window == needle);
+    xml && [
+        &b"22-rdf-syntax-ns#"[..],
+        b"<rdf:rdf",
+        b"iec.ch/tc57/",
+        b"entsoe.eu/cim",
+        b"entsoe.eu/ns/cim",
+    ]
+    .iter()
+    .any(|needle| contains(needle))
 }
 
 /// Checks tracked paths for data and key files. `records` are the
@@ -1628,6 +1661,53 @@ mod tests {
             )
             .is_empty()
         );
+    }
+
+    // ADV23R8-04: CGMES/CIM RDF-XML, PowerFactory and other network-model
+    // formats are data by name, and CIM/RDF XML is data by content.
+    #[test]
+    fn adv23r8_04_network_models_are_gated() {
+        let document: DocumentMut = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/repository.toml"),
+        )
+        .expect("policy")
+        .parse()
+        .expect("toml");
+        for path in [
+            "spikes/europe_grid_model.rdf",
+            "spikes/network_case.pfd",
+            "spikes/case.dz",
+            "spikes/EQ.xml",
+            "data/model.ttl",
+            "data/model.jsonld",
+            "data/grid.dgs",
+            "data/case.pwb",
+            "data/net.uct",
+            "data/net.xiidm",
+            "data/feeder.dss",
+            "data/feeder.glm",
+        ] {
+            let found = check_paths(&paths(&[path]), &document, &[]);
+            assert_eq!(found.len(), 1, "{path}: {found:?}");
+        }
+        let cgmes = b"\xef\xbb\xbf<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rdf:RDF xmlns:cim=\"http://iec.ch/TC57/2013/CIM-schema-cim16#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n";
+        let bare = b"\n  <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"/>";
+        let entsoe = b"<?xml version=\"1.0\"?>\n<!-- model -->\n<md:FullModel xmlns:entsoe=\"http://entsoe.eu/CIM/SchemaExtension/3/1#\"/>";
+        for bytes in [&cgmes[..], bare, entsoe] {
+            assert_eq!(data_signature(bytes), Some("CIM/RDF XML"));
+            let path = "spikes/notes.txt".to_owned();
+            let sniffed = BTreeMap::from([(path.clone(), "CIM/RDF XML")]);
+            let found = check_paths_with_content(&[path], &document, &[], &sniffed);
+            assert_eq!(found.len(), 1, "{found:?}");
+        }
+        // Controls: Markdown and code that mention RDF are not RDF documents.
+        for text in [
+            &b"# Notes\nCGMES uses <rdf:RDF> with http://iec.ch/TC57/ namespaces.\n"[..],
+            b"let ns = \"http://www.w3.org/1999/02/22-rdf-syntax-ns#\";\n",
+            b"<?xml version=\"1.0\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n",
+        ] {
+            assert_eq!(data_signature(text), None, "{text:?}");
+        }
     }
 
     // ADV23R-09: grid and market exchange formats count as data.
