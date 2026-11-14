@@ -406,3 +406,82 @@ fn r8_01_bot_summary_block_needs_verified_provenance() {
     let (code, out) = run_event(&repo, &policy, "Implement M0 checks.\n", None, false);
     assert_eq!(code, 0, "{out}");
 }
+
+// R9-01 / ADV23R9-04 (D-61): through the CLI, provenance is per line. The
+// GPT replay (owner credit inside a bot block, then a bot edit elsewhere in
+// the block) and the Gemini replay (block in the initial body, bot edits
+// first) exited 0 at e64acc5; both fail now, and a genuine block passes.
+#[test]
+fn r9_01_adv23r9_04_block_lines_need_bot_authorship() {
+    let (repo, policy, _) = setup();
+    let bot = j(&["code", "rabbitai"]);
+    let start = j(&[
+        "<!-- This is an auto-generated comment: release notes by code",
+        "rabbit.ai -->",
+    ]);
+    let end = j(&[
+        "<!-- end of auto-generated comment: release notes by code",
+        "rabbit.ai -->",
+    ]);
+    let header = j(&["## Summary by Code", "Rabbit"]);
+    let v0 = "Implement checks.";
+    let v1 = format!("{v0}\n\n{start}\n{header}\n\n* Add checks.\n{end}");
+    let v2 = v1.replace("* Add checks.", &format!("{}\n* Add checks.", footer()));
+    let v3 = v2.replace("* Add checks.", "* Add checks.\n* Add tests.");
+
+    let mut laundered = history(&[
+        ("owner", false, v0),
+        (&bot, true, &v1),
+        ("owner", false, &v2),
+        (&bot, true, &v3),
+    ]);
+    // The creation record GitHub keeps: oldest edit at the PR's createdAt.
+    laundered["data"]["repository"]["pullRequest"]["createdAt"] =
+        serde_json::json!("2026-11-14T00:00:00Z");
+    let (code, out) = run_event(&repo, &policy, &v3, Some(&laundered), false);
+    assert_eq!(code, 1, "{out}");
+    assert!(out.contains("not exempt (D-61)"), "{out}");
+    assert!(
+        out.contains("pull request body line 6: attribution"),
+        "{out}"
+    );
+
+    // Gemini: the author's initial body holds the block; the bot edits first.
+    let initial = format!("{v0}\n\n{start}\n{header}\n\n{}\n{end}", footer());
+    let only_bot = history(&[(&bot, true, &format!("{initial}\nmore"))]);
+    let (code, out) = run_event(
+        &repo,
+        &policy,
+        &format!("{initial}\nmore"),
+        Some(&only_bot),
+        false,
+    );
+    assert_eq!(code, 1, "{out}");
+    assert!(out.contains("not exempt (D-61)"), "{out}");
+    let mut created = history(&[
+        ("owner", false, &initial),
+        (&bot, true, &format!("{initial}\nmore")),
+    ]);
+    created["data"]["repository"]["pullRequest"]["createdAt"] =
+        serde_json::json!("2026-11-14T00:00:00Z");
+    let (code, out) = run_event(
+        &repo,
+        &policy,
+        &format!("{initial}\nmore"),
+        Some(&created),
+        false,
+    );
+    assert_eq!(code, 1, "{out}");
+
+    // Control: a genuine bot block, then a bot partial edit, passes.
+    let clean = v1.replace("* Add checks.", "* Add checks.\n* Add tests.");
+    let mut genuine = history(&[
+        ("owner", false, v0),
+        (&bot, true, &v1),
+        (&bot, true, &clean),
+    ]);
+    genuine["data"]["repository"]["pullRequest"]["createdAt"] =
+        serde_json::json!("2026-11-14T00:00:00Z");
+    let (code, out) = run_event(&repo, &policy, &clean, Some(&genuine), false);
+    assert_eq!(code, 0, "{out}");
+}
