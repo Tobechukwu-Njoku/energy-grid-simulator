@@ -667,3 +667,46 @@ are no longer expanded.
 Risk 12 as refined in revision 10 now holds without the diff-budget exception:
 text of unknown origin, including text past the diff budget, is never exempt.
 
+
+## Addendum — 2026-11-14: decoded text and a file-type allowlist (PR #23 revision 12)
+
+Round-11 reviews (GPT R11-01..02, Gemini ADV23R11-01..06) found false negatives in
+revision 11. This addendum implements D-52, D-56 and D-73 as written and adds no
+decision. It replaces revision 11's list of data extensions with an allowlist, so
+new data formats no longer need a policy change to be caught.
+
+- **Files are decoded before they are scanned (R11-01, ADV23R11-01).** One decoder
+  reads UTF-8, UTF-16 and UTF-32 in either byte order, with or without a BOM (a
+  BOM-less file is recognised by the zero bytes beside an ASCII-range first
+  character). The secrets scan, manifest and record parsing, and the misnamed-
+  manifest check read the whole decoded file; the shebang check reads the decoded
+  first line, and leading BOMs are ignored. A file that does not decode strictly
+  (invalid sequences, partial code units, unpaired surrogates, NUL or other
+  control characters other than tab, line feed, carriage return, form feed and
+  escape) is data, unless it is an allowed binary type.
+- **File types are an allowlist (ADV23R11-02).** `data_extensions` is removed. A
+  tracked file is data unless its extension is in the trusted
+  `tracked_extensions_allowed` (`.rs`, `.toml`, `.lock`, `.yml`, `.yaml`, `.md`,
+  `.sh`, `.py`, `.txt`, `.regex`, `.svg`) or `binary_extensions_allowed` (`.png`,
+  `.jpg`, `.jpeg`, `.gif`, `.webp`), or its exact file name is in
+  `tracked_names_allowed` (`.gitignore`, `.gitattributes`, `CODEOWNERS`,
+  `commit-msg`, licence names). A missing list allows nothing. Data still needs
+  an exact `data_metadata_files` listing, or a sample path and an open-commercial
+  record. `.py` is allowed as a type only; D-73 still limits it to `spikes/` and
+  reference validators. Adding a type is a change to protected policy and needs
+  the owner's approval.
+- **Content still decides under allowed types.** The existing signatures,
+  RDF/XML, DTD and solver-model sniffers still apply to every file. An allowed
+  binary type must start with its own format signature. A `.txt` file, or an
+  extensionless file without a shebang, holding a delimited table (five
+  consecutive lines with the same non-zero number of commas, tabs, semicolons or
+  pipes) is data. Delimited tables inside Markdown or source are not sniffed.
+- **Attribution (R11-02, ADV23R11-03..06).** Bare Blackbox, Sweep and Granite are
+  matched directly after an authorship verb (generated, written, authored,
+  produced, created, assisted, coded, implemented, drafted, co-written,
+  co-authored), not after other verbs or an article, so "parameter sweep" and
+  "black-box testing" prose and a line crediting a sweep with a fix still pass.
+  Gratitude and credit phrases (thanks to, courtesy of, credited to, with credit
+  to) and credit trailers (credit, credits, co-credit) are matched; trailers use
+  the human-safe name form of other trailers. CodeGeeX, IBM Granite and Granite
+  Code join the model names.

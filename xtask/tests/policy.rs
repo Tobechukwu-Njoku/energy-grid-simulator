@@ -286,8 +286,15 @@ fn adv23r3_07_non_canonical_manifest_is_rejected_end_to_end() {
     repo.write("spikes/data/restricted.bin", "x\n");
     repo.commit("data: restricted");
     let found = repository::provenance(&ctx(&repo)).expect("provenance");
-    assert_eq!(found.len(), 1, "{:?}", files(&found));
-    assert!(found[0].message.contains("research-only"));
+    // ADV23R11-02: `.bin` is also an unlisted type, so it is data as well.
+    assert!(
+        found
+            .iter()
+            .all(|f| f.file.as_deref() == Some("spikes/data/restricted.bin")),
+        "{:?}",
+        files(&found)
+    );
+    assert!(found.iter().any(|f| f.message.contains("research-only")));
 }
 
 // R4-03: a restricted file nested in an array of arrays is registered, so the
@@ -655,4 +662,95 @@ fn adv23r10_02_julia_outside_spikes_end_to_end() {
     repo.commit("feat: allowed");
     let found = repository::python(&ctx(&repo)).expect("python");
     assert!(found.is_empty(), "{:?}", files(&found));
+}
+
+// R11-01: a GitHub-token signature written as UTF-16 text passed
+// `provenance` at d71cf40; the UTF-8 control was already rejected.
+#[test]
+fn r11_01_encoded_secret_end_to_end() {
+    let line = format!(
+        "service_token={}{}\n",
+        ["gh", "p_"].concat(),
+        "0".repeat(36)
+    );
+    let le: Vec<u8> = [0xff, 0xfe]
+        .into_iter()
+        .chain(line.encode_utf16().flat_map(u16::to_le_bytes))
+        .collect();
+    let be: Vec<u8> = line.encode_utf16().flat_map(u16::to_be_bytes).collect();
+    let utf32: Vec<u8> = line
+        .chars()
+        .flat_map(|c| u32::from(c).to_le_bytes())
+        .collect();
+    for bytes in [line.as_bytes().to_vec(), le, be, utf32] {
+        let repo = Repo::new();
+        repo.write("data/manifest.toml", MANIFEST);
+        std::fs::create_dir_all(repo.path().join("docs")).expect("dir");
+        std::fs::write(repo.path().join("docs/connection-notes.txt"), &bytes).expect("write");
+        repo.commit("docs: notes");
+        let found = repository::provenance(&ctx(&repo)).expect("provenance");
+        assert_eq!(found.len(), 1, "{bytes:?}: {:?}", files(&found));
+        assert!(
+            found[0].message.contains("GitHub token"),
+            "{:?}",
+            files(&found)
+        );
+        assert_eq!(found[0].line, Some(1));
+    }
+    // Undecodable bytes under an allowed text type are data.
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    std::fs::create_dir_all(repo.path().join("docs")).expect("dir");
+    std::fs::write(repo.path().join("docs/blob.txt"), b"ab\x80\x81\xfe\xff").expect("write");
+    repo.commit("docs: blob");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert_eq!(found.len(), 1, "{:?}", files(&found));
+    assert!(found[0].message.contains(repository::UNDECODABLE));
+}
+
+// ADV23R11-01: an extensionless Python script behind a UTF-8 BOM passed
+// `python` at d71cf40.
+#[test]
+fn adv23r11_01_bom_script_end_to_end() {
+    for interpreter in ["python3", "julia"] {
+        let repo = Repo::new();
+        let text = format!("\u{feff}#!/usr/bin/env {interpreter}\nprint(1)\n");
+        repo.write("crates/run_tool", &text);
+        repo.commit("feat: tool");
+        let found = repository::python(&ctx(&repo)).expect("python");
+        assert_eq!(found.len(), 1, "{interpreter}: {:?}", files(&found));
+        assert_eq!(found[0].file.as_deref(), Some("crates/run_tool"));
+    }
+    let repo = Repo::new();
+    repo.write(".githooks/hook", "\u{feff}#!/bin/sh\nexit 0\n");
+    repo.commit("chore: hook");
+    assert!(repository::python(&ctx(&repo)).expect("python").is_empty());
+}
+
+// ADV23R11-02: solver, SAT/SMT and AMPL files missing from the d71cf40 data
+// list passed `provenance`; file types are now an allowlist.
+#[test]
+fn adv23r11_02_unlisted_types_end_to_end() {
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    let inputs = [
+        ("spikes/conflict.iis", "CONFLICT\n"),
+        ("spikes/model.svf", "SAVESTATE\n"),
+        ("spikes/problem.cnf", "p cnf 3 2\n"),
+        ("spikes/problem.smt2", "(assert true)\n"),
+        ("crates/solve.run", "solve; display x;\n"),
+        ("docs/table.txt", "a,b,c\n1,2,3\n4,5,6\n7,8,9\n10,11,12\n"),
+    ];
+    for (path, text) in inputs {
+        repo.write(path, text);
+    }
+    repo.write("docs/notes.txt", "Plain notes, with a comma.\n");
+    repo.write("crates/a/src/lib.rs", "#![forbid(unsafe_code)]\n");
+    repo.commit("data: files");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    let mut flagged: Vec<&str> = found.iter().filter_map(|f| f.file.as_deref()).collect();
+    flagged.sort_unstable();
+    let mut expected: Vec<&str> = inputs.iter().map(|(path, _)| *path).collect();
+    expected.sort_unstable();
+    assert_eq!(flagged, expected, "{:?}", files(&found));
 }

@@ -31,6 +31,16 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
 
+**PR #23 revision 12 (implementation, 2026-11-14):** R11-01..02 (GPT) and
+ADV23R11-01..06 (Gemini) addressed (ADR 0001 revision-12 addendum). Files are decoded
+(UTF-8/16/32, BOM or NUL pattern) before the secrets, manifest and shebang checks; a
+file that is not decodable text and not an allowed image is data. `data_extensions` is
+replaced by the trusted file-type allowlist (`tracked_extensions_allowed`,
+`binary_extensions_allowed`, `tracked_names_allowed`); content sniffing still applies,
+plus delimited tables in `.txt`. Attribution adds bare Blackbox/Sweep/Granite after
+authorship verbs, thanks/courtesy/credit phrases and trailers, CodeGeeX and IBM Granite.
+Next: round-12 review; the bootstrap seed waits for a clean review of the new head.
+
 **PR #23 revision 11 (implementation, 2026-11-14):** R10-01..02 (GPT) and
 ADV23R10-01..06 (Gemini) addressed (ADR 0001 revision-11 addendum). Markup holding a
 DTD or entity declaration is data unless listed in the trusted `xml_dtd_allowed`

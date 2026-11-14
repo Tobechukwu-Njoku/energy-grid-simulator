@@ -39,43 +39,28 @@ shebang_interpreters_allowed = ["sh", "bash"]
 # without counting as data. Entities are never expanded by the sniffer.
 xml_dtd_allowed = []
 
-# D-56 data gate. A tracked file with one of these extensions must be either an
-# exact path in data_metadata_files (provenance, fixtures, aggregates), or a file
-# under open_commercial_data whose name (or sample_sources alias) has an
-# open-commercial record in a provenance manifest or sources.tsv (F9).
-data_extensions = [
-    ".csv", ".tsv", ".parquet", ".feather", ".arrow", ".xlsx", ".xls", ".ods", ".zip",
-    ".gz", ".bz2", ".xz", ".7z", ".tar", ".nc", ".cdf", ".grib", ".grib2", ".grb", ".h5",
-    ".hdf5", ".mat", ".m", ".npy", ".npz", ".pkl", ".pickle", ".json", ".jsonl",
-    ".ndjson", ".xml", ".raw", ".rawx", ".sav", ".dyr", ".epc", ".sqlite", ".db",
-    ".dbf", ".shp", ".gpkg", ".kml", ".kmz", ".pbf", ".osm", ".geojson", ".pdf",
-    # Compressed and archive formats (ADV23R7-02). The gate also detects data,
-    # archive and compressed files by their content, whatever their name.
-    ".zst", ".zstd", ".zstandard", ".lz4", ".lz", ".lzma", ".lzo", ".br", ".bz", ".tbz",
-    ".tbz2", ".tgz", ".txz", ".tzst", ".tlz", ".z", ".sz", ".snappy", ".rar", ".cab",
-    ".gzip", ".cpio", ".zipx", ".jar", ".war", ".ar",
-    # Further columnar, statistical and database formats.
-    ".avro", ".orc", ".ipc", ".parq", ".duckdb", ".sqlite3", ".db3", ".mdb", ".accdb",
-    ".xlsb", ".xlsm", ".rds", ".rdata", ".rda", ".dta", ".sas7bdat", ".nc4", ".he5",
-    ".zarr", ".msgpack", ".bson", ".protobuf", ".pb", ".tfrecord", ".pt", ".pth",
-    ".safetensors", ".onnx", ".joblib",
-    # Power-system network models and exchange formats (ADV23R8-04): CGMES/CIM
-    # RDF-XML and other RDF serialisations, PowerFactory projects and cases,
-    # PowerWorld, PSS/E variants, UCTE-DEF, PowSyBl IIDM, OpenDSS, GridLAB-D,
-    # MATPOWER/PSAT cases. RDF/XML is also detected by its content (any prefix,
-# encoding or BOM, with or without an XML declaration; R9-03).
-    ".rdf", ".owl", ".ttl", ".nt", ".nq", ".trig", ".jsonld", ".cim", ".pfd", ".dz",
-    ".dgs", ".pwb", ".pwd", ".seq", ".rawd", ".uct", ".uctx", ".iidm", ".xiidm",
-    ".dss", ".glm", ".psse", ".cgmes",
-    # Optimisation problem instances (ADV23R9-05): MPS/free MPS, QPS, CPLEX LP,
-    # AMPL .nl, GAMS models and data, OSiL and conic CBF. MPS, LP and GAMS are
-    # also detected by their content.
-    ".mps", ".qps", ".lp", ".nl", ".gms", ".gdx", ".osil", ".cbf",
-    # Solver solutions, MIP starts, bases, infeasibility subsystems (.sav,
-    # listed above), pseudo-Boolean instances, AMPL and Gurobi side files
-    # (ADV23R10-01).
-    ".sol", ".mst", ".bas", ".ilp", ".opb", ".wbo", ".pbo", ".dat", ".mod", ".hnt",
-    ".ord", ".attr", ".glp", ".hsol", ".qplib",
+# D-56 data gate (ADV23R11-02): an allowlist of file types, replacing the old
+# list of data extensions. A tracked file is data unless its extension is in
+# tracked_extensions_allowed or binary_extensions_allowed, or its exact file
+# name is in tracked_names_allowed. Data must be either an exact path in
+# data_metadata_files (provenance, fixtures, aggregates), or a file under
+# open_commercial_data whose name (or sample_sources alias) has an
+# open-commercial record in a provenance manifest or sources.tsv (F9). Content
+# still decides as well: a
+# file of an allowed type is data when it is not decodable text (R11-01), when
+# it holds a known data signature, RDF/XML, a DTD or a solver model, or (for
+# .txt and extensionless non-script files) a delimited table; an allowed binary type must
+# carry its own signature. Adding a type is a policy change for the owner.
+tracked_extensions_allowed = [
+    ".rs", ".toml", ".lock", ".yml", ".yaml", ".md", ".sh", ".py", ".txt", ".regex",
+    ".svg",
+]
+# Images used in documentation; each must start with its format's signature.
+binary_extensions_allowed = [".png", ".jpg", ".jpeg", ".gif", ".webp"]
+# Exact file names (any directory) of extensionless or dot files.
+tracked_names_allowed = [
+    ".gitignore", ".gitattributes", "CODEOWNERS", "commit-msg", "LICENSE",
+    "LICENSE-APACHE", "LICENSE-MIT", "COPYING", "NOTICE",
 ]
 open_commercial_data = ["spikes/data/samples/*"]
 # Exact paths of provenance records, test fixtures and non-reconstructive

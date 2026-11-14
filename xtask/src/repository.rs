@@ -116,10 +116,11 @@ pub fn check_scripts(
 
 /// The interpreter a shebang line names: the program's file name, or for
 /// `env` its first non-option, non-assignment argument. `None` when the line
-/// is not a shebang (a Rust `#![...]` inner attribute is not one).
+/// is not a shebang (a Rust `#![...]` inner attribute is not one). Leading
+/// byte-order marks are ignored (ADV23R11-01).
 #[must_use]
 pub fn shebang_interpreter(first: &str) -> Option<String> {
-    let rest = first.strip_prefix("#!")?;
+    let rest = first.trim_start_matches('\u{feff}').strip_prefix("#!")?;
     if rest.trim_start().starts_with('[') {
         return None;
     }
@@ -151,13 +152,10 @@ pub fn python(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let heads = |path: &str| {
         let mut bytes = Vec::new();
         std::fs::File::open(ctx.repo.join(path))
-            .and_then(|file| file.take(200).read_to_end(&mut bytes))
+            .and_then(|file| file.take(1024).read_to_end(&mut bytes))
             .ok()?;
-        let end = bytes
-            .iter()
-            .position(|b| *b == b'\n')
-            .unwrap_or(bytes.len());
-        Some(String::from_utf8_lossy(&bytes[..end]).into_owned())
+        // The same decoder as the secrets gate: BOM, UTF-16/32 (ADV23R11-01).
+        decoded_head(&bytes).lines().next().map(str::to_owned)
     };
     Ok(check_scripts(
         &paths,
@@ -788,41 +786,102 @@ pub fn data_signature(bytes: &[u8]) -> Option<&'static str> {
     declares_dtd(bytes).then_some(XML_DTD)
 }
 
-/// The first 64 KiB of a file as text, decoded from UTF-8, UTF-16 or UTF-32
-/// by byte-order mark or by the zero-byte pattern around a leading `<`
-/// (ADV23R9-05, R9-03), with any BOM removed.
-fn decoded_head(bytes: &[u8]) -> String {
-    let head = &bytes[..bytes.len().min(64 * 1024)];
-    let units = |width: usize, big: bool, skip: usize| -> String {
-        head[skip..]
-            .chunks_exact(width)
-            .map(|chunk| {
-                let value = if big {
-                    chunk
-                        .iter()
-                        .fold(0_u32, |acc, b| (acc << 8) | u32::from(*b))
-                } else {
-                    chunk
-                        .iter()
-                        .rev()
-                        .fold(0_u32, |acc, b| (acc << 8) | u32::from(*b))
-                };
-                char::from_u32(value).unwrap_or('\u{fffd}')
-            })
-            .collect()
-    };
-    match head {
-        [0xef, 0xbb, 0xbf, ..] => String::from_utf8_lossy(&head[3..]).into_owned(),
-        [0xff, 0xfe, 0, 0, ..] => units(4, false, 4),
-        [0, 0, 0xfe, 0xff, ..] => units(4, true, 4),
-        [0xff, 0xfe, ..] => units(2, false, 2),
-        [0xfe, 0xff, ..] => units(2, true, 2),
-        [a, 0, 0, 0, ..] if *a != 0 => units(4, false, 0),
-        [0, 0, 0, b, ..] if *b != 0 => units(4, true, 0),
-        [a, 0, ..] if *a != 0 => units(2, false, 0),
-        [0, b, ..] if *b != 0 => units(2, true, 0),
-        _ => String::from_utf8_lossy(head).into_owned(),
+/// A text encoding, from a byte-order mark or the zero-byte pattern of the
+/// first code unit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Encoding {
+    Utf8,
+    Utf16 { big: bool },
+    Utf32 { big: bool },
+}
+
+/// The encoding of a byte string and the length of its BOM (R11-01,
+/// ADV23R11-01, R9-03). Without a BOM, an ASCII-range first character
+/// written as UTF-16 or UTF-32 shows as zero bytes beside it; anything else
+/// is read as UTF-8.
+fn detect_encoding(bytes: &[u8]) -> (Encoding, usize) {
+    match bytes {
+        [0xef, 0xbb, 0xbf, ..] => (Encoding::Utf8, 3),
+        [0xff, 0xfe, 0, 0, ..] => (Encoding::Utf32 { big: false }, 4),
+        [0, 0, 0xfe, 0xff, ..] => (Encoding::Utf32 { big: true }, 4),
+        [0xff, 0xfe, ..] => (Encoding::Utf16 { big: false }, 2),
+        [0xfe, 0xff, ..] => (Encoding::Utf16 { big: true }, 2),
+        [a, 0, 0, 0, ..] if *a != 0 => (Encoding::Utf32 { big: false }, 0),
+        [0, 0, 0, b, ..] if *b != 0 => (Encoding::Utf32 { big: true }, 0),
+        [a, 0, ..] if *a != 0 => (Encoding::Utf16 { big: false }, 0),
+        [0, b, ..] if *b != 0 => (Encoding::Utf16 { big: true }, 0),
+        _ => (Encoding::Utf8, 0),
     }
+}
+
+/// Code units of `width` bytes; a trailing partial unit is dropped.
+fn code_units(bytes: &[u8], width: usize, big: bool) -> impl Iterator<Item = u32> + '_ {
+    bytes.chunks_exact(width).map(move |chunk| {
+        let fold = |acc: u32, b: &u8| (acc << 8) | u32::from(*b);
+        if big {
+            chunk.iter().fold(0, fold)
+        } else {
+            chunk.iter().rev().fold(0, fold)
+        }
+    })
+}
+
+/// Decodes text after its BOM, replacing invalid sequences.
+fn decode_lossy(bytes: &[u8]) -> String {
+    let (encoding, skip) = detect_encoding(bytes);
+    let body = &bytes[skip..];
+    match encoding {
+        Encoding::Utf8 => String::from_utf8_lossy(body).into_owned(),
+        Encoding::Utf16 { big } => char::decode_utf16(
+            code_units(body, 2, big).map(|unit| u16::try_from(unit).unwrap_or(0xfffd)),
+        )
+        .map(|c| c.unwrap_or('\u{fffd}'))
+        .collect(),
+        Encoding::Utf32 { big } => code_units(body, 4, big)
+            .map(|unit| char::from_u32(unit).unwrap_or('\u{fffd}'))
+            .collect(),
+    }
+}
+
+/// A whole file decoded as text: UTF-8, UTF-16 or UTF-32, either byte order,
+/// with or without BOM (R11-01). `None` unless the file decodes strictly
+/// (complete code units, no invalid sequences or unpaired surrogates) to text
+/// without control characters other than tab, line feed, carriage return,
+/// form feed and escape. Callers treat `None` as data (fail closed).
+#[must_use]
+pub fn decode_text(bytes: &[u8]) -> Option<String> {
+    let (encoding, skip) = detect_encoding(bytes);
+    let body = &bytes[skip..];
+    let text = match encoding {
+        Encoding::Utf8 => std::str::from_utf8(body).ok()?.to_owned(),
+        Encoding::Utf16 { big } => {
+            if !body.len().is_multiple_of(2) {
+                return None;
+            }
+            char::decode_utf16(
+                code_units(body, 2, big).map(|unit| u16::try_from(unit).unwrap_or(0xfffd)),
+            )
+            .collect::<Result<String, _>>()
+            .ok()?
+        }
+        Encoding::Utf32 { big } => {
+            if !body.len().is_multiple_of(4) {
+                return None;
+            }
+            code_units(body, 4, big)
+                .map(char::from_u32)
+                .collect::<Option<String>>()?
+        }
+    };
+    text.chars()
+        .all(|c| !c.is_control() || matches!(c, '\t' | '\n' | '\r' | '\x0c' | '\x1b'))
+        .then_some(text)
+}
+
+/// The first 64 KiB of a file as text, decoded like [`decode_text`] but
+/// replacing invalid sequences, with any BOM removed (ADV23R9-05, R9-03).
+fn decoded_head(bytes: &[u8]) -> String {
+    decode_lossy(&bytes[..bytes.len().min(64 * 1024)])
 }
 
 /// Expands numeric character references. General entities are never
@@ -1018,6 +1077,84 @@ pub fn solver_model(bytes: &[u8]) -> Option<&'static str> {
     (declares && solves).then_some("GAMS solver model")
 }
 
+/// A file name's extension, lower-cased with its dot (`.rs`); `None` for a
+/// name without one or a dotfile such as `.env`.
+#[must_use]
+pub fn extension(name: &str) -> Option<String> {
+    let index = name.rfind('.').filter(|index| *index > 0)?;
+    Some(name[index..].to_ascii_lowercase())
+}
+
+/// Leading bytes each allowed binary (image) type must start with; an
+/// allowed binary type without an entry here never passes.
+const BINARY_SIGNATURES: &[(&str, &[u8])] = &[
+    (".png", b"\x89PNG\r\n\x1a\n"),
+    (".jpg", b"\xff\xd8\xff"),
+    (".jpeg", b"\xff\xd8\xff"),
+    (".gif", b"GIF8"),
+    (".webp", b"RIFF"),
+];
+
+/// Data format name for a file that is neither text nor an allowed binary.
+pub const UNDECODABLE: &str = "binary or undecodable text";
+/// Data format name for an allowed binary type whose content does not match.
+pub const BINARY_MISMATCH: &str = "content that does not match its binary type";
+/// Data format name for a delimited table in a plain-text file.
+pub const DELIMITED: &str = "delimited table";
+
+/// Content-based data classification beyond [`data_signature`] (R11-01,
+/// ADV23R11-02): a file of an allowed binary type must carry that type's
+/// signature; any other file must decode as text ([`decode_text`]); and a
+/// plain-text file (`.txt`, or no extension and no shebang) must not hold a
+/// delimited table.
+#[must_use]
+pub fn content_class(
+    name: &str,
+    bytes: &[u8],
+    decoded: Option<&str>,
+    binary_types: &[String],
+) -> Option<&'static str> {
+    let ext = extension(name);
+    if let Some(ext) = ext
+        .as_deref()
+        .filter(|ext| binary_types.iter().any(|t| t.eq_ignore_ascii_case(ext)))
+    {
+        let matches = BINARY_SIGNATURES
+            .iter()
+            .any(|(kind, magic)| *kind == ext && bytes.starts_with(magic))
+            && (ext != ".webp" || bytes.get(8..12) == Some(b"WEBP"));
+        return (!matches).then_some(BINARY_MISMATCH);
+    }
+    let Some(text) = decoded else {
+        return Some(UNDECODABLE);
+    };
+    let plain = match ext.as_deref() {
+        Some(".txt") => true,
+        None => !text.starts_with("#!"),
+        Some(_) => false,
+    };
+    (plain && delimited_table(text)).then_some(DELIMITED)
+}
+
+/// Whether text holds a delimited table: five consecutive lines with the
+/// same non-zero number of commas, tabs, semicolons or pipes.
+#[must_use]
+pub fn delimited_table(text: &str) -> bool {
+    [',', '\t', ';', '|'].iter().any(|delimiter| {
+        let (mut run, mut width) = (0_usize, 0_usize);
+        text.lines().any(|line| {
+            let count = line.matches(*delimiter).count();
+            if count > 0 && count == width {
+                run += 1;
+            } else {
+                width = count;
+                run = usize::from(count > 0);
+            }
+            run >= 5
+        })
+    })
+}
+
 /// Checks tracked paths for data and key files. `records` are the
 /// (licence status, file) entries of every provenance manifest and sources
 /// table. A data file is allowed only as an exact listed metadata/fixture
@@ -1042,7 +1179,11 @@ pub fn check_paths_with_content(
     sniffed: &BTreeMap<String, &str>,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
-    let data_extensions = string_array(&document["data_extensions"]);
+    // A missing list allows nothing (fail closed).
+    let list = |key: &str| document.get(key).map(string_array).unwrap_or_default();
+    let text_types = list("tracked_extensions_allowed");
+    let binary_types = list("binary_extensions_allowed");
+    let names = list("tracked_names_allowed");
     let sample_paths = string_array(&document["open_commercial_data"]);
     let metadata = string_array(&document["data_metadata_files"]);
     let aliases: BTreeMap<String, String> = document
@@ -1098,14 +1239,22 @@ pub fn check_paths_with_content(
             ));
         }
         let content = sniffed.get(path);
-        let is_data = data_extensions
-            .iter()
-            .any(|ext| lower.ends_with(ext.as_str()))
-            || content.is_some();
+        let in_samples = sample_paths.iter().any(|glob| glob_match(glob, path));
+        // ADV23R11-02: an allowlist of file types, not a list of data
+        // extensions. Every other type is data that needs a provenance
+        // record or a metadata listing.
+        let type_allowed = names.iter().any(|allowed| allowed == name)
+            || extension(name).is_some_and(|ext| {
+                text_types
+                    .iter()
+                    .chain(&binary_types)
+                    .any(|allowed| allowed.eq_ignore_ascii_case(&ext))
+            });
+        let is_data = !type_allowed || content.is_some();
         if !is_data || listed_metadata {
             continue;
         }
-        if !sample_paths.iter().any(|glob| glob_match(glob, path)) {
+        if !in_samples {
             findings.push(Finding::at(
                 path,
                 None,
@@ -1113,7 +1262,7 @@ pub fn check_paths_with_content(
                     Some(format) => format!(
                         "data file ({format} content) outside the allow-listed open-commercial sample paths (D-56)"
                     ),
-                    None => "data file outside the allow-listed open-commercial sample paths (D-56)"
+                    None => "data file outside the allow-listed open-commercial sample paths (D-56): its type is not in the trusted tracked_extensions_allowed; register it as data or ask the policy owner to allow the type"
                         .to_owned(),
                 },
             ));
@@ -1313,6 +1462,19 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let secret_exemptions = load_secret_exemptions(&document)?;
     let metadata = string_array(&document["data_metadata_files"]);
     let dtd_allowed = string_array(&document["xml_dtd_allowed"]);
+    if document
+        .get("tracked_extensions_allowed")
+        .and_then(Item::as_array)
+        .is_none()
+    {
+        return Err(format!(
+            "{POLICY}: tracked_extensions_allowed is missing; the data gate needs the file-type allowlist (ADV23R11-02)"
+        ));
+    }
+    let binary_types = document
+        .get("binary_extensions_allowed")
+        .map(string_array)
+        .unwrap_or_default();
     let mut sniffed = BTreeMap::new();
     for path in &paths {
         let name = path.rsplit('/').next().unwrap_or(path);
@@ -1323,7 +1485,15 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
         {
             sniffed.insert(path.clone(), format);
         }
-        let text = String::from_utf8_lossy(&bytes);
+        // R11-01: secrets, manifests and records are read from the decoded
+        // text; a file that is not text and not an allowed binary is data.
+        let decoded = decode_text(&bytes);
+        if !sniffed.contains_key(path)
+            && let Some(format) = content_class(name, &bytes, decoded.as_deref(), &binary_types)
+        {
+            sniffed.insert(path.clone(), format);
+        }
+        let text = decoded.unwrap_or_else(|| decode_lossy(&bytes));
         findings.extend(misnamed_manifest(path, &text, &metadata));
         if name == MANIFEST_NAME {
             manifests += 1;
@@ -1603,7 +1773,7 @@ mod tests {
 
     #[test]
     fn adv23_04_data_files_and_secrets() {
-        let document: DocumentMut = "data_extensions = [\".csv\", \".xlsx\", \".zip\"]\nopen_commercial_data = [\"spikes/data/samples/*.csv\"]\ndata_metadata_files = [\"spikes/data/sources.tsv\"]\n".parse().expect("toml");
+        let document: DocumentMut = "tracked_extensions_allowed = [\".txt\", \".md\"]\nopen_commercial_data = [\"spikes/data/samples/*.csv\"]\ndata_metadata_files = [\"spikes/data/sources.tsv\"]\n".parse().expect("toml");
         let records = vec![
             ("research-only".to_owned(), "etys.xlsx".to_owned()),
             ("open-commercial".to_owned(), "a.csv".to_owned()),
@@ -1633,7 +1803,10 @@ mod tests {
                 "x/etys.xlsx",
                 "spikes/data/raw/r.txt",
                 ".env",
-                "k/server.pem"
+                ".env",
+                "k/server.pem",
+                "k/server.pem",
+                ".env.example"
             ]
         );
         let key = ["gh", "p_", &"a".repeat(36)].concat();
@@ -1646,7 +1819,7 @@ mod tests {
     // ADV23R6-04: every path-component and file-name rule ignores letter case.
     #[test]
     fn adv23r6_04_path_rules_ignore_case() {
-        let document: DocumentMut = "data_extensions = [\".csv\", \".xlsx\"]\nopen_commercial_data = [\"spikes/data/samples/*\"]\ndata_metadata_files = []\n".parse().expect("toml");
+        let document: DocumentMut = "tracked_extensions_allowed = [\".txt\", \".md\"]\nopen_commercial_data = [\"spikes/data/samples/*\"]\ndata_metadata_files = []\n".parse().expect("toml");
         let records = vec![
             ("research-only".to_owned(), "etys.xlsx".to_owned()),
             ("research-only".to_owned(), "grid.bin".to_owned()),
@@ -2379,5 +2552,240 @@ mod tests {
             shebang_interpreter("#!/bin/bash -e").as_deref(),
             Some("bash")
         );
+    }
+
+    fn encodings(text: &str) -> Vec<(&'static str, Vec<u8>)> {
+        let utf16 = |big: bool| -> Vec<u8> {
+            text.encode_utf16()
+                .flat_map(|u| {
+                    if big {
+                        u.to_be_bytes()
+                    } else {
+                        u.to_le_bytes()
+                    }
+                })
+                .collect()
+        };
+        let utf32 = |big: bool| -> Vec<u8> {
+            text.chars()
+                .flat_map(|c| {
+                    let u = u32::from(c);
+                    if big {
+                        u.to_be_bytes()
+                    } else {
+                        u.to_le_bytes()
+                    }
+                })
+                .collect()
+        };
+        let bom = |b: &[u8], body: Vec<u8>| [b.to_vec(), body].concat();
+        vec![
+            ("utf-8 bom", bom(b"\xef\xbb\xbf", text.as_bytes().to_vec())),
+            ("utf-16le bom", bom(b"\xff\xfe", utf16(false))),
+            ("utf-16be bom", bom(b"\xfe\xff", utf16(true))),
+            ("utf-16le", utf16(false)),
+            ("utf-16be", utf16(true)),
+            ("utf-32le bom", bom(b"\xff\xfe\x00\x00", utf32(false))),
+            ("utf-32be bom", bom(b"\x00\x00\xfe\xff", utf32(true))),
+            ("utf-32le", utf32(false)),
+            ("utf-32be", utf32(true)),
+        ]
+    }
+
+    // R11-01: a recognised secret written as UTF-16/32 text passed the
+    // secrets gate at d71cf40; files are now decoded before scanning, and a
+    // file that is not decodable text is data (fail closed).
+    #[test]
+    fn r11_01_encoded_text_is_decoded_before_secret_scan() {
+        let key = ["gh", "p_", &"0".repeat(36)].concat();
+        let line = format!("service_token={key}\n");
+        assert_eq!(decode_text(line.as_bytes()).as_deref(), Some(line.as_str()));
+        for (name, bytes) in encodings(&line) {
+            // The d71cf40 view (lossy UTF-8) misses it.
+            if !name.starts_with("utf-8") {
+                assert!(
+                    scan_secrets("f", &String::from_utf8_lossy(&bytes)).is_empty(),
+                    "{name}"
+                );
+            }
+            let text = decode_text(&bytes).unwrap_or_else(|| panic!("{name}"));
+            assert_eq!(text, line, "{name}");
+            assert_eq!(scan_secrets("f", &text).len(), 1, "{name}");
+        }
+        // A signature after 64 KiB is still found.
+        let long = format!("{}{line}", "a\n".repeat(40 * 1024));
+        let bytes: Vec<u8> = long.encode_utf16().flat_map(u16::to_le_bytes).collect();
+        assert!(bytes.len() > 64 * 1024);
+        assert_eq!(
+            scan_secrets("f", &decode_text(&bytes).expect("utf-16")).len(),
+            1
+        );
+        // Not confidently text: invalid UTF-8, odd UTF-16, unpaired
+        // surrogates, NUL and other control bytes.
+        for bytes in [
+            &b"ab\x80\x81\xfe"[..],
+            b"a\x00b",
+            b"\xff\xfea\x00b",
+            b"\xff\xfe\x00\xd8a\x00",
+            b"text\x00\x00\x00\x00more",
+            b"bell\x07",
+        ] {
+            assert_eq!(decode_text(bytes), None, "{bytes:?}");
+            assert_eq!(
+                content_class("docs/a.txt", bytes, None, &[]),
+                Some(UNDECODABLE)
+            );
+        }
+        let document = trusted_policy();
+        let path = "docs/notes.txt".to_owned();
+        let sniffed = BTreeMap::from([(path.clone(), UNDECODABLE)]);
+        assert_eq!(
+            check_paths_with_content(&[path], &document, &[], &sniffed).len(),
+            1
+        );
+        // Controls: ordinary text in every encoding decodes and has no secret.
+        for (name, bytes) in encodings("# Notes\n\tgrid é 電\r\n") {
+            let text = decode_text(&bytes).unwrap_or_else(|| panic!("{name}"));
+            assert!(scan_secrets("f", &text).is_empty(), "{name}");
+            assert_eq!(content_class("docs/a.md", &bytes, Some(&text), &[]), None);
+        }
+    }
+
+    // ADV23R11-01: a UTF-8 BOM before a shebang hid the interpreter at d71cf40.
+    #[test]
+    fn adv23r11_01_bom_before_shebang_is_read() {
+        let document = trusted_policy();
+        let allowed = string_array(&document["python_allowed"]);
+        let extensions = string_array(&document["source_extensions_allowed"]);
+        let interpreters = string_array(&document["shebang_interpreters_allowed"]);
+        for interpreter in ["python3", "julia"] {
+            let script = format!("#!/usr/bin/env {interpreter}\nprint(1)\n");
+            for (name, bytes) in encodings(&script) {
+                let head = decoded_head(&bytes).lines().next().map(str::to_owned);
+                assert_eq!(
+                    head.as_deref().and_then(shebang_interpreter).as_deref(),
+                    Some(interpreter),
+                    "{name}"
+                );
+                let found = check_scripts(
+                    &paths(&["crates/run_tool"]),
+                    &allowed,
+                    &extensions,
+                    &interpreters,
+                    &|_| head.clone(),
+                );
+                assert_eq!(found.len(), 1, "{name}");
+            }
+        }
+        assert_eq!(
+            shebang_interpreter("\u{feff}\u{feff}#!/bin/sh").as_deref(),
+            Some("sh")
+        );
+        // Controls: a BOM before a Rust attribute or ordinary text.
+        assert_eq!(shebang_interpreter("\u{feff}#![forbid(unsafe_code)]"), None);
+        assert_eq!(shebang_interpreter("\u{feff}# heading"), None);
+    }
+
+    // ADV23R11-02: data types missing from the old data-extension list
+    // passed at d71cf40. Every type outside the trusted allowlist is data.
+    #[test]
+    fn adv23r11_02_file_types_are_an_allowlist() {
+        let document = trusted_policy();
+        for path in [
+            "spikes/conflict.iis",
+            "spikes/model.svf",
+            "spikes/problem.cnf",
+            "spikes/problem.smt2",
+            "spikes/problem.smt",
+            "crates/solve.run",
+            "crates/run_tool",
+            "docs/table.unknownext",
+            "docs/.hidden",
+            "docs/a.json",
+            "docs/a.csv",
+        ] {
+            let found = check_paths(&paths(&[path]), &document, &[]);
+            assert_eq!(found.len(), 1, "{path}: {found:?}");
+            assert!(found[0].message.contains("D-56"), "{found:?}");
+        }
+        // A missing allowlist allows nothing.
+        let empty: DocumentMut = "open_commercial_data = []\ndata_metadata_files = []\n"
+            .parse()
+            .expect("toml");
+        assert_eq!(
+            check_paths(&paths(&["crates/a/src/lib.rs"]), &empty, &[]).len(),
+            1
+        );
+        // Content still decides under allowed types: a table in a .txt or an
+        // extensionless file, and an image whose bytes are not that image.
+        let binary = string_array(&document["binary_extensions_allowed"]);
+        let table = "a,b,c\n1,2,3\n4,5,6\n7,8,9\n10,11,12\n";
+        assert_eq!(
+            content_class("docs/t.txt", table.as_bytes(), Some(table), &binary),
+            Some(DELIMITED)
+        );
+        assert_eq!(
+            content_class("NOTICE", table.as_bytes(), Some(table), &binary),
+            Some(DELIMITED)
+        );
+        let tsv = table.replace(',', "\t");
+        assert_eq!(
+            content_class("docs/t.txt", tsv.as_bytes(), Some(&tsv), &binary),
+            Some(DELIMITED)
+        );
+        assert_eq!(
+            content_class("docs/fig.png", table.as_bytes(), None, &binary),
+            Some(BINARY_MISMATCH)
+        );
+        assert_eq!(
+            content_class("docs/fig.webp", b"RIFF\0\0\0\0WAVE", None, &binary),
+            Some(BINARY_MISMATCH)
+        );
+        // Controls: allowed source, docs, lock files, hooks, licences, real
+        // images, shell scripts with pipes, and short prose lists.
+        for path in [
+            "crates/a/src/lib.rs",
+            "Cargo.lock",
+            "docs/a.md",
+            ".githooks/commit-msg",
+            ".githooks/attribution-patterns.regex",
+            ".github/CODEOWNERS",
+            ".gitignore",
+            "LICENSE",
+            "docs/fig.png",
+            "docs/FIG.PNG",
+            "docs/diagram.svg",
+            "spikes/x/requirements.txt",
+            "spikes/x/fetch.py",
+        ] {
+            assert!(
+                check_paths(&paths(&[path]), &document, &[]).is_empty(),
+                "{path}"
+            );
+        }
+        assert_eq!(
+            content_class("docs/fig.png", b"\x89PNG\r\n\x1a\n\0\0", None, &binary),
+            None
+        );
+        assert_eq!(
+            content_class("docs/fig.webp", b"RIFF\0\0\0\0WEBPVP8 ", None, &binary),
+            None
+        );
+        let hook = "#!/bin/sh\na | b\nc | d\ne | f\ng | h\ni | j\n";
+        assert_eq!(
+            content_class("commit-msg", hook.as_bytes(), Some(hook), &binary),
+            None
+        );
+        let prose = "One, two.\nThree, four.\nFive.\n";
+        assert_eq!(
+            content_class("docs/n.txt", prose.as_bytes(), Some(prose), &binary),
+            None
+        );
+        assert_eq!(
+            content_class("docs/t.md", table.as_bytes(), Some(table), &binary),
+            None
+        );
+        assert_eq!(extension(".env"), None);
+        assert_eq!(extension("a.TAR.GZ").as_deref(), Some(".gz"));
     }
 }
