@@ -49,6 +49,20 @@ impl Ctx {
     }
 }
 
+/// Python and Julia runtime families (NFR-10, D-73), shared by the build
+/// gate's link checks and the workflow interpreter lint (ADV23R8-03). Every
+/// variant of a family (`python3.12`, `pythonw`, `pypy3`, `libpypy3-c.so`,
+/// `julia-1.11`, `/opt/pypy3/lib`) contains its family name.
+pub const RUNTIME_FAMILIES: &[&str] = &["python", "pypy", "pyston", "graalpy", "jython", "julia"];
+
+/// Whether a library name, file name or directory names a Python or Julia
+/// runtime: it contains a [`RUNTIME_FAMILIES`] name, in any letter case.
+#[must_use]
+pub fn names_runtime(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    RUNTIME_FAMILIES.iter().any(|family| lower.contains(family))
+}
+
 /// One policy violation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Finding {

@@ -50,6 +50,7 @@ pub struct Policy {
     runners: Vec<String>,
     env: Vec<String>,
     file_command_lines: Vec<String>,
+    required_checks: Vec<String>,
     graphs: Vec<Graph>,
 }
 
@@ -119,6 +120,10 @@ impl Policy {
                 .get("allowed_file_command_lines")
                 .map(string_array)
                 .unwrap_or_default(),
+            required_checks: document
+                .get("required_checks")
+                .map(string_array)
+                .unwrap_or_default(),
             graphs,
         })
     }
@@ -137,6 +142,51 @@ impl Policy {
                 .collect(),
         )
     }
+
+    /// Every check name the trusted policy defines, with the workflow file
+    /// that owns it: each gate job and aggregator of every gate graph
+    /// (`merge-gates` included) and each `required_checks` entry, which no
+    /// file owns. No other job may use one of these as its id or name
+    /// (ADV23R8-01).
+    #[must_use]
+    pub fn protected_gates(&self) -> Vec<ProtectedGate> {
+        let mut gates: Vec<ProtectedGate> = self
+            .graphs
+            .iter()
+            .flat_map(|graph| {
+                graph
+                    .jobs
+                    .iter()
+                    .chain(graph.aggregator.iter())
+                    .map(|job| ProtectedGate {
+                        file: Some(graph.file.clone()),
+                        name: job.clone(),
+                    })
+            })
+            .collect();
+        for name in &self.required_checks {
+            if !gates
+                .iter()
+                .any(|gate| gate.name.eq_ignore_ascii_case(name))
+            {
+                gates.push(ProtectedGate {
+                    file: None,
+                    name: name.clone(),
+                });
+            }
+        }
+        gates
+    }
+}
+
+/// A check name defined by the trusted policy (ADV23R8-01).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProtectedGate {
+    /// The workflow file whose job of the same id owns the name; `None` when
+    /// no workflow may define it.
+    pub file: Option<String>,
+    /// Job id and check name.
+    pub name: String,
 }
 
 fn get<'a>(yaml: &'a Yaml, key: &str) -> Option<&'a Yaml> {
@@ -297,20 +347,25 @@ const INTERPRETER_SCRIPTS: &[&str] = &[
 fn interpreter_word(word: &str) -> bool {
     let lower = word.to_ascii_lowercase();
     let lower = lower.strip_suffix(".exe").unwrap_or(&lower);
-    INTERPRETERS.iter().any(|family| {
-        let Some(rest) = lower.strip_prefix(family) else {
-            return false;
-        };
-        let rest = rest.trim_start_matches(['-', '_']);
-        let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
-        matches!(rest, "" | "w" | "t" | "m" | "d" | "dm" | "mu")
-    }) || INTERPRETER_SCRIPTS
+    crate::util::RUNTIME_FAMILIES
         .iter()
-        .any(|ext| lower.len() > ext.len() && lower.ends_with(ext))
+        .chain(INTERPRETERS)
+        .any(|family| {
+            let Some(rest) = lower.strip_prefix(family) else {
+                return false;
+            };
+            let rest = rest.trim_start_matches(['-', '_']);
+            let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+            matches!(rest, "" | "w" | "t" | "m" | "d" | "dm" | "mu")
+        })
+        || INTERPRETER_SCRIPTS
+            .iter()
+            .any(|ext| lower.len() > ext.len() && lower.ends_with(ext))
 }
 
 /// Whether a script runs an interpreter other than the allowed shells.
-fn invokes_interpreter(script: &str) -> bool {
+#[must_use]
+pub fn invokes_interpreter(script: &str) -> bool {
     script
         .split(|c: char| !(c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-')))
         .flat_map(|word| {
@@ -541,7 +596,26 @@ pub fn is_toolchain_env(name: &str) -> bool {
         || upper.contains("RUSTFLAGS")
 }
 
+/// Whether a variable steers the dynamic loader (`LD_PRELOAD`,
+/// `LD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES`, ...), which could inject code
+/// into every process of a step (ADV23R8-02).
+#[must_use]
+pub fn is_loader_env(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    upper.starts_with("LD_") || upper.starts_with("DYLD_")
+}
+
 fn check_env(path: &str, name: &str, _value: &Yaml, policy: &Policy, findings: &mut Vec<Finding>) {
+    if is_loader_env(name) {
+        findings.push(Finding::at(
+            path,
+            None,
+            format!(
+                "`{name}` may not be set in workflows: dynamic-loader variables can inject code into every process (ADV23R8-02)"
+            ),
+        ));
+        return;
+    }
     if is_toolchain_env(name) && !policy.env.iter().any(|allowed| allowed == name) {
         findings.push(Finding::at(
             path,
@@ -862,11 +936,19 @@ pub fn check(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             ));
         }
     }
+    let mut texts = Vec::new();
     for path in &files {
         let text = std::fs::read_to_string(ctx.repo.join(path))
             .map_err(|error| format!("{path}: {error}"))?;
         findings.extend(check_workflow(path, &text, &policy));
+        texts.push((path.clone(), text));
     }
+    // ADV23R8-01: no job anywhere may take a check name the policy defines,
+    // except the owning workflow's job of that id.
+    findings.extend(crate::review_gates::spoofed_gate_names(
+        &texts,
+        &policy.protected_gates(),
+    ));
     // Every action definition anywhere in the repository is checked, not
     // only those under .github/actions/ (ADV23R4-03).
     for path in tracked(&ctx.repo)? {
@@ -1352,6 +1434,67 @@ jobs:
         let (files, jobs) = Policy::parse(POLICY).expect("policy").trusted_gates();
         assert_eq!(files, ["t.yml"]);
         assert_eq!(jobs, ["review"]);
+    }
+
+    // ADV23R8-02: dynamic-loader variables are rejected at workflow, job and
+    // step level, whatever the allow-list says.
+    #[test]
+    fn adv23r8_02_loader_env_is_rejected() {
+        for name in [
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "LD_AUDIT",
+            "ld_preload",
+            "DYLD_INSERT_LIBRARIES",
+            "DYLD_LIBRARY_PATH",
+            "DYLD_FALLBACK_LIBRARY_PATH",
+        ] {
+            for text in [
+                GOOD.replace(
+                    "permissions:",
+                    &format!("env: {{{name}: /tmp/injected.so}}\npermissions:"),
+                ),
+                GOOD.replace(
+                    "    runs-on: macos-15\n",
+                    &format!("    runs-on: macos-15\n    env: {{{name}: x}}\n"),
+                ),
+                GOOD.replace(
+                    "run: cargo xtask docs",
+                    &format!("run: cargo xtask docs\n        env: {{{name}: /tmp/x.so}}"),
+                ),
+            ] {
+                let found = run(&text);
+                assert_eq!(found.len(), 1, "{name}: {found:?}");
+                assert!(found[0].message.contains(name), "{found:?}");
+            }
+            let policy = POLICY.replace("allowed_env = [", &format!("allowed_env = [\"{name}\", "));
+            let text = GOOD.replace("permissions:", &format!("env: {{{name}: x}}\npermissions:"));
+            assert_eq!(
+                check_workflow("w.yml", &text, &Policy::parse(&policy).expect("policy")).len(),
+                1,
+                "{name} allow-listed"
+            );
+        }
+        // Controls: other variables named like them are not loader variables.
+        assert!(!is_loader_env("OLD_PRELOAD"));
+        assert!(!is_loader_env("BUILD_DIR"));
+        // The build environment drops them too.
+        assert!(crate::rust_policy::is_sanitised("LD_PRELOAD"));
+        assert!(crate::rust_policy::is_sanitised("DYLD_INSERT_LIBRARIES"));
+        let mut command = std::process::Command::new("cc");
+        command
+            .env("LD_PRELOAD", "/tmp/injected.so")
+            .env("PATH", "/usr/bin");
+        crate::build_gate::scrub_loader_env(&mut command);
+        let envs: Vec<_> = command.get_envs().collect();
+        assert!(
+            envs.contains(&(std::ffi::OsStr::new("LD_PRELOAD"), None)),
+            "{envs:?}"
+        );
+        assert!(envs.contains(&(
+            std::ffi::OsStr::new("PATH"),
+            Some(std::ffi::OsStr::new("/usr/bin"))
+        )));
     }
 
     // ADV23R7-03: interpreters are matched by command-name family, not by

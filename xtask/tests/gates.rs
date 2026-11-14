@@ -264,11 +264,11 @@ fn f2_owner_authored_policy_pr_explains_why_it_cannot_pass() {
         "repository": {"full_name": "o/r"}
     }))
     .expect("event");
-    let (files, jobs) = xtask::workflows::Policy::load(&review_ctx(&repo))
+    let gates = xtask::workflows::Policy::load(&review_ctx(&repo))
         .expect("gates")
-        .trusted_gates();
-    let found = review_gates::policy_approval(&review_ctx(&repo), &main, &pull, &files, &jobs)
-        .expect("gate");
+        .protected_gates();
+    let found =
+        review_gates::policy_approval(&review_ctx(&repo), &main, &pull, &gates).expect("gate");
     let text: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
     assert!(
         text.iter()
@@ -276,8 +276,7 @@ fn f2_owner_authored_policy_pr_explains_why_it_cannot_pass() {
         "{text:?}"
     );
     assert!(
-        text.iter()
-            .any(|m| m.contains("reuses the name of trusted gate")),
+        text.iter().any(|m| m.contains("reuses the check name")),
         "{text:?}"
     );
 }

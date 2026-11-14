@@ -598,19 +598,18 @@ pub fn evaluate_approval(
     findings
 }
 
-/// Jobs of pull-request workflows that reuse a trusted gate's job id or name,
-/// which could make a spoofed status look like the trusted one (F1).
+/// Jobs that reuse a check name defined by the trusted policy, which could
+/// make a spoofed status look like the real one (F1). Every gate job,
+/// aggregator (`merge-gates`) and required check is protected, in trusted and
+/// pull-request workflows alike: only the owning workflow's job with exactly
+/// that id may carry the name (ADV23R8-01).
 #[must_use]
 pub fn spoofed_gate_names(
     workflows: &[(String, String)],
-    trusted_files: &[String],
-    trusted_jobs: &[String],
+    gates: &[crate::workflows::ProtectedGate],
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
     for (path, text) in workflows {
-        if trusted_files.contains(path) {
-            continue;
-        }
         let Ok(documents) = YamlLoader::load_from_str(text) else {
             continue;
         };
@@ -643,14 +642,17 @@ pub fn spoofed_gate_names(
                 continue;
             }
             let same = |text: &str, gate: &str| text.trim().eq_ignore_ascii_case(gate.trim());
-            if trusted_jobs
-                .iter()
-                .any(|gate| same(id, gate) || same(name, gate))
-            {
+            if let Some(gate) = gates.iter().find(|gate| {
+                (same(id, &gate.name) || same(name, &gate.name))
+                    && !(gate.file.as_deref() == Some(path.as_str()) && same(id, &gate.name))
+            }) {
                 findings.push(Finding::at(
                     path.as_str(),
                     None,
-                    format!("job `{id}` reuses the name of trusted gate; rename it"),
+                    format!(
+                        "job `{id}` reuses the check name `{}` defined by the trusted policy; rename it",
+                        gate.name
+                    ),
                 ));
             }
         }
@@ -719,8 +721,7 @@ pub fn policy_approval(
     ctx: &Ctx,
     main: &str,
     pull: &PullRequest,
-    trusted_files: &[String],
-    trusted_jobs: &[String],
+    gates: &[crate::workflows::ProtectedGate],
 ) -> Result<Vec<Finding>, String> {
     let document = ctx.policy_toml(REPOSITORY)?;
     let text = |key: &str| {
@@ -760,7 +761,7 @@ pub fn policy_approval(
             workflows.push((name.to_owned(), String::from_utf8_lossy(&body).into_owned()));
         }
     }
-    let mut findings = spoofed_gate_names(&workflows, trusted_files, trusted_jobs);
+    let mut findings = spoofed_gate_names(&workflows, gates);
     let reviews = if pull.author.eq_ignore_ascii_case(&owner) {
         Vec::new()
     } else {
@@ -1103,14 +1104,20 @@ mod tests {
         );
     }
 
+    fn trusted_only() -> Vec<crate::workflows::ProtectedGate> {
+        ["independent-review", "policy-approval"]
+            .iter()
+            .map(|name| crate::workflows::ProtectedGate {
+                file: Some(".github/workflows/trusted-gates.yml".to_owned()),
+                name: (*name).to_owned(),
+            })
+            .collect()
+    }
+
     // F1: a pull-request workflow may not reuse a trusted gate's name.
     #[test]
     fn f1_spoofed_gate_names_are_rejected() {
-        let trusted_files = vec![".github/workflows/trusted-gates.yml".to_owned()];
-        let trusted_jobs = vec![
-            "independent-review".to_owned(),
-            "policy-approval".to_owned(),
-        ];
+        let gates = trusted_only();
         let spoof = vec![
             (
                 ".github/workflows/ci.yml".to_owned(),
@@ -1125,21 +1132,14 @@ mod tests {
                 "jobs:\n  policy-approval:\n    runs-on: ubuntu-24.04\n".to_owned(),
             ),
         ];
-        assert_eq!(
-            spoofed_gate_names(&spoof, &trusted_files, &trusted_jobs).len(),
-            2
-        );
+        assert_eq!(spoofed_gate_names(&spoof, &gates).len(), 2);
     }
 
     // ADV23R7-01: a job without `name:` is named by its id, compared
     // case-insensitively; a computed name fails closed.
     #[test]
     fn adv23r7_01_job_ids_are_compared_case_insensitively() {
-        let trusted_files = vec![".github/workflows/trusted-gates.yml".to_owned()];
-        let trusted_jobs = vec![
-            "independent-review".to_owned(),
-            "policy-approval".to_owned(),
-        ];
+        let gates = trusted_only();
         for job in [
             "  Policy-Approval:\n    runs-on: ubuntu-24.04\n",
             "  INDEPENDENT-REVIEW:\n    runs-on: ubuntu-24.04\n",
@@ -1151,17 +1151,82 @@ mod tests {
                 ".github/workflows/spoof.yml".to_owned(),
                 format!("name: spoof\non: [pull_request]\njobs:\n{job}"),
             )];
-            assert_eq!(
-                spoofed_gate_names(&spoof, &trusted_files, &trusted_jobs).len(),
-                1,
-                "{job}"
-            );
+            assert_eq!(spoofed_gate_names(&spoof, &gates).len(), 1, "{job}");
         }
         // Control: other ids and names pass.
         let clean = vec![(
             ".github/workflows/ci.yml".to_owned(),
             "jobs:\n  Policy:\n    runs-on: ubuntu-24.04\n  x:\n    name: Review notes\n    runs-on: ubuntu-24.04\n".to_owned(),
         )];
-        assert!(spoofed_gate_names(&clean, &trusted_files, &trusted_jobs).is_empty());
+        assert!(spoofed_gate_names(&clean, &gates).is_empty());
+    }
+
+    // ADV23R8-01: every check name in the trusted policy is protected, not
+    // only the trusted workflow's: `merge-gates`, each ci.yml gate job and
+    // each required check. Only the owning workflow's job of that id may use
+    // the name.
+    #[test]
+    fn adv23r8_01_every_policy_check_name_is_protected() {
+        let text = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/gates.toml"),
+        )
+        .expect("gates.toml");
+        let gates = crate::workflows::Policy::parse(&text)
+            .expect("policy")
+            .protected_gates();
+        for name in [
+            "merge-gates",
+            "rust-linux",
+            "attribution",
+            "provenance",
+            "independent-review",
+            "policy-approval",
+        ] {
+            assert!(gates.iter().any(|gate| gate.name == name), "{name}");
+        }
+        // The reviewer's input: a new PR workflow defining `merge-gates`.
+        let spoof = "name: spoof\non: [pull_request]\npermissions:\n  contents: read\njobs:\n  merge-gates:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo bypass\n";
+        for (path, body) in [
+            (".github/workflows/spoof.yml", spoof.to_owned()),
+            (
+                ".github/workflows/spoof.yml",
+                spoof.replace("  merge-gates:\n", "  ok:\n    name: Merge-Gates\n"),
+            ),
+            (
+                ".github/workflows/spoof.yml",
+                spoof.replace("  merge-gates:\n", "  attribution:\n"),
+            ),
+            // Inside the owning file, another job may not take the name...
+            (
+                ".github/workflows/ci.yml",
+                spoof.replace("  merge-gates:\n", "  bypass:\n    name: merge-gates\n"),
+            ),
+            // ...and a gate of one file may not appear in another.
+            (
+                ".github/workflows/trusted-gates.yml",
+                spoof.replace(
+                    "  merge-gates:\n",
+                    "  merge-gates:\n    name: merge-gates\n",
+                ),
+            ),
+        ] {
+            let found = spoofed_gate_names(&[(path.to_owned(), body.clone())], &gates);
+            assert_eq!(found.len(), 1, "{path}: {body}");
+        }
+        // Control: the real workflows keep their own gate names.
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let real: Vec<(String, String)> = [
+            ".github/workflows/ci.yml",
+            ".github/workflows/trusted-gates.yml",
+        ]
+        .iter()
+        .map(|path| {
+            (
+                (*path).to_owned(),
+                std::fs::read_to_string(root.join(path)).expect("workflow"),
+            )
+        })
+        .collect();
+        assert!(spoofed_gate_names(&real, &gates).is_empty());
     }
 }

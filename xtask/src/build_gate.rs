@@ -101,11 +101,25 @@ pub const FILE_COMMAND_ENV: &[&str] = &[
     "GITHUB_STEP_SUMMARY",
 ];
 
-/// Whether a library name or file names a Python or Julia runtime.
+/// Whether a library name or file names a Python or Julia runtime: the
+/// family rules shared with the workflow lint (ADV23R8-03).
 #[must_use]
 pub fn names_runtime(text: &str) -> bool {
-    let lower = text.to_lowercase();
-    lower.contains("python") || lower.contains("julia")
+    crate::util::names_runtime(text)
+}
+
+/// Removes every dynamic-loader variable (`LD_*`, `DYLD_*`) a command would
+/// inherit, so neither the C driver nor the linker loads injected code
+/// (ADV23R8-02).
+pub fn scrub_loader_env(command: &mut Command) {
+    let names: Vec<OsString> = std::env::vars_os()
+        .map(|(name, _)| name)
+        .chain(command.get_envs().map(|(name, _)| name.to_owned()))
+        .filter(|name| crate::workflows::is_loader_env(&name.to_string_lossy()))
+        .collect();
+    for name in names {
+        command.env_remove(name);
+    }
 }
 
 /// Entry point used by `main` before argument parsing: runs the rustc
@@ -1343,6 +1357,7 @@ fn driver_search_dirs() -> Vec<PathBuf> {
     for name in DRIVER_ENV {
         command.env_remove(name);
     }
+    scrub_loader_env(&mut command);
     let Ok(output) = command.output() else {
         return Vec::new();
     };
@@ -1400,6 +1415,7 @@ fn link(args: &[OsString], config: Option<&Path>) -> ExitCode {
     for name in DRIVER_ENV {
         command.env_remove(name);
     }
+    scrub_loader_env(&mut command);
     exit(command.status(), "the linker (cc)")
 }
 
@@ -1469,6 +1485,11 @@ pub fn analyse(messages: &str) -> Vec<Finding> {
                 for search in message["linked_paths"].as_array().into_iter().flatten() {
                     let search = search.as_str().unwrap_or_default();
                     let dir = search.split_once('=').map_or(search, |(_, dir)| dir);
+                    if names_runtime(dir) {
+                        findings.push(Finding::general(format!(
+                            "build script of `{package}` adds link search path `{dir}`, which names a Python or Julia runtime: linking one is forbidden (NFR-10)"
+                        )));
+                    }
                     let Ok(entries) = std::fs::read_dir(dir) else {
                         continue;
                     };
@@ -2435,6 +2456,64 @@ mod tests {
             set.args(),
             strings(&["--package", "p", "--no-default-features"])
         );
+    }
+
+    // ADV23R8-03: the build gate recognises the same runtime families as the
+    // workflow lint (PyPy, GraalPy, Pyston, Jython, Julia, Python), in link
+    // requests, library files and search directories.
+    #[test]
+    fn adv23r8_03_runtime_families_are_shared() {
+        for text in [
+            "pypy3-c",
+            "dylib=pypy3-c",
+            "pypy-c",
+            "/opt/pypy3/lib",
+            "libpypy3.10-c.so",
+            "graalpy",
+            "pyston3.8",
+            "jython",
+            "python3.12",
+            "static=python3",
+            "libjulia.so.1",
+            "PyPy3-C",
+        ] {
+            assert!(names_runtime(text), "{text}");
+        }
+        for text in [
+            "c",
+            "m",
+            "iconv",
+            "gcc_s",
+            "System",
+            "/usr/lib/x86_64-linux-gnu",
+            "pyo3",
+        ] {
+            assert!(!names_runtime(text), "{text}");
+        }
+        // The reviewer's build-script message: both the library and its
+        // search path are reported.
+        let found = analyse(
+            r#"{"reason":"build-script-executed","package_id":"egs-solver-highs","linked_libs":["dylib=pypy3-c"],"linked_paths":["/opt/pypy3/lib"],"env":[]}"#,
+        );
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert!(
+            found.iter().any(|f| f.message.contains("pypy3-c")),
+            "{found:?}"
+        );
+        assert!(
+            found.iter().any(|f| f.message.contains("/opt/pypy3/lib")),
+            "{found:?}"
+        );
+        // A link line naming PyPy is refused by the linker guard too.
+        let problems = policy().check(&strings(&["-o", "out", "-lpypy3-c"]));
+        assert!(!problems.is_empty(), "{problems:?}");
+        // Every shared family is also a forbidden workflow interpreter.
+        for family in crate::util::RUNTIME_FAMILIES {
+            assert!(
+                crate::workflows::invokes_interpreter(&format!("{family}3 -c 1")),
+                "{family}"
+            );
+        }
     }
 
     #[test]

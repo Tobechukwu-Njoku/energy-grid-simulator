@@ -119,7 +119,8 @@ pub fn is_adapter(adapters: &[Adapter], name: &str, dir: &str) -> bool {
 
 /// Environment variables a policy-run Cargo never inherits: anything that can
 /// change the compiler, its flags, wrappers, linkers, lint caps or the target
-/// directory (ADV23R5-01). `CARGO_HOME` and `CARGO_NET_OFFLINE` are kept.
+/// directory (ADV23R5-01), and every dynamic-loader variable (`LD_*`,
+/// `DYLD_*`, ADV23R8-02). `CARGO_HOME` and `CARGO_NET_OFFLINE` are kept.
 #[must_use]
 pub fn is_sanitised(name: &str) -> bool {
     let upper = name.to_ascii_uppercase();
@@ -133,6 +134,7 @@ pub fn is_sanitised(name: &str) -> bool {
         || upper.starts_with("RUSTDOC")
         || upper.contains("RUSTFLAGS")
         || upper.starts_with("XTASK_")
+        || crate::workflows::is_loader_env(&upper)
 }
 
 /// A Cargo command from the trusted toolchain with a sanitised environment,

@@ -361,3 +361,39 @@ fn adv23r4_03_action_outside_github_actions_end_to_end() {
         "{text:?}"
     );
 }
+
+// ADV23R8-01: `cargo xtask policy` rejects a pull-request workflow that defines
+// the required `merge-gates` check (the reviewer's input); the repository's
+// own workflows keep their gate names.
+#[test]
+fn adv23r8_01_spoofed_merge_gates_workflow_end_to_end() {
+    let repo = Repo::new();
+    for path in [
+        ".github/workflows/ci.yml",
+        ".github/workflows/trusted-gates.yml",
+    ] {
+        repo.write(
+            path,
+            &std::fs::read_to_string(root().join(path)).expect("workflow"),
+        );
+    }
+    repo.commit("ci: workflows");
+    let clean = xtask::workflows::check(&ctx(&repo)).expect("workflows");
+    assert!(
+        !files(&clean).iter().any(|f| f.contains("check name")),
+        "{:?}",
+        files(&clean)
+    );
+    repo.write(
+        ".github/workflows/spoof.yml",
+        "name: spoof\non: [pull_request]\npermissions:\n  contents: read\njobs:\n  merge-gates:\n    runs-on: ubuntu-24.04\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n        with:\n          persist-credentials: false\n      - run: echo \"bypass\"\n",
+    );
+    repo.commit("ci: spoof");
+    let found = files(&xtask::workflows::check(&ctx(&repo)).expect("workflows"));
+    assert!(
+        found
+            .iter()
+            .any(|f| f.starts_with(".github/workflows/spoof.yml:") && f.contains("`merge-gates`")),
+        "{found:?}"
+    );
+}

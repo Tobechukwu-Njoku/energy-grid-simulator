@@ -43,6 +43,11 @@ link_search_roots = [
     "/usr/libx32",
 ]
 
+# Check names branch protection requires (ADV23R8-01). Together with every gate
+# job and aggregator below they are protected: no job of any workflow may take
+# one as its id or name except the owning workflow's job of that id.
+required_checks = ["merge-gates", "independent-review", "policy-approval"]
+
 # Pull-request gates. They build and test PR code with a read-only token and no
 # secrets. Their workflow files are protected paths: any change needs the owner's
 # exact-head approval, checked by the trusted policy-approval gate below (F1).
