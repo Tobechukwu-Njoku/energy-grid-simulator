@@ -21,10 +21,11 @@
 //! D-61 (R8-01): a bot-managed block of the PR body (for example a review
 //! bot's release-notes summary between its start and end markers) is exempt
 //! only when the trusted policy lists the markers and the bot, AND the PR
-//! body's GitHub edit history shows that this bot introduced exactly that
-//! block text. Spoofed markers, a block whose most recent introduction was by
-//! anyone else, and all text outside the block are scanned as authored text.
-//! Without the edit history the gate fails closed.
+//! body's GitHub edit history shows that an edit by this bot introduced
+//! exactly that block text (the bot's version holds it, the version before
+//! does not). Spoofed markers, a block written or changed by anyone else, and
+//! all text outside the block are scanned as authored text. Without the edit
+//! history the gate fails closed.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -837,47 +838,38 @@ fn block_texts(text: &str, rules: &[BotBlock], rule: usize) -> Vec<String> {
         .collect()
 }
 
-/// Why a block is not verified as the bot's, or `None` when the most recent
-/// introduction of exactly this block text was an edit by the policy's bot.
+/// Why a block is not verified as the bot's, or `None` when an edit by the
+/// policy's bot introduced exactly this block text: that version holds the
+/// block and the version before it (if any) does not. A user who later
+/// restores an earlier bot block adds no text of their own, so it stays
+/// exempt; a block written or changed by anyone else never matches. A deleted
+/// version before the bot's edit leaves the introducer unknown.
 fn unverified(
-    body: &str,
     block: &str,
     rules: &[BotBlock],
     rule: usize,
     versions: &[BodyVersion],
 ) -> Option<String> {
     let contains = |text: &str| block_texts(text, rules, rule).iter().any(|b| b == block);
-    let Some(mut first) = versions
-        .iter()
-        .rposition(|version| version.text.as_deref().map(normalise_body).as_deref() == Some(body))
-    else {
-        return Some(
-            "the scanned body is not a version in its GitHub edit history (re-run the check)"
-                .to_owned(),
-        );
-    };
-    while first > 0 {
-        match versions[first - 1].text.as_deref() {
-            None => {
-                return Some(
-                    "a deleted edit in the history hides who introduced the block".to_owned(),
-                );
-            }
-            Some(text) if contains(text) => first -= 1,
-            Some(_) => break,
-        }
-    }
     let wanted = &rules[rule].login;
-    match &versions[first].editor {
-        Some(editor) if editor.bot && editor.login.eq_ignore_ascii_case(wanted) => None,
-        Some(editor) => Some(format!(
-            "the block was introduced by `{}`{}, not by the bot `{wanted}`",
-            editor.login,
-            if editor.bot { " (a different bot)" } else { "" }
-        )),
-        None => Some(format!(
-            "the block was introduced by a deleted account, not by the bot `{wanted}`"
-        )),
+    let introduced = versions.iter().enumerate().any(|(index, version)| {
+        let by_bot = version
+            .editor
+            .as_ref()
+            .is_some_and(|editor| editor.bot && editor.login.eq_ignore_ascii_case(wanted));
+        let before_without = index == 0
+            || versions[index - 1]
+                .text
+                .as_deref()
+                .is_some_and(|text| !contains(text));
+        by_bot && version.text.as_deref().is_some_and(contains) && before_without
+    });
+    if introduced {
+        None
+    } else {
+        Some(format!(
+            "no edit by the bot `{wanted}` in the GitHub edit history introduced exactly this block text (spoofed markers, changed content, or history unknown)"
+        ))
     }
 }
 
@@ -901,7 +893,7 @@ pub fn bot_block_lines(
             Some(Err(error)) => Some(format!(
                 "its edit provenance could not be verified ({error}); the gate fails closed"
             )),
-            Some(Ok(versions)) => unverified(&body, &block, rules, rule, versions),
+            Some(Ok(versions)) => unverified(&block, rules, rule, versions),
         };
         match reason {
             None => exempt.extend(first + 1..=last + 1),
@@ -2086,9 +2078,9 @@ mod tests {
         found
     }
 
-    // R8-01 (D-61): only the exact block that the bot itself most recently
-    // introduced is exempt; spoofed or edited blocks and authored credit
-    // outside the block are still rejected.
+    // R8-01 (D-61): only exact block text that an edit by the bot introduced
+    // is exempt; spoofed or edited blocks and authored credit outside the
+    // block are still rejected.
     #[test]
     fn r8_01_verified_bot_block_is_the_only_exemption() {
         let bot = j(&["code", "rabbitai"]);
@@ -2134,11 +2126,23 @@ mod tests {
             version("owner", false, &tampered_body),
         ]);
         assert!(!body_findings(&tampered_body, Some(&history)).is_empty());
-        // Re-adding an old bot block after the bot removed it is the user's
-        // introduction, not the bot's.
+        // Restoring an earlier bot block (a stale copy, as in PR #23's real
+        // history) adds no authored text: still exempt.
         let history: BodyHistory = Ok(vec![
             version(&bot, true, &body),
-            version(&bot, true, authored),
+            version(
+                &bot,
+                true,
+                &format!("{authored}{}\n", rabbit_block("Newer.")),
+            ),
+            version("owner", false, &body),
+        ]);
+        assert!(body_findings(&body, Some(&history)).is_empty());
+        // A bot edit that leaves a user-written block in place does not
+        // introduce it.
+        let history: BodyHistory = Ok(vec![
+            version("owner", false, &body),
+            version(&bot, true, &format!("{body}more\n")),
             version("owner", false, &body),
         ]);
         assert!(!body_findings(&body, Some(&history)).is_empty());
@@ -2154,9 +2158,25 @@ mod tests {
         let found = body_findings(&extra, Some(&history));
         assert_eq!(found.len(), 1, "{found:?}");
         assert!(found[0].starts_with("line 3:"), "{found:?}");
-        // A body that is not in the history, a deleted edit, an unavailable
-        // history, or no history at all: fail closed.
+        // A history without the bot's introduction, a deleted version right
+        // before the bot's edit, an unavailable history, or none: fail closed.
         let other: BodyHistory = Ok(vec![version(&bot, true, "something else")]);
+        let deleted_before: BodyHistory = Ok(vec![
+            BodyVersion {
+                editor: None,
+                text: None,
+            },
+            version(&bot, true, &body),
+        ]);
+        let down: BodyHistory = Err("gh api graphql failed: HTTP 502".to_owned());
+        for history in [Some(&other), Some(&down), Some(&deleted_before), None] {
+            let found = body_findings(&body, history);
+            assert!(
+                found.iter().any(|f| f.contains("not exempt (D-61)")),
+                "{found:?}"
+            );
+        }
+        // A deleted version elsewhere does not matter.
         let deleted: BodyHistory = Ok(vec![
             BodyVersion {
                 editor: Some(Editor {
@@ -2168,38 +2188,6 @@ mod tests {
             version("owner", false, "Implement checks."),
             version(&bot, true, &body),
         ]);
-        // A deleted edit right before the block's first version could have
-        // held it already, so who introduced it is unknown.
-        let deleted_before: BodyHistory = Ok(vec![
-            BodyVersion {
-                editor: None,
-                text: None,
-            },
-            version(&bot, true, &body),
-        ]);
-        let deleted_first: BodyHistory = Ok(vec![
-            version(&bot, true, &body),
-            BodyVersion {
-                editor: None,
-                text: None,
-            },
-            version("owner", false, &body),
-        ]);
-        let down: BodyHistory = Err("gh api graphql failed: HTTP 502".to_owned());
-        for history in [
-            Some(&other),
-            Some(&down),
-            Some(&deleted_first),
-            Some(&deleted_before),
-            None,
-        ] {
-            let found = body_findings(&body, history);
-            assert!(
-                found.iter().any(|f| f.contains("not exempt (D-61)")),
-                "{found:?}"
-            );
-        }
-        // A deleted edit before a version without the block does not matter.
         assert!(body_findings(&body, Some(&deleted)).is_empty());
         // An unterminated start marker opens no block: scanned as text.
         let open = format!("{authored}{}\n", rabbit_rules()[0].start);

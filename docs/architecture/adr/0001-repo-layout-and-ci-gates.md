@@ -510,15 +510,17 @@ as already written and adds no other decision beyond D-52, D-56, D-73 and D-74.
   are exempt only when its provenance is verified. The attribution job reads the PR
   body's GitHub edit history (GraphQL `userContentEdits`, newest first, the oldest
   entry being the author's original text) through `gh api graphql` with the job's
-  read-only token (`pull-requests: read`, no secrets). The event body must be one
-  version in that history, and the most recent introduction of exactly that block
-  text must be an edit whose actor GitHub reports as a `Bot` with the listed login.
+  read-only token (`pull-requests: read`, no secrets). Exactly that block text must
+  have been introduced by an edit whose actor GitHub reports as a `Bot` with the
+  listed login: that version holds the block and the version before it does not.
   An unedited body is its author's only version. The marker text and the webhook
-  sender are not evidence. Otherwise the block is not exempt and a finding names
-  the reason, and its lines are scanned like authored text. That applies to a user-written copy, a block a
-  user changed, an old bot block a user restored, another bot, a deleted edit that
-  hides the introducer, and a body missing from the history. Text outside the block
-  is always scanned. If the history cannot be read (no token, API error), the gate
+  sender are not evidence. A user who restores an earlier bot block unchanged adds
+  no text of their own, so it stays exempt. PR #23's real history has such a stale
+  copy. Otherwise the block is not exempt, a finding names the reason, and its
+  lines are scanned like authored text. That applies to a user-written copy, a
+  block a user changed in any way, a block another bot wrote, a bot edit that only
+  kept a user's block, and a deleted version right before the bot's edit. Text
+  outside the block is always scanned. If the history cannot be read (no token, API error), the gate
   fails closed and names that reason. Commit messages, titles and added lines have no bot
   exemption, so the block is the only route for review-bot credit (`Reviewed by`,
   `Summary by` and similar footers remain rejected). `--body-history FILE` replays a

@@ -9,10 +9,10 @@ exemption = []
 # D-61 (R8-01): CodeRabbit stays, including its PR-description summary. Only the
 # exact block from a `start` marker line to the next `end` marker line is exempt,
 # and only when the PR body's GitHub edit history (GraphQL userContentEdits) shows
-# that the most recent introduction of exactly that block text was an edit by
-# the bot account `login`. Spoofed markers, a block introduced or changed by
-# anyone else, and all text outside the block are scanned as authored text; if
-# the history cannot be read the gate fails closed. The markers use \u escapes so
+# an edit by the bot account `login` that introduced exactly that block text (the
+# bot's version holds it, the version before does not). Spoofed markers, a block
+# written or changed by anyone else, and all text outside the block are scanned as
+# authored text; if the history cannot be read the gate fails closed. The markers use \u escapes so
 # this file holds no literal tool credit.
 [[bot_block]]
 login = "coderabbitai"
