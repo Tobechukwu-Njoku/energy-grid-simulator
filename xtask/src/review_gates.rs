@@ -626,12 +626,26 @@ pub fn spoofed_gate_names(
             let id = id.as_str().unwrap_or_default();
             let name = job
                 .as_hash()
-                .and_then(|hash| hash.get(&Yaml::String("name".into())))
-                .and_then(Yaml::as_str)
-                .unwrap_or_default();
+                .and_then(|hash| hash.get(&Yaml::String("name".into())));
+            // GitHub names the check run after `name:`, or after the job id
+            // when `name:` is absent; check names compare case-insensitively
+            // (ADV23R7-01). A computed name cannot be judged: fail closed.
+            let name = match name {
+                None => id,
+                Some(value) => value.as_str().unwrap_or("${{"),
+            };
+            if name.contains("${{") {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    format!("job `{id}` has a computed or non-string name; give it a literal name"),
+                ));
+                continue;
+            }
+            let same = |text: &str, gate: &str| text.trim().eq_ignore_ascii_case(gate.trim());
             if trusted_jobs
                 .iter()
-                .any(|gate| gate == id || name.eq_ignore_ascii_case(gate))
+                .any(|gate| same(id, gate) || same(name, gate))
             {
                 findings.push(Finding::at(
                     path.as_str(),
@@ -1115,5 +1129,39 @@ mod tests {
             spoofed_gate_names(&spoof, &trusted_files, &trusted_jobs).len(),
             2
         );
+    }
+
+    // ADV23R7-01: a job without `name:` is named by its id, compared
+    // case-insensitively; a computed name fails closed.
+    #[test]
+    fn adv23r7_01_job_ids_are_compared_case_insensitively() {
+        let trusted_files = vec![".github/workflows/trusted-gates.yml".to_owned()];
+        let trusted_jobs = vec![
+            "independent-review".to_owned(),
+            "policy-approval".to_owned(),
+        ];
+        for job in [
+            "  Policy-Approval:\n    runs-on: ubuntu-24.04\n",
+            "  INDEPENDENT-REVIEW:\n    runs-on: ubuntu-24.04\n",
+            "  build:\n    name: ' Policy-Approval '\n    runs-on: ubuntu-24.04\n",
+            "  build:\n    name: ${{ 'policy-approval' }}\n    runs-on: ubuntu-24.04\n",
+            "  build:\n    name: [policy-approval]\n    runs-on: ubuntu-24.04\n",
+        ] {
+            let spoof = vec![(
+                ".github/workflows/spoof.yml".to_owned(),
+                format!("name: spoof\non: [pull_request]\njobs:\n{job}"),
+            )];
+            assert_eq!(
+                spoofed_gate_names(&spoof, &trusted_files, &trusted_jobs).len(),
+                1,
+                "{job}"
+            );
+        }
+        // Control: other ids and names pass.
+        let clean = vec![(
+            ".github/workflows/ci.yml".to_owned(),
+            "jobs:\n  Policy:\n    runs-on: ubuntu-24.04\n  x:\n    name: Review notes\n    runs-on: ubuntu-24.04\n".to_owned(),
+        )];
+        assert!(spoofed_gate_names(&clean, &trusted_files, &trusted_jobs).is_empty());
     }
 }

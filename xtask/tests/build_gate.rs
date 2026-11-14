@@ -921,3 +921,123 @@ fn build_script_rustc_env_cannot_redirect_the_gate() {
     );
     assert_clean(&fixture.build());
 }
+
+/// R7-01: a build script that hides an archive named like the Python
+/// runtime behind an OUT_DIR `lib<name>.so` linker script and adds OUT_DIR as
+/// a link search directory.
+const SHADOW_BUILD_SCRIPT: &str = "#![forbid(unsafe_code)]
+fn main() {
+    let out = std::path::PathBuf::from(std::env::var_os(\"OUT_DIR\").unwrap());
+    let hidden = out.join(\"hidden\");
+    std::fs::create_dir_all(&hidden).unwrap();
+    let library = hidden.join(\"libpython3.12.a\");
+    std::fs::write(&library, \"!<arch>\\n\").unwrap();
+    std::fs::write(out.join(\"libiconv.so\"), format!(\"INPUT ( {} )\\n\", library.display())).unwrap();
+    println!(\"cargo:rustc-link-search=native={}\", out.display());
+}
+";
+
+fn shadow_adapter(link: &str) -> String {
+    format!(
+        "{ADAPTER}#[link(name = \"{link}\")]\nunsafe extern \"C\" {{}}\n/// ```\n/// assert_eq!(egs_solver_highs::value(), 23);\n/// ```\npub fn value() -> i32 {{\n    23\n}}\n"
+    )
+}
+
+// R7-01: an allow-listed library name (`iconv`) resolves, through a build
+// script's OUT_DIR search directory, to a linker script whose INPUT is an
+// archive named like the Python runtime. The guard resolves the name
+// through the search directories and refuses the shadowing file.
+#[test]
+fn r7_01_allow_listed_names_cannot_resolve_to_build_script_files() {
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/solver-highs/Cargo.toml", &package(ADAPTER_PACKAGE))
+        .write("crates/solver-highs/src/lib.rs", &shadow_adapter("iconv"))
+        .write("crates/solver-highs/build.rs", SHADOW_BUILD_SCRIPT);
+    let found = fixture.build();
+    assert_runtime_rejected(&found);
+    assert!(
+        found.iter().any(|f| f.message.contains("R7-01")),
+        "{}",
+        text(&found)
+    );
+    // Control: the same OUT_DIR, but a system library it does not shadow.
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/solver-highs/Cargo.toml", &package(ADAPTER_PACKAGE))
+        .write("crates/solver-highs/src/lib.rs", &shadow_adapter("m"))
+        .write("crates/solver-highs/build.rs", SHADOW_BUILD_SCRIPT);
+    assert_clean(&fixture.build());
+}
+
+const HIDDEN_LINK: &str = "#[link(name = \"python3.12\")]\nunsafe extern \"C\" {}\n";
+
+// R7-02: a self dev-dependency enables `b`, so every all-targets and doctest
+// build hides code compiled only with `a` and without `b`. The production
+// build (library and binaries, no dev-dependencies) is built on its own.
+#[test]
+fn r7_02_dev_dependency_features_cannot_hide_production_code() {
+    let manifest = |dev: bool| {
+        format!(
+            "{}[features]\na = []\nb = []\n[lib]\ncrate-type = [\"rlib\", \"cdylib\"]\n{}",
+            package(ADAPTER_PACKAGE),
+            if dev {
+                "[dev-dependencies]\negs-solver-highs = { path = \".\", features = [\"b\"] }\n"
+            } else {
+                ""
+            }
+        )
+    };
+    let build_script = "#![forbid(unsafe_code)]\nfn main() {}\n";
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/solver-highs/Cargo.toml", &manifest(true))
+        .write("crates/solver-highs/build.rs", build_script)
+        .write(
+            "crates/solver-highs/src/lib.rs",
+            &format!("{ADAPTER}#[cfg(all(feature = \"a\", not(feature = \"b\")))]\n{HIDDEN_LINK}"),
+        );
+    assert_runtime_rejected(&fixture.build());
+    // Control: the same manifest without the hidden link request.
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/solver-highs/Cargo.toml", &manifest(true))
+        .write("crates/solver-highs/build.rs", build_script)
+        .write(
+            "crates/solver-highs/src/lib.rs",
+            &format!(
+                "{ADAPTER}#[cfg(all(feature = \"a\", not(feature = \"b\")))]\npub fn f() {{}}\n"
+            ),
+        );
+    assert_clean(&fixture.build());
+}
+
+// R7-02: another workspace member enables `b`, so every `--workspace` build
+// hides code compiled with the member's default features alone; a single
+// feature never enables both defaults. The member is built alone.
+#[test]
+fn r7_02_workspace_feature_unification_cannot_hide_default_code() {
+    let fixture = Fixture::new();
+    fixture
+        .write(
+            "crates/solver-highs/Cargo.toml",
+            &format!(
+                "{}[features]\ndefault = [\"a\", \"c\"]\na = []\nb = []\nc = []\n[lib]\ncrate-type = [\"rlib\", \"cdylib\"]\n",
+                package(ADAPTER_PACKAGE)
+            ),
+        )
+        .write(
+            "crates/solver-highs/src/lib.rs",
+            &format!(
+                "{ADAPTER}#[cfg(all(feature = \"a\", feature = \"c\", not(feature = \"b\")))]\n{HIDDEN_LINK}"
+            ),
+        )
+        .write(
+            "crates/engine/Cargo.toml",
+            &format!(
+                "{}[dependencies]\negs-solver-highs = {{ path = \"../solver-highs\", features = [\"b\"] }}\n",
+                package("engine")
+            ),
+        );
+    assert_runtime_rejected(&fixture.build());
+}

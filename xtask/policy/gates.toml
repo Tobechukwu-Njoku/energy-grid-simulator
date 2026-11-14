@@ -28,6 +28,15 @@ link_libraries = [
     "System", "iconv", "resolv", "objc",
 ]
 link_frameworks = ["CoreFoundation", "Security", "SystemConfiguration"]
+# R7-01: an allow-listed name is not enough. The guard resolves every library
+# and framework request through the link line's search directories: a matching
+# file in a directory that is not the toolchain sysroot, one of the C driver's
+# own library directories (`cc -print-search-dirs`) or a root listed here is
+# refused, whatever it contains, and a system linker script's inputs are checked
+# the same way. Build and temporary directories are never trusted. A native
+# solver installed outside the system directories is added here with the
+# owner's approval.
+link_search_roots = []
 
 # Pull-request gates. They build and test PR code with a read-only token and no
 # secrets. Their workflow files are protected paths: any change needs the owner's

@@ -31,24 +31,33 @@
 //!   its sanitised environment (no `RUSTDOCFLAGS` from the caller, no
 //!   repository Cargo config), so that attribute is what the compiler applies;
 //!   doctest executables link through the same linker guard.
-//! - **Feature configurations (R6-03).** `--all-features` is not the union of
-//!   all compiled code: `cfg(not(feature = ..))` code is only compiled without
-//!   the feature. The gate builds the default features, all features, no
-//!   default features, and every feature of every workspace member alone
-//!   (on top of no default features). Code that is compiled only under a
-//!   combination of two or more non-default features and not under all
-//!   features is not built; ADR 0001 records that bound.
-//! - **Linker guard (R6-02, ADV23R6-02).** Every invocation gets
+//! - **Feature configurations (R6-03, R7-02).** `--all-features` is not the
+//!   union of all compiled code: `cfg(not(feature = ..))` code is only
+//!   compiled without the feature, and Cargo unifies features across the
+//!   packages of one command and from dev-dependencies. The gate builds the
+//!   workspace with default, all and no default features, and every member
+//!   alone with its default features, with none, and with each of its features
+//!   alone. Each configuration is built three times: production targets
+//!   (library and binaries, so no dev-dependency features), all targets, and
+//!   doctests. Code that is compiled only under a combination of two or more
+//!   non-default features of one member and not under all features is not
+//!   built; ADR 0001 records that bound.
+//! - **Linker guard (R6-02, ADV23R6-02, R7-01).** Every invocation gets
 //!   `-C linker=<copy of xtask>`. The guard parses the C-driver command line,
 //!   `-Wl,` lists and `-Xlinker` values, refuses every response file
-//!   (`@file`, also inside `-Wl,`), linker script, plugin and driver
-//!   redirection, and accepts only allow-listed library names (`-l`,
-//!   `-framework` and their weak/needed/re-export forms, from the trusted
-//!   `gates.toml`) and input files that Rust itself produced: rlibs and
-//!   codegen objects in the build's `deps`/`build` directories, rustc and
-//!   rustdoc temporary objects, and the toolchain sysroot. Any other input,
-//!   including a library a build script wrote into `OUT_DIR`, is refused,
-//!   as is any name mentioning Python or Julia. Only then is `cc` run.
+//!   (`@file`, also inside `-Wl,`), linker script option, plugin, sysroot
+//!   override and driver redirection, and accepts only allow-listed library
+//!   names (`-l`, `-framework` and their weak/needed/re-export forms, from the
+//!   trusted `gates.toml`) and input files that Rust itself produced: rlibs
+//!   and codegen objects in the build's `deps`/`build` directories, rustc and
+//!   rustdoc temporary objects, and the toolchain sysroot. An allow-listed name
+//!   is then resolved through the line's search directories: a matching file
+//!   in a directory that is not the sysroot, the C driver's own library
+//!   directories or a trusted `link_search_roots` entry is refused whatever it
+//!   contains (an OUT_DIR `libiconv.so` linker script, R7-01), and a system
+//!   linker script's inputs are resolved and checked the same way. A direct
+//!   input that is a script or thin archive is refused. Any name mentioning
+//!   Python or Julia is reported as such. Only then is `cc` run.
 //! - **Build-script output** is read from Cargo's JSON messages
 //!   (`build-script-executed`): a `rustc-link-lib` naming a runtime, a
 //!   `rustc-link-search` directory holding one, and any `rustc-env` that
@@ -177,6 +186,8 @@ pub struct Config {
     pub libraries: Vec<String>,
     /// Framework names the linker may be asked for.
     pub frameworks: Vec<String>,
+    /// Trusted library directories besides the toolchain's own.
+    pub search_roots: Vec<PathBuf>,
     /// Resolved packages.
     pub units: Vec<Unit>,
 }
@@ -240,6 +251,7 @@ impl Config {
             "linker": path_value(&self.linker),
             "libraries": self.libraries,
             "frameworks": self.frameworks,
+            "search_roots": self.search_roots.iter().map(|root| path_value(root)).collect::<Vec<_>>(),
             "units": units,
         })
         .to_string()
@@ -291,6 +303,10 @@ impl Config {
             linker: path(&value["linker"]),
             libraries: strings(&value["libraries"]),
             frameworks: strings(&value["frameworks"]),
+            search_roots: strings(&value["search_roots"])
+                .into_iter()
+                .map(PathBuf::from)
+                .collect(),
             units,
         })
     }
@@ -546,6 +562,15 @@ pub struct LinkPolicy {
     pub sysroot: PathBuf,
     /// System temporary directory (rustc and rustdoc work directories).
     pub temp: PathBuf,
+    /// The C driver's own library search directories (`cc
+    /// -print-search-dirs`): the toolchain's system directories.
+    pub system_dirs: Vec<PathBuf>,
+    /// Further trusted library directories from the trusted `gates.toml`
+    /// (`link_search_roots`).
+    pub search_roots: Vec<PathBuf>,
+    /// The linker's working directory: it opens a linker script's relative
+    /// inputs there first.
+    pub cwd: PathBuf,
 }
 
 /// Driver (cc) options that take the next argument as a plain value.
@@ -667,6 +692,9 @@ fn refused_option(piece: &str) -> bool {
         || lower.starts_with("-filelist")
         || lower == "-include"
         || lower.starts_with("--just-symbols")
+        || lower.starts_with("--sysroot")
+        || piece == "-Y"
+        || piece.starts_with("-YP,")
 }
 
 #[derive(Default)]
@@ -674,6 +702,134 @@ struct LinkScan {
     problems: Vec<String>,
     /// Every library, framework or file the command line names.
     named: Vec<String>,
+    /// Allow-listed library names requested (`-lNAME`, `-l:FILE`).
+    libraries: Vec<String>,
+    /// Allow-listed framework names requested.
+    frameworks: Vec<String>,
+    /// Library search directories (`-L`, `--library-path`), in order.
+    lib_dirs: Vec<String>,
+    /// Framework search directories (`-F`), in order.
+    framework_dirs: Vec<String>,
+}
+
+/// What a file the linker opens contains.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FileKind {
+    /// An object file, archive, shared library or text stub.
+    Binary,
+    /// A thin archive: its members are other files, named by path.
+    ThinArchive,
+    /// Anything else: GNU ld reads it as a linker script.
+    Script,
+}
+
+fn file_kind(path: &Path) -> Option<FileKind> {
+    use std::io::Read as _;
+    let mut head = [0_u8; 16];
+    let mut file = std::fs::File::open(path).ok()?;
+    let read = file.read(&mut head).ok()?;
+    let head = &head[..read];
+    let binary: &[&[u8]] = &[
+        b"\x7fELF",
+        b"!<arch>\n",
+        b"\xfe\xed\xfa\xce",
+        b"\xfe\xed\xfa\xcf",
+        b"\xce\xfa\xed\xfe",
+        b"\xcf\xfa\xed\xfe",
+        b"\xca\xfe\xba\xbe",
+        b"\xbe\xba\xfe\xca",
+        b"--- !tapi-tbd",
+        b"MZ",
+        b"\x00\x00\xff\xff",
+    ];
+    Some(if head.starts_with(b"!<thin>\n") {
+        FileKind::ThinArchive
+    } else if binary.iter().any(|magic| head.starts_with(magic))
+        // A COFF object starts with its machine type; rustc's own objects
+        // on Linux and macOS are ELF/Mach-O, so only these two are listed.
+        || head.starts_with(&[0x64, 0x86])
+        || head.starts_with(&[0x64, 0xaa])
+    {
+        FileKind::Binary
+    } else {
+        FileKind::Script
+    })
+}
+
+/// The file names `-lNAME` (or `-l:FILE`) may open in one directory.
+fn library_candidates(name: &str) -> Vec<String> {
+    if let Some(file) = name.strip_prefix(':') {
+        return vec![file.to_owned()];
+    }
+    [
+        "lib{}.so",
+        "lib{}.a",
+        "lib{}.dylib",
+        "lib{}.tbd",
+        "lib{}.dll.a",
+        "{}.lib",
+        "{}.dll",
+    ]
+    .iter()
+    .map(|pattern| pattern.replace("{}", name))
+    .collect()
+}
+
+/// The commands a trusted system linker script may use; anything else
+/// (`SEARCH_DIR`, `INCLUDE`, `STARTUP`, sections) is refused (R7-01).
+const SCRIPT_COMMANDS: &[&str] = &[
+    "GROUP",
+    "INPUT",
+    "AS_NEEDED",
+    "OUTPUT_FORMAT",
+    "OUTPUT_ARCH",
+    "TARGET",
+];
+
+/// The input names of a linker script, or the reason it is refused.
+fn script_inputs(text: &str) -> Result<Vec<String>, String> {
+    let mut clean = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find("/*") {
+        clean.push_str(&rest[..start]);
+        match rest[start + 2..].find("*/") {
+            Some(end) => rest = &rest[start + 2 + end + 2..],
+            None => return Err("unterminated comment".to_owned()),
+        }
+    }
+    clean.push_str(rest);
+    let mut inputs = Vec::new();
+    let mut stack: Vec<String> = Vec::new();
+    let mut pending: Option<String> = None;
+    let spaced = clean
+        .replace('(', " ( ")
+        .replace(')', " ) ")
+        .replace(',', " ");
+    for token in spaced.split_whitespace() {
+        match token {
+            "(" => stack.push(pending.take().ok_or("unexpected `(`")?),
+            ")" => {
+                stack.pop().ok_or("unbalanced `)`")?;
+            }
+            word if pending.is_some() => return Err(format!("`{word}` after a command")),
+            word if stack.is_empty() || word == "AS_NEEDED" => {
+                if !SCRIPT_COMMANDS.contains(&word) {
+                    return Err(format!("command `{word}`"));
+                }
+                pending = Some(word.to_owned());
+            }
+            word => {
+                let inside = stack.last().map(String::as_str).unwrap_or_default();
+                if matches!(inside, "GROUP" | "INPUT" | "AS_NEEDED") {
+                    inputs.push(word.trim_matches('"').to_owned());
+                }
+            }
+        }
+    }
+    if !stack.is_empty() || pending.is_some() {
+        return Err("unbalanced `(`".to_owned());
+    }
+    Ok(inputs)
 }
 
 impl LinkPolicy {
@@ -746,7 +902,9 @@ impl LinkPolicy {
 
     fn library(&self, scan: &mut LinkScan, name: &str) {
         scan.named.push(name.to_owned());
-        if !self.libraries.iter().any(|allowed| allowed == name) {
+        if self.libraries.iter().any(|allowed| allowed == name) {
+            scan.libraries.push(name.to_owned());
+        } else {
             scan.problems.push(format!(
                 "library `{name}` is not in the trusted link_libraries allowlist"
             ));
@@ -755,7 +913,9 @@ impl LinkPolicy {
 
     fn framework(&self, scan: &mut LinkScan, name: &str) {
         scan.named.push(name.to_owned());
-        if !self.frameworks.iter().any(|allowed| allowed == name) {
+        if self.frameworks.iter().any(|allowed| allowed == name) {
+            scan.frameworks.push(name.to_owned());
+        } else {
             scan.problems.push(format!(
                 "framework `{name}` is not in the trusted link_frameworks allowlist"
             ));
@@ -768,7 +928,50 @@ impl LinkPolicy {
             scan.problems.push(format!(
                 "linker input `{file}` is not a Rust artifact of this build or the toolchain"
             ));
+        } else if let Some(kind @ (FileKind::Script | FileKind::ThinArchive)) =
+            file_kind(Path::new(file))
+        {
+            // A Rust artifact is an object or an archive; a script or thin
+            // archive in its place names other files (R7-01).
+            scan.problems.push(format!(
+                "linker input `{file}` is a {} rather than an object or archive (R7-01)",
+                if kind == FileKind::Script {
+                    "linker script"
+                } else {
+                    "thin archive"
+                }
+            ));
         }
+    }
+
+    fn search_dir(scan: &mut LinkScan, option: &str, dir: &str) {
+        if dir.starts_with('=') || dir.starts_with("$SYSROOT") {
+            scan.problems.push(format!(
+                "`{option}{dir}`: sysroot-relative search directories are refused (R7-01)"
+            ));
+        } else if option == "-F" {
+            scan.framework_dirs.push(dir.to_owned());
+        } else {
+            scan.lib_dirs.push(dir.to_owned());
+        }
+    }
+
+    /// Whether a directory is one of the toolchain's or the system's own
+    /// library directories (or a trusted root of `gates.toml`), and not a
+    /// directory this build or its build scripts write (R7-01).
+    #[must_use]
+    pub fn trusted_dir(&self, dir: &Path) -> bool {
+        let dir = canonical(dir);
+        let inside = |root: &Path| !root.as_os_str().is_empty() && dir.starts_with(root);
+        if inside(&self.target_dir) || inside(&self.temp) {
+            return false;
+        }
+        inside(&self.sysroot)
+            || self
+                .system_dirs
+                .iter()
+                .chain(&self.search_roots)
+                .any(|root| root.is_absolute() && inside(&canonical(root)))
     }
 
     fn temp_file(&self, scan: &mut LinkScan, option: &str, file: &str) {
@@ -783,6 +986,24 @@ impl LinkPolicy {
     /// One piece of a library-naming option; returns true if it consumed
     /// the piece.
     fn attached(&self, scan: &mut LinkScan, piece: &str) -> bool {
+        if let Some(dir) = piece
+            .strip_prefix("--library-path=")
+            .or_else(|| piece.strip_prefix("-L"))
+        {
+            Self::search_dir(scan, "-L", dir);
+            return true;
+        }
+        if let Some(dir) = piece.strip_prefix("-F") {
+            Self::search_dir(scan, "-F", dir);
+            return true;
+        }
+        if let Some(dir) = piece
+            .strip_prefix("-rpath-link=")
+            .or_else(|| piece.strip_prefix("--rpath-link="))
+        {
+            self.rpath_link(scan, dir);
+            return true;
+        }
         for prefix in NAME_PREFIXES {
             if let Some(name) = piece.strip_prefix(prefix) {
                 if name.is_empty() {
@@ -851,6 +1072,18 @@ impl LinkPolicy {
                 iter.next();
                 iter.next();
                 iter.next();
+            } else if matches!(piece, "-L" | "-F" | "--library-path") {
+                match iter.next() {
+                    Some(dir) => {
+                        Self::search_dir(scan, if piece == "-F" { "-F" } else { "-L" }, dir);
+                    }
+                    None => scan.problems.push(format!("`{piece}` without a value")),
+                }
+            } else if matches!(piece, "-rpath-link" | "--rpath-link") {
+                match iter.next() {
+                    Some(dir) => self.rpath_link(scan, dir),
+                    None => scan.problems.push(format!("`{piece}` without a value")),
+                }
             } else if values.contains(&piece) {
                 if piece == "-o" {
                     iter.next();
@@ -873,6 +1106,170 @@ impl LinkPolicy {
                 self.attached(scan, piece);
             } else {
                 self.input(scan, piece);
+            }
+        }
+    }
+
+    /// `-rpath-link` directories resolve shared-library dependencies: only
+    /// trusted directories (R7-01).
+    fn rpath_link(&self, scan: &mut LinkScan, dir: &str) {
+        for dir in dir.split(':').filter(|dir| !dir.is_empty()) {
+            if !self.trusted_dir(Path::new(dir)) {
+                scan.problems.push(format!(
+                    "`-rpath-link` directory `{dir}` is not a trusted system directory (R7-01)"
+                ));
+            }
+        }
+    }
+
+    /// Resolves every allow-listed library and framework to the files the
+    /// linker could open (R7-01). A candidate file in a search directory that
+    /// is not a trusted system or toolchain directory is refused, whatever it
+    /// contains: such a directory could shadow the system library with a
+    /// linker script or another library. The file found in the trusted
+    /// directories is then inspected: a thin archive is refused, and a
+    /// system linker script's inputs are resolved and checked the same way.
+    fn resolve(&self, scan: &mut LinkScan) {
+        let mut seen = BTreeSet::new();
+        for name in std::mem::take(&mut scan.libraries) {
+            self.resolve_library(scan, &name, false, 0, &mut seen);
+        }
+        for name in std::mem::take(&mut scan.frameworks) {
+            let bundle = format!("{name}.framework");
+            for dir in &scan.framework_dirs {
+                let file = Path::new(dir).join(&bundle);
+                if !self.trusted_dir(Path::new(dir)) && file.exists() {
+                    scan.problems.push(format!(
+                        "framework `{name}` would resolve to `{}` in search directory `{dir}`, which is not a trusted system or toolchain directory (R7-01)",
+                        file.display()
+                    ));
+                }
+            }
+        }
+    }
+
+    /// `script_relative`: a relative input of a linker script, which the
+    /// linker also looks for in its working directory.
+    fn resolve_library(
+        &self,
+        scan: &mut LinkScan,
+        name: &str,
+        script_relative: bool,
+        depth: usize,
+        seen: &mut BTreeSet<PathBuf>,
+    ) {
+        let candidates = if script_relative {
+            vec![name.to_owned()]
+        } else {
+            library_candidates(name)
+        };
+        let mut dirs: Vec<PathBuf> = Vec::new();
+        if script_relative {
+            dirs.push(self.cwd.clone());
+        }
+        dirs.extend(scan.lib_dirs.iter().map(PathBuf::from));
+        let mut found = None;
+        for dir in &dirs {
+            for candidate in &candidates {
+                let file = dir.join(candidate);
+                if !file.exists() {
+                    continue;
+                }
+                if !self.trusted_dir(dir) {
+                    scan.named.push(file.to_string_lossy().into_owned());
+                    if let Ok(text) = std::fs::read_to_string(&file) {
+                        scan.named.extend(script_inputs(&text).unwrap_or_default());
+                    }
+                    scan.problems.push(format!(
+                        "library `{name}` would resolve to `{}` in search directory `{}`, which is not a trusted system or toolchain directory (R7-01)",
+                        file.display(),
+                        dir.display()
+                    ));
+                } else if found.is_none() {
+                    found = Some(file);
+                }
+            }
+        }
+        if found.is_none() {
+            found = self.system_dirs.iter().find_map(|dir| {
+                candidates
+                    .iter()
+                    .map(|candidate| dir.join(candidate))
+                    .find(|file| file.exists())
+            });
+        }
+        if let Some(file) = found {
+            self.inspect(scan, &file, depth, seen);
+        }
+    }
+
+    /// Checks a file in a trusted directory that the linker opens.
+    fn inspect(
+        &self,
+        scan: &mut LinkScan,
+        file: &Path,
+        depth: usize,
+        seen: &mut BTreeSet<PathBuf>,
+    ) {
+        let file = canonical(file);
+        if !seen.insert(file.clone()) {
+            return;
+        }
+        scan.named.push(file.to_string_lossy().into_owned());
+        match file_kind(&file) {
+            None | Some(FileKind::Binary) => {}
+            Some(FileKind::ThinArchive) => scan.problems.push(format!(
+                "`{}` is a thin archive, whose members are other files (R7-01)",
+                file.display()
+            )),
+            Some(FileKind::Script) => {
+                if depth >= 8 {
+                    scan.problems.push(format!(
+                        "linker script `{}` nests too deeply (R7-01)",
+                        file.display()
+                    ));
+                    return;
+                }
+                let inputs = std::fs::read_to_string(&file)
+                    .map_err(|error| error.to_string())
+                    .and_then(|text| script_inputs(&text));
+                let inputs = match inputs {
+                    Ok(inputs) => inputs,
+                    Err(reason) => {
+                        scan.problems.push(format!(
+                            "linker script `{}` is refused: {reason} (R7-01)",
+                            file.display()
+                        ));
+                        return;
+                    }
+                };
+                for input in inputs {
+                    if let Some(name) = input.strip_prefix("-l") {
+                        scan.named.push(name.to_owned());
+                        if self.libraries.iter().any(|allowed| allowed == name) {
+                            self.resolve_library(scan, name, false, depth + 1, seen);
+                        } else {
+                            scan.problems.push(format!(
+                                "linker script `{}` asks for library `{name}`, which is not in the trusted link_libraries allowlist (R7-01)",
+                                file.display()
+                            ));
+                        }
+                    } else if Path::new(&input).is_absolute() {
+                        let path = Path::new(&input);
+                        if path.parent().is_some_and(|dir| self.trusted_dir(dir)) {
+                            self.inspect(scan, path, depth + 1, seen);
+                        } else {
+                            scan.named.push(input.clone());
+                            scan.problems.push(format!(
+                                "linker script `{}` names `{input}`, outside the trusted system and toolchain directories (R7-01)",
+                                file.display()
+                            ));
+                        }
+                    } else {
+                        scan.named.push(input.clone());
+                        self.resolve_library(scan, &input, true, depth + 1, seen);
+                    }
+                }
             }
         }
     }
@@ -905,6 +1302,7 @@ impl LinkPolicy {
         }
         self.scan(&mut scan, args, true);
         self.scan(&mut scan, &linker_level, false);
+        self.resolve(&mut scan);
         let runtimes: BTreeSet<&String> = scan
             .named
             .iter()
@@ -932,6 +1330,38 @@ impl LinkPolicy {
 /// where it searches; removed before `cc` runs.
 const DRIVER_ENV: &[&str] = &["COMPILER_PATH", "GCC_EXEC_PREFIX", "LIBRARY_PATH"];
 
+/// The C driver's own library search directories, as `cc
+/// -print-search-dirs` reports them (in the guard's sanitised environment).
+fn driver_search_dirs() -> Vec<PathBuf> {
+    let mut command = Command::new("cc");
+    command
+        .arg("-print-search-dirs")
+        .env_remove(LINK_ENV)
+        .env_remove(WRAP_ENV)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null());
+    for name in DRIVER_ENV {
+        command.env_remove(name);
+    }
+    let Ok(output) = command.output() else {
+        return Vec::new();
+    };
+    parse_search_dirs(&String::from_utf8_lossy(&output.stdout))
+}
+
+/// The `libraries:` line of `cc -print-search-dirs`: absolute directories
+/// only.
+#[must_use]
+pub fn parse_search_dirs(text: &str) -> Vec<PathBuf> {
+    text.lines()
+        .filter_map(|line| line.strip_prefix("libraries:"))
+        .flat_map(|list| list.trim().trim_start_matches('=').split(':'))
+        .map(Path::new)
+        .filter(|dir| dir.is_absolute())
+        .map(canonical)
+        .collect()
+}
+
 fn link(args: &[OsString], config: Option<&Path>) -> ExitCode {
     let text: Vec<String> = args
         .iter()
@@ -954,6 +1384,9 @@ fn link(args: &[OsString], config: Option<&Path>) -> ExitCode {
         target_dir: config.target_dir,
         sysroot: config.sysroot,
         temp: canonical(&std::env::temp_dir()),
+        system_dirs: driver_search_dirs(),
+        search_roots: config.search_roots,
+        cwd: std::env::current_dir().unwrap_or_default(),
     };
     let problems = policy.check(&text);
     if !problems.is_empty() {
@@ -1106,6 +1539,20 @@ pub enum FeatureSet {
     All,
     /// Every member without default features.
     NoDefault,
+    /// One member (package id) alone with its default features.
+    PackageDefault {
+        /// Package id spec.
+        package: String,
+        /// Package name, for messages.
+        name: String,
+    },
+    /// One member (package id) alone without default features.
+    PackageNoDefault {
+        /// Package id spec.
+        package: String,
+        /// Package name, for messages.
+        name: String,
+    },
     /// One member (package id) with exactly one feature.
     Single {
         /// Package id spec.
@@ -1126,6 +1573,12 @@ impl FeatureSet {
             Self::Default => strings(&["--workspace"]),
             Self::All => strings(&["--workspace", "--all-features"]),
             Self::NoDefault => strings(&["--workspace", "--no-default-features"]),
+            Self::PackageDefault { package, .. } => vec!["--package".to_owned(), package.clone()],
+            Self::PackageNoDefault { package, .. } => vec![
+                "--package".to_owned(),
+                package.clone(),
+                "--no-default-features".to_owned(),
+            ],
             Self::Single {
                 package, feature, ..
             } => vec![
@@ -1145,19 +1598,36 @@ impl FeatureSet {
             Self::Default => "default features".to_owned(),
             Self::All => "all features".to_owned(),
             Self::NoDefault => "no default features".to_owned(),
+            Self::PackageDefault { name, .. } => format!("`{name}` alone, default features"),
+            Self::PackageNoDefault { name, .. } => format!("`{name}` alone, no default features"),
             Self::Single { name, feature, .. } => format!("`{name}` with only `{feature}`"),
         }
     }
 }
 
-/// The feature configurations to build (R6-03): default, all, none, and every
-/// feature of every workspace member alone.
+/// The feature configurations to build (R6-03, R7-02): the workspace with
+/// default, all and no default features, and every member alone with its
+/// default features, without them, and with each of its features alone.
+/// Building a member alone keeps other members from unifying features into
+/// it; [`Mode`] keeps dev-dependencies from doing so.
 #[must_use]
 pub fn feature_sets(metadata: &Metadata) -> Vec<FeatureSet> {
     let mut sets = vec![FeatureSet::Default, FeatureSet::All, FeatureSet::NoDefault];
     for (package, id) in metadata.packages.iter().zip(&metadata.ids) {
         if !metadata.members.contains(id) {
             continue;
+        }
+        sets.push(FeatureSet::PackageDefault {
+            package: id.clone(),
+            name: package.name.clone(),
+        });
+        // Without a `default` feature, no default features is the same
+        // configuration as the default one.
+        if package.features.iter().any(|feature| feature == "default") {
+            sets.push(FeatureSet::PackageNoDefault {
+                package: id.clone(),
+                name: package.name.clone(),
+            });
         }
         for feature in &package.features {
             if feature != "default" {
@@ -1170,6 +1640,45 @@ pub fn feature_sets(metadata: &Metadata) -> Vec<FeatureSet> {
         }
     }
     sets
+}
+
+/// How one configuration is built (R7-02). Cargo resolves features per
+/// command: building tests, examples or doctests activates dev-dependencies,
+/// whose features unify into the package. A production build (library and
+/// binaries, no dev-dependencies) is therefore its own configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    /// `cargo build`: libraries and binaries, without dev-dependencies.
+    Production,
+    /// `cargo build --all-targets`: tests, examples and benches too.
+    AllTargets,
+    /// `cargo test --doc`.
+    Doctests,
+}
+
+impl Mode {
+    /// Every mode, in build order.
+    pub const ALL: [Self; 3] = [Self::Production, Self::AllTargets, Self::Doctests];
+
+    /// The Cargo subcommand and its arguments.
+    #[must_use]
+    pub fn args(self) -> &'static [&'static str] {
+        match self {
+            Self::Production => &["build", "--keep-going"],
+            Self::AllTargets => &["build", "--all-targets", "--keep-going"],
+            Self::Doctests => &["test", "--doc", "--no-fail-fast"],
+        }
+    }
+
+    /// A short label for messages.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Production => "build (production targets)",
+            Self::AllTargets => "build --all-targets",
+            Self::Doctests => "test --doc",
+        }
+    }
 }
 
 /// Options of one gate run.
@@ -1311,6 +1820,13 @@ pub fn check_with(
             .get("link_frameworks")
             .map(string_array)
             .unwrap_or_default(),
+        search_roots: gates
+            .get("link_search_roots")
+            .map(string_array)
+            .unwrap_or_default()
+            .into_iter()
+            .map(PathBuf::from)
+            .collect(),
         units: Config::units(&metadata),
     };
     let config_path = gate_dir.join("config.json");
@@ -1328,13 +1844,9 @@ pub fn check_with(
     }
     let mut seen = BTreeSet::new();
     for set in &sets {
-        for doctests in [false, true] {
+        for mode in Mode::ALL {
             let mut command = cargo(ctx);
-            if doctests {
-                command.args(["test", "--doc", "--no-fail-fast"]);
-            } else {
-                command.args(["build", "--all-targets", "--keep-going"]);
-            }
+            command.args(mode.args());
             command
                 .args(set.args())
                 .args(["--locked", "--message-format=json", "--manifest-path"])
@@ -1356,11 +1868,7 @@ pub fn check_with(
                 );
             let run = run_cargo(command)?;
             let mut new = analyse(&run.messages);
-            let what = format!(
-                "cargo {} ({})",
-                if doctests { "test --doc" } else { "build" },
-                set.label()
-            );
+            let what = format!("cargo {} ({})", mode.label(), set.label());
             if !run.success && new.is_empty() {
                 new.push(failure_finding(&what, &run));
             }
@@ -1528,6 +2036,9 @@ mod tests {
             target_dir: PathBuf::from("/t"),
             sysroot: PathBuf::from("/s"),
             temp: PathBuf::from("/tmp"),
+            system_dirs: Vec::new(),
+            search_roots: Vec::new(),
+            cwd: PathBuf::from("/t"),
         }
     }
 
@@ -1625,6 +2136,230 @@ mod tests {
             policy()
                 .check(&strings(&["-framework", "CoreFoundation", "-lm"]))
                 .is_empty()
+        );
+    }
+
+    /// A scratch directory for the resolution tests.
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("egs-r7-01-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("scratch");
+        canonical(&dir)
+    }
+
+    const ELF: &[u8] = b"\x7fELF\x02\x01\x01\x00";
+
+    fn write(path: &Path, bytes: &[u8]) {
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("dir");
+        std::fs::write(path, bytes).expect("write");
+    }
+
+    /// A policy whose trusted system directory is `<root>/sys`; `<root>/out`
+    /// stands for an OUT_DIR and `<root>/t` for the build directory.
+    fn resolving(root: &Path) -> LinkPolicy {
+        LinkPolicy {
+            libraries: strings(&["c", "m", "gcc_s", "gcc", "iconv"]),
+            frameworks: strings(&["CoreFoundation"]),
+            target_dir: root.join("t"),
+            sysroot: PathBuf::from("/s"),
+            temp: PathBuf::from("/nonexistent-temp"),
+            system_dirs: vec![root.join("sys")],
+            search_roots: Vec::new(),
+            cwd: root.join("pkg"),
+        }
+    }
+
+    // R7-01: an allow-listed name that an untrusted search directory would
+    // resolve to a linker script, a static or dynamic library or a framework
+    // is refused, in every search-path spelling.
+    #[test]
+    fn r7_01_untrusted_search_directories_cannot_shadow_allowed_names() {
+        let root = scratch("shadow");
+        let out = root.join("out");
+        let hidden = out.join("hidden/libpython3.12.a");
+        write(&hidden, b"!<arch>\n");
+        write(
+            &out.join("libiconv.so"),
+            format!("INPUT ( {} )\n", hidden.display()).as_bytes(),
+        );
+        write(&out.join("libm.a"), b"!<arch>\n");
+        write(&out.join("libc.dylib"), ELF);
+        std::fs::create_dir_all(out.join("CoreFoundation.framework")).expect("dir");
+        let dir = out.display().to_string();
+        let policy = resolving(&root);
+        for args in [
+            vec!["-L".to_owned(), dir.clone(), "-liconv".to_owned()],
+            vec![format!("-L{dir}"), "-l".to_owned(), "iconv".to_owned()],
+            vec![format!("-Wl,-L,{dir},-liconv")],
+            vec![
+                format!("-Wl,--library-path={dir}"),
+                "-Wl,--library=iconv".to_owned(),
+            ],
+            vec![
+                "-Xlinker".to_owned(),
+                "--library-path".to_owned(),
+                "-Xlinker".to_owned(),
+                dir.clone(),
+                "-lm".to_owned(),
+            ],
+            vec![format!("-L{dir}"), "-lc".to_owned()],
+            vec![
+                "-F".to_owned(),
+                dir.clone(),
+                "-framework".to_owned(),
+                "CoreFoundation".to_owned(),
+            ],
+            vec![
+                format!("-F{dir}"),
+                "-Wl,-framework,CoreFoundation".to_owned(),
+            ],
+        ] {
+            let problems = policy.check(&args);
+            assert!(
+                problems.iter().any(|p| p.contains("R7-01")),
+                "{args:?}: {problems:?}"
+            );
+        }
+        // The script's hidden input is reported as a runtime.
+        let problems = policy.check(&[format!("-L{dir}"), "-liconv".to_owned()]);
+        assert!(problems[0].contains("Python or Julia"), "{problems:?}");
+        // Control: the same directory without a request it could shadow.
+        assert_eq!(
+            policy.check(&[format!("-L{dir}"), "-lgcc_s".to_owned()]),
+            Vec::<String>::new()
+        );
+        // Sysroot-relative search paths, sysroot overrides and untrusted
+        // -rpath-link directories are refused.
+        for args in [
+            strings(&["-L=/lib", "-lc"]),
+            strings(&["-Wl,-L,$SYSROOT/lib"]),
+            strings(&["--sysroot=/x"]),
+            strings(&["-Wl,--sysroot=/x"]),
+            vec![format!("-Wl,-rpath-link,{dir}")],
+            strings(&["-Wl,-Y,P,/x"]),
+        ] {
+            assert!(!policy.check(&args).is_empty(), "{args:?}");
+        }
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    // R7-01: the file found in the trusted directories is inspected. A
+    // system linker script's inputs must stay in trusted directories and on
+    // the allowlist, and may not be shadowed from the working directory.
+    #[test]
+    fn r7_01_system_linker_scripts_are_resolved_and_checked() {
+        let root = scratch("system");
+        let sys = root.join("sys");
+        write(&sys.join("libc.so.6"), ELF);
+        write(&sys.join("ld.so"), ELF);
+        write(&sys.join("libgcc_s.so.1"), ELF);
+        write(&sys.join("libgcc.a"), b"!<arch>\n");
+        write(
+            &sys.join("libc.so"),
+            format!(
+                "/* GNU ld script\n   Use the shared library. */\nOUTPUT_FORMAT(elf64-x86-64)\nGROUP ( {}/libc.so.6 AS_NEEDED ( {}/ld.so ) )\n",
+                sys.display(),
+                sys.display()
+            )
+            .as_bytes(),
+        );
+        write(
+            &sys.join("libgcc_s.so"),
+            b"/* GNU ld script */\nGROUP ( libgcc_s.so.1 -lgcc )\n",
+        );
+        let policy = resolving(&root);
+        // Ordinary glibc/libgcc scripts pass.
+        assert_eq!(
+            policy.check(&strings(&["-lc", "-lgcc_s"])),
+            Vec::<String>::new()
+        );
+        // A relative script input placed in the working directory is refused.
+        write(&root.join("pkg/libgcc_s.so.1"), ELF);
+        let problems = policy.check(&strings(&["-lgcc_s"]));
+        assert!(problems.iter().any(|p| p.contains("R7-01")), "{problems:?}");
+        let _ = std::fs::remove_dir_all(root.join("pkg"));
+        // Inputs outside the trusted directories, unlisted libraries and other
+        // script commands are refused.
+        for script in [
+            format!("INPUT ( {}/out/libx.a )\n", root.display()),
+            "GROUP ( -lpython3.12 )\n".to_owned(),
+            format!("SEARCH_DIR({}/out)\nINPUT(libx.a)\n", root.display()),
+            "INCLUDE other.ld\n".to_owned(),
+            "INPUT ( libc.so.6\n".to_owned(),
+        ] {
+            write(&sys.join("libm.so"), script.as_bytes());
+            let problems = policy.check(&strings(&["-lm"]));
+            assert!(
+                problems.iter().any(|p| p.contains("R7-01")),
+                "{script}: {problems:?}"
+            );
+        }
+        // A thin archive names other files.
+        write(&sys.join("libm.so"), b"!<thin>\n");
+        assert!(!policy.check(&strings(&["-lm"])).is_empty());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    // R7-01: a direct input in Rust's own output places must be an object or
+    // archive, not a script that names other files.
+    #[test]
+    fn r7_01_direct_inputs_must_not_be_scripts() {
+        let root = scratch("direct");
+        let deps = root.join("t/debug/deps");
+        write(
+            &deps.join("libx-1.rlib"),
+            b"INPUT ( /tmp/libpython3.12.a )\n",
+        );
+        write(&deps.join("liby-1.rlib"), b"!<arch>\n");
+        let policy = resolving(&root);
+        let problems = policy.check(&[deps.join("libx-1.rlib").display().to_string()]);
+        assert!(
+            problems.iter().any(|p| p.contains("linker script")),
+            "{problems:?}"
+        );
+        assert_eq!(
+            policy.check(&[deps.join("liby-1.rlib").display().to_string()]),
+            Vec::<String>::new()
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn r7_01_driver_search_dirs_and_scripts_are_parsed() {
+        let dirs = parse_search_dirs(
+            "install: /usr/lib/gcc/x86_64-linux-gnu/13/\nprograms: =/usr/bin\nlibraries: =/usr/lib/gcc/x86_64-linux-gnu/13/:relative:/lib/x86_64-linux-gnu/\n",
+        );
+        assert_eq!(dirs.len(), 2, "{dirs:?}");
+        assert_eq!(
+            script_inputs(
+                "OUTPUT_FORMAT(elf64-x86-64)\nGROUP ( /a/libc.so.6 /a/x.a AS_NEEDED ( /a/ld.so ) )"
+            ),
+            Ok(strings(&["/a/libc.so.6", "/a/x.a", "/a/ld.so"]))
+        );
+        assert!(script_inputs("SECTIONS { }").is_err());
+        assert!(script_inputs("GROUP ( a").is_err());
+        assert!(script_inputs("/* open").is_err());
+    }
+
+    // R7-02: every member is also built alone, with and without its default
+    // features; the production build is a mode of its own.
+    #[test]
+    fn r7_02_modes_separate_production_builds() {
+        assert_eq!(Mode::Production.args(), ["build", "--keep-going"]);
+        assert!(!Mode::Production.args().contains(&"--all-targets"));
+        assert!(Mode::AllTargets.args().contains(&"--all-targets"));
+        let set = FeatureSet::PackageDefault {
+            package: "p".to_owned(),
+            name: "p".to_owned(),
+        };
+        assert_eq!(set.args(), strings(&["--package", "p"]));
+        let set = FeatureSet::PackageNoDefault {
+            package: "p".to_owned(),
+            name: "p".to_owned(),
+        };
+        assert_eq!(
+            set.args(),
+            strings(&["--package", "p", "--no-default-features"])
         );
     }
 

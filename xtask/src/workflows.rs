@@ -238,17 +238,87 @@ fn expressions(text: &str) -> Vec<String> {
     found
 }
 
-fn invokes_python(script: &str) -> bool {
+/// Interpreter command families CI may not run (D-73: Rust for tooling, CI
+/// and tests; NFR-10: no Python or Julia runtime). A family matches its
+/// versioned and variant spellings (`python3.12`, `pythonw`, `pypy3`,
+/// `julia-1.11`, `python.exe`), whatever directory it is called from.
+const INTERPRETERS: &[&str] = &[
+    "python",
+    "pypy",
+    "ipython",
+    "jython",
+    "graalpy",
+    "py",
+    "pip",
+    "pipx",
+    "pipenv",
+    "conda",
+    "mamba",
+    "micromamba",
+    "uv",
+    "uvx",
+    "poetry",
+    "pdm",
+    "hatch",
+    "tox",
+    "nox",
+    "pytest",
+    "jupyter",
+    "julia",
+    "juliaup",
+    "node",
+    "nodejs",
+    "npx",
+    "deno",
+    "bun",
+    "bunx",
+    "perl",
+    "npm",
+    "pnpm",
+    "yarn",
+    "ruby",
+    "php",
+    "lua",
+    "luajit",
+    "rscript",
+    "tclsh",
+    "osascript",
+];
+
+/// Script files for those interpreters.
+const INTERPRETER_SCRIPTS: &[&str] = &[
+    ".py", ".pyw", ".pyz", ".pyc", ".ipynb", ".jl", ".pl", ".pm", ".rb", ".php", ".lua", ".js",
+    ".mjs", ".cjs", ".ts", ".mts", ".r", ".tcl",
+];
+
+/// Whether one command word names a forbidden interpreter: a family name,
+/// then only a version (`3`, `3.12`, `-1.11`), an ABI/variant letter
+/// (`w`, `t`, `m`, `d`) and an `.exe` suffix (ADV23R7-03).
+fn interpreter_word(word: &str) -> bool {
+    let lower = word.to_ascii_lowercase();
+    let lower = lower.strip_suffix(".exe").unwrap_or(&lower);
+    INTERPRETERS.iter().any(|family| {
+        let Some(rest) = lower.strip_prefix(family) else {
+            return false;
+        };
+        let rest = rest.trim_start_matches(['-', '_']);
+        let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+        matches!(rest, "" | "w" | "t" | "m" | "d" | "dm" | "mu")
+    }) || INTERPRETER_SCRIPTS
+        .iter()
+        .any(|ext| lower.len() > ext.len() && lower.ends_with(ext))
+}
+
+/// Whether a script runs an interpreter other than the allowed shells.
+fn invokes_interpreter(script: &str) -> bool {
     script
-        .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '_'))
-        .any(|word| {
-            word == "python"
-                || word.starts_with("python3")
-                || word.starts_with("python2")
-                || word == "pip"
-                || word == "pip3"
-                || word.ends_with(".py")
+        .split(|c: char| !(c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-')))
+        .flat_map(|word| {
+            // `python3.12-config` and `julia-1.11` both reach the check: the
+            // whole word and its `-`-separated pieces.
+            std::iter::once(word).chain(word.split('-'))
         })
+        .any(interpreter_word)
 }
 
 /// Shells a `run:` step may use. Any other value, including a custom
@@ -608,11 +678,13 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
                     ));
                 }
             }
-            if invokes_python(&script) {
+            if invokes_interpreter(&script) {
                 findings.push(Finding::at(
                     path,
                     None,
-                    format!("{step_scope}: CI must not run Python (D-73); use cargo xtask"),
+                    format!(
+                        "{step_scope}: CI must not run Python, Julia or another script interpreter (D-73, NFR-10); use cargo xtask"
+                    ),
                 ));
             }
         }
@@ -1280,5 +1352,47 @@ jobs:
         let (files, jobs) = Policy::parse(POLICY).expect("policy").trusted_gates();
         assert_eq!(files, ["t.yml"]);
         assert_eq!(jobs, ["review"]);
+    }
+
+    // ADV23R7-03: interpreters are matched by command-name family, not by
+    // exact strings: Python variants, PyPy, Julia and other script runtimes.
+    #[test]
+    fn adv23r7_03_interpreters_are_matched_by_family() {
+        for script in [
+            "pypy3 -c 'print(1)'",
+            "julia -e 'println(1)'",
+            "pythonw x",
+            "python3.12 -m venv v",
+            "/usr/bin/python3.13t -c 1",
+            "PYTHON3 -c 1",
+            "python.exe -c 1",
+            "env python -c 1",
+            "pip3 install x",
+            "uv run tool",
+            "uvx ruff",
+            "ipython -c 1",
+            "julia-1.11 -e 1",
+            "node -e 1",
+            "npx something",
+            "perl -e 1",
+            "ruby -e 1",
+            "Rscript -e 1",
+            "deno run x",
+            "./tools/check.jl",
+            "bash -c 'conda run x'",
+            "sh scripts/x.py",
+        ] {
+            assert!(invokes_interpreter(script), "{script}");
+        }
+        for script in [
+            "set -euo pipefail",
+            "cargo xtask all",
+            "printf '%s' \"$NEEDS\" | jq -r .",
+            "echo typescript notes; echo pipeline nodes ok",
+            "rustup toolchain install && rustc --version",
+            "cargo nextest run --workspace --locked",
+        ] {
+            assert!(!invokes_interpreter(script), "{script}");
+        }
     }
 }

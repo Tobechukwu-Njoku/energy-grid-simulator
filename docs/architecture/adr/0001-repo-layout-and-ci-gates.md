@@ -423,3 +423,72 @@ Residual risks (in addition to 5 and 7 above, which stand):
    risk 5, not a normal build-script output.
 10. If rustc must fall back to a linker response file for a very long command line,
     the gate fails closed; the supported fix is a shorter link line, not a parser.
+
+## Addendum — 2026-11-14: library resolution, production feature builds (PR #23 revision 8)
+
+Round-7 reviews (GPT R7-01..03, Gemini ADV23R7-01..08) found false negatives in
+revision 7. The design stays; these changes close the gaps and correct risk 8. It
+adds no decision beyond D-52, D-56, D-73 and D-74.
+
+- **Libraries are allowlisted by the file the linker opens (R7-01).** An allow-listed
+  name is not enough: `-liconv` with a build script's `OUT_DIR` on the search path
+  opened an `OUT_DIR/libiconv.so` linker script whose `INPUT` was an archive named
+  like the Python runtime. The guard now resolves every allow-listed `-l` name (and
+  `-l:file`, `--library`, the weak/needed forms, and frameworks) through the link
+  line's `-L`/`--library-path`/`-F` directories at both the driver and linker level.
+  A candidate file (`lib<name>.so`, `.a`, `.dylib`, `.tbd`, ...) in a search
+  directory that is not *trusted* is refused, whatever it contains. Trusted means
+  the toolchain sysroot, the C driver's own library directories (`cc
+  -print-search-dirs`, in the guard's sanitised environment) or a
+  `link_search_roots` entry of the trusted `gates.toml` (empty); the build directory
+  and the temporary directory never are. The file found in the trusted directories
+  is inspected: a thin archive is refused, and a linker script (glibc's `libc.so`,
+  `libm.so`, libgcc's `libgcc_s.so` are scripts) may only use `GROUP`, `INPUT`,
+  `AS_NEEDED` and `OUTPUT_FORMAT`/`OUTPUT_ARCH`/`TARGET`; each input must be an
+  allow-listed `-l` name resolved the same way, an absolute path in a trusted
+  directory, or a relative name not shadowed by the linker's working directory or an
+  untrusted search directory. Every other linker script is refused, as before, by
+  option (`-T`, `--script`, ...) and now also by content: a direct input in Rust's
+  own output places must be an object or archive, not a script. Sysroot-relative
+  search paths (`=dir`, `$SYSROOT`), `--sysroot`, `-Y` and untrusted `-rpath-link`
+  directories are refused.
+- **Production builds are separate configurations (R7-02).** Cargo resolves
+  features per command: building tests, examples or doctests activates
+  dev-dependencies, which unify their features into the package, and
+  `--workspace` unifies the features that one member enables in another. Each
+  configuration is now built three times: production targets (`cargo build`:
+  library and binaries, no dev-dependencies), all targets, and doctests. Besides the
+  workspace with default/all/no default features, every member is built alone with
+  its default features, with no default features (when it has a `default`), and
+  with each of its features alone.
+- **Gate identities compare case-insensitively (ADV23R7-01).** A pull-request job
+  without `name:` is named by its id; ids and names are compared with the trusted
+  gate names ignoring ASCII case and surrounding space, and a computed or non-string
+  name fails closed.
+- **Data by content (ADV23R7-02).** Compressed, archive, columnar and database
+  extensions were added (`.zst`, `.lz4`, `.xz`, `.bz2`, `.7z`, `.br`, `.rar`,
+  `.avro`, `.duckdb`, ...), and the provenance gate also detects data by its leading
+  bytes (gzip, zstd, lz4, xz, lzma, bzip2, 7z, zip, rar, tar, Parquet, Arrow, Avro,
+  HDF5, NetCDF, GRIB, SQLite, DuckDB, NumPy, pickle, OLE2, PDF, MATLAB, shapefile)
+  whatever the file is called.
+- **Interpreters by command family (ADV23R7-03).** Workflow scripts may not run any
+  command of a Python, Julia or other script-interpreter family (`python*`,
+  `pythonw`, `pypy*`, `pip*`, `uv`, `conda`, `julia*`, `node`, `perl`, `ruby`,
+  `Rscript`, ...) with any version or variant suffix, from any directory, or a script
+  file of those languages (D-73, NFR-10).
+- **Attribution (R7-03, ADV23R7-04..08)** stays one shared pattern file: prompting
+  and guidance verbs, assistance nouns (input, guidance, suggestions,
+  contributions, ...), Markdown summary headings, HTML comment markers that credit a
+  tool, review-bot, v0/Vercel and Augment names and domains, Continue and Supermaven
+  domains, and generic coding/code/programming/review assistants, agents and bots.
+  Human co-author controls are unchanged.
+
+Residual risk 8 is replaced:
+
+8. Code compiled only under a combination of two or more non-default features of
+   one member, that neither that member's default features nor all features
+   compile, is not built by the gate (single features, defaults and dependency
+   unification are). Such code still meets the root `forbid` in any build that
+   compiles it.
+11. The guard trusts the C driver's own and the sysroot's library directories by
+    location. A build script that writes there is the same-user tampering of risk 5.

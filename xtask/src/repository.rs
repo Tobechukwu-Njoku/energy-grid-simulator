@@ -649,6 +649,66 @@ const KEY_EXTENSIONS: &[&str] = &[
     ".ovpn",
 ];
 
+/// Leading bytes of data, archive and compressed formats: a file with one of
+/// these signatures is data whatever its name (ADV23R7-02).
+const DATA_SIGNATURES: &[(&[u8], &str)] = &[
+    (b"\x1f\x8b", "gzip"),
+    (b"\x28\xb5\x2f\xfd", "zstd"),
+    (b"\x04\x22\x4d\x18", "lz4"),
+    (b"\x02\x21\x4c\x18", "lz4 legacy"),
+    (b"\xfd7zXZ\x00", "xz"),
+    (b"\x5d\x00\x00", "lzma"),
+    (b"7z\xbc\xaf\x27\x1c", "7z"),
+    (b"PK\x03\x04", "zip"),
+    (b"PK\x05\x06", "zip"),
+    (b"PK\x07\x08", "zip"),
+    (b"Rar!\x1a\x07", "rar"),
+    (b"\x1f\x9d", "compress"),
+    (b"\xff\x06\x00\x00sNaPpY", "snappy"),
+    (b"LZIP", "lzip"),
+    (b"\x89LZO", "lzo"),
+    (b"MSCF", "cab"),
+    (b"PAR1", "parquet"),
+    (b"ARROW1", "arrow"),
+    (b"Obj\x01", "avro"),
+    (b"\x89HDF\r\n\x1a\n", "hdf5"),
+    (b"CDF\x01", "netcdf"),
+    (b"CDF\x02", "netcdf"),
+    (b"GRIB", "grib"),
+    (b"SQLite format 3\x00", "sqlite"),
+    (b"\x93NUMPY", "numpy"),
+    (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "ole2 (xls)"),
+    (b"%PDF-", "pdf"),
+    (b"MATLAB 5.0 MAT-file", "matlab"),
+    (b"\x00\x00\x27\x0a", "shapefile"),
+];
+
+/// The data format a file's content shows, if any: a known signature, a
+/// tar header, or a Python pickle stream (ADV23R7-02).
+#[must_use]
+pub fn data_signature(bytes: &[u8]) -> Option<&'static str> {
+    if let Some((_, name)) = DATA_SIGNATURES
+        .iter()
+        .find(|(magic, _)| bytes.starts_with(magic))
+    {
+        return Some(name);
+    }
+    if bytes.starts_with(b"BZh") && bytes.get(3).is_some_and(|b| (b'1'..=b'9').contains(b)) {
+        return Some("bzip2");
+    }
+    if bytes.get(257..262) == Some(b"ustar") {
+        return Some("tar");
+    }
+    if bytes.len() > 2 && bytes[0] == 0x80 && (2..=5).contains(&bytes[1]) {
+        return Some("pickle");
+    }
+    // DuckDB keeps its magic after an 8-byte checksum.
+    if bytes.get(8..12) == Some(b"DUCK") {
+        return Some("duckdb");
+    }
+    None
+}
+
 /// Checks tracked paths for data and key files. `records` are the
 /// (licence status, file) entries of every provenance manifest and sources
 /// table. A data file is allowed only as an exact listed metadata/fixture
@@ -658,6 +718,19 @@ pub fn check_paths(
     paths: &[String],
     document: &DocumentMut,
     records: &[(String, String)],
+) -> Vec<Finding> {
+    check_paths_with_content(paths, document, records, &BTreeMap::new())
+}
+
+/// [`check_paths`] with the data formats detected from file content
+/// (`sniffed`: path to format). A file whose content is data is data even
+/// when its extension is not listed (ADV23R7-02).
+#[must_use]
+pub fn check_paths_with_content(
+    paths: &[String],
+    document: &DocumentMut,
+    records: &[(String, String)],
+    sniffed: &BTreeMap<String, &str>,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
     let data_extensions = string_array(&document["data_extensions"]);
@@ -715,9 +788,11 @@ pub fn check_paths(
                 ),
             ));
         }
+        let content = sniffed.get(path);
         let is_data = data_extensions
             .iter()
-            .any(|ext| lower.ends_with(ext.as_str()));
+            .any(|ext| lower.ends_with(ext.as_str()))
+            || content.is_some();
         if !is_data || listed_metadata {
             continue;
         }
@@ -725,7 +800,13 @@ pub fn check_paths(
             findings.push(Finding::at(
                 path,
                 None,
-                "data file outside the allow-listed open-commercial sample paths (D-56)",
+                match content {
+                    Some(format) => format!(
+                        "data file ({format} content) outside the allow-listed open-commercial sample paths (D-56)"
+                    ),
+                    None => "data file outside the allow-listed open-commercial sample paths (D-56)"
+                        .to_owned(),
+                },
             ));
         } else if !statuses.is_some_and(|s| s.contains("open-commercial")) {
             findings.push(Finding::at(
@@ -922,10 +1003,14 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let mut manifests = 0;
     let secret_exemptions = load_secret_exemptions(&document)?;
     let metadata = string_array(&document["data_metadata_files"]);
+    let mut sniffed = BTreeMap::new();
     for path in &paths {
         let name = path.rsplit('/').next().unwrap_or(path);
         let bytes =
             std::fs::read(ctx.repo.join(path)).map_err(|error| format!("{path}: {error}"))?;
+        if let Some(format) = data_signature(&bytes) {
+            sniffed.insert(path.clone(), format);
+        }
         let text = String::from_utf8_lossy(&bytes);
         findings.extend(misnamed_manifest(path, &text, &metadata));
         if name == MANIFEST_NAME {
@@ -956,7 +1041,9 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             "no provenance manifest found; the gate would be vacuous",
         ));
     }
-    findings.extend(check_paths(&paths, &document, &records));
+    findings.extend(check_paths_with_content(
+        &paths, &document, &records, &sniffed,
+    ));
     Ok(findings)
 }
 
@@ -1474,6 +1561,73 @@ mod tests {
             .is_none()
         );
         assert!(misnamed_manifest("data/manifest.toml", record, &[]).is_none());
+    }
+
+    // ADV23R7-02: compressed and archive formats count as data by name, and
+    // data is detected by content whatever its name.
+    #[test]
+    fn adv23r7_02_compressed_and_sniffed_data_is_gated() {
+        let document: DocumentMut = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/repository.toml"),
+        )
+        .expect("policy")
+        .parse()
+        .expect("toml");
+        for path in [
+            "spikes/grid_metrics.zst",
+            "spikes/transmission_data.lz4",
+            "data/flows.csv.zstandard",
+            "data/a.xz",
+            "data/a.bz2",
+            "data/a.7z",
+            "data/a.br",
+            "data/a.tgz",
+            "data/a.rar",
+            "data/a.avro",
+        ] {
+            let found = check_paths(&paths(&[path]), &document, &[]);
+            assert_eq!(found.len(), 1, "{path}: {found:?}");
+        }
+        let mut tar = vec![0_u8; 512];
+        tar[257..262].copy_from_slice(b"ustar");
+        let samples: Vec<(&str, Vec<u8>)> = vec![
+            ("zstd", vec![0x28, 0xb5, 0x2f, 0xfd, 0, 0]),
+            ("lz4", vec![0x04, 0x22, 0x4d, 0x18, 0]),
+            ("xz", b"\xfd7zXZ\x00\x00".to_vec()),
+            ("bzip2", b"BZh91AY&SY".to_vec()),
+            ("7z", b"7z\xbc\xaf\x27\x1c\x00".to_vec()),
+            ("gzip", vec![0x1f, 0x8b, 8, 0]),
+            ("zip", b"PK\x03\x04rest".to_vec()),
+            ("parquet", b"PAR1....".to_vec()),
+            ("sqlite", b"SQLite format 3\x00".to_vec()),
+            ("tar", tar),
+        ];
+        for (format, bytes) in &samples {
+            assert_eq!(data_signature(bytes), Some(*format), "{format}");
+            // Renamed to an unlisted extension, the content still decides.
+            let path = "spikes/notes.bin".to_owned();
+            let sniffed = BTreeMap::from([(path.clone(), *format)]);
+            let found = check_paths_with_content(&[path], &document, &[], &sniffed);
+            assert_eq!(found.len(), 1, "{format}: {found:?}");
+            assert!(found[0].message.contains(format), "{found:?}");
+        }
+        // Controls: text and source files are not data.
+        for text in [
+            &b"# Notes\nORC and DUCK are words.\n"[..],
+            b"BZh is not a header here",
+            b"fn main() {}\n",
+            b"\x89PNG\r\n\x1a\n",
+        ] {
+            assert_eq!(data_signature(text), None, "{text:?}");
+        }
+        assert!(
+            check_paths(
+                &paths(&["crates/x/src/lib.rs", "docs/a.md"]),
+                &document,
+                &[]
+            )
+            .is_empty()
+        );
     }
 
     // ADV23R-09: grid and market exchange formats count as data.

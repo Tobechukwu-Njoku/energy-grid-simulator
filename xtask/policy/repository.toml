@@ -38,6 +38,16 @@ data_extensions = [
     ".hdf5", ".mat", ".m", ".npy", ".npz", ".pkl", ".pickle", ".json", ".jsonl",
     ".ndjson", ".xml", ".raw", ".rawx", ".sav", ".dyr", ".epc", ".sqlite", ".db",
     ".dbf", ".shp", ".gpkg", ".kml", ".kmz", ".pbf", ".osm", ".geojson", ".pdf",
+    # Compressed and archive formats (ADV23R7-02). The gate also detects data,
+    # archive and compressed files by their content, whatever their name.
+    ".zst", ".zstd", ".zstandard", ".lz4", ".lz", ".lzma", ".lzo", ".br", ".bz", ".tbz",
+    ".tbz2", ".tgz", ".txz", ".tzst", ".tlz", ".z", ".sz", ".snappy", ".rar", ".cab",
+    ".gzip", ".cpio", ".zipx", ".jar", ".war", ".ar",
+    # Further columnar, statistical and database formats.
+    ".avro", ".orc", ".ipc", ".parq", ".duckdb", ".sqlite3", ".db3", ".mdb", ".accdb",
+    ".xlsb", ".xlsm", ".rds", ".rdata", ".rda", ".dta", ".sas7bdat", ".nc4", ".he5",
+    ".zarr", ".msgpack", ".bson", ".protobuf", ".pb", ".tfrecord", ".pt", ".pth",
+    ".safetensors", ".onnx", ".joblib",
 ]
 open_commercial_data = ["spikes/data/samples/*"]
 # Exact paths of provenance records, test fixtures and non-reconstructive
