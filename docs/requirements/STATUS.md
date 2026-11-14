@@ -31,6 +31,23 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
 
+**PR #23 revision 9 (implementation, 2026-11-14):** R8-01 (GPT) and ADV23R8-01..08
+(Gemini) addressed. D-61 is implemented as written, and CodeRabbit's PR-description
+summary stays. Only the exact marker block is exempt, and only when the PR body's
+GitHub edit history (GraphQL `userContentEdits`, read-only token) shows that the
+`coderabbitai` bot introduced that block text. Spoofed markers, blocks with unverified
+provenance and text outside the block are still rejected. An unreadable history fails
+closed. Every check name in the trusted policy (`merge-gates`, the ci.yml gates, the
+trusted gates and `required_checks`) is protected in all workflows. Workflows may not
+set `LD_*`/`DYLD_*`, and the build gate removes them. The build gate and the
+workflow lint share one Python/Julia runtime-family list (PyPy, GraalPy, ...).
+CIM/RDF, PowerFactory and other network-model files are data, and CIM/RDF XML is
+also detected by content. New attribution spellings: OpenHands, Bolt, Replit and
+related domains, reviewed/fixed verbs, `under` and supervision nouns. ADR 0001 has a
+revision-9 addendum: risk 11 is clarified for hosted sudo, and risk 12 covers trust in
+GitHub edit history. Needs exact-head GPT re-review, Gemini adversarial re-check and
+triage before bootstrap attestation.
+
 **PR #23 revision 7 (implementation, 2026-11-14):** R6-01..04 (GPT) and ADV23R6-01..10
 (Gemini) addressed; the compiler-enforced design stays. Reviewed adapters are an explicit
 `[[adapter]]` list (package name AND directory) in the trusted, protected

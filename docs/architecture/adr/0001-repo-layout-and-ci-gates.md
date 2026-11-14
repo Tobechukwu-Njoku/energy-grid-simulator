@@ -494,3 +494,69 @@ Residual risk 8 is replaced:
    compiles it.
 11. The guard trusts the C driver's own and the sysroot's library directories by
     location. A build script that writes there is the same-user tampering of risk 5.
+
+## Addendum — 2026-11-14: D-61 bot summary provenance, protected check names (PR #23 revision 9)
+
+Round-8 reviews (GPT R8-01, Gemini ADV23R8-01..08) found one rule conflict and
+false negatives in revision 8. GPT's round-8 report withdraws the round-7 advice
+to remove CodeRabbit's summary: it contradicted D-61. This addendum implements D-61
+as already written and adds no other decision beyond D-52, D-56, D-73 and D-74.
+
+- **D-61 bot-managed PR-body block (R8-01).** CodeRabbit stays, including its
+  PR-description summary. The trusted `attribution-exemptions.toml` lists the bot
+  block: the bot's login (`coderabbitai`) and its exact start and end marker lines.
+  A block runs from a line that is exactly the start marker to the next line that is
+  exactly the end marker; an unterminated marker opens no block. The block's lines
+  are exempt only when its provenance is verified. The attribution job reads the PR
+  body's GitHub edit history (GraphQL `userContentEdits`, newest first, the oldest
+  entry being the author's original text) through `gh api graphql` with the job's
+  read-only token (`pull-requests: read`, no secrets). The event body must be one
+  version in that history, and the most recent introduction of exactly that block
+  text must be an edit whose actor GitHub reports as a `Bot` with the listed login.
+  An unedited body is its author's only version. The marker text and the webhook
+  sender are not evidence. Otherwise the block is not exempt and a finding names
+  the reason, and its lines are scanned like authored text. That applies to a user-written copy, a block a
+  user changed, an old bot block a user restored, another bot, a deleted edit that
+  hides the introducer, and a body missing from the history. Text outside the block
+  is always scanned. If the history cannot be read (no token, API error), the gate
+  fails closed and names that reason. Commit messages, titles and added lines have no bot
+  exemption, so the block is the only route for review-bot credit (`Reviewed by`,
+  `Summary by` and similar footers remain rejected). `--body-history FILE` replays a
+  saved GraphQL response for local checks; it is refused inside GitHub Actions.
+- **Every policy check name is protected (ADV23R8-01).** Each gate job and
+  aggregator of every gate graph (`merge-gates`, the `ci.yml` gates, the trusted
+  gates) and each `required_checks` entry of `gates.toml` is protected in all
+  workflows, trusted ones included. Only the owning workflow's job with exactly that id may carry
+  the name. `cargo xtask policy` and the trusted policy-approval gate both apply this
+  rule.
+- **Dynamic-loader variables (ADV23R8-02).** A workflow `env:` (workflow, job or
+  step) may not set any `LD_*` or `DYLD_*` variable; `allowed_env` cannot allow one.
+  The build gate's Cargo, the C driver probe and the linker also run without them.
+- **One runtime-family list (ADV23R8-03).** The build gate's link checks and the
+  workflow interpreter lint share `RUNTIME_FAMILIES` (`python`, `pypy`, `pyston`,
+  `graalpy`, `jython`, `julia`). The build gate matches a family anywhere in a
+  library name, library file or link search directory (`pypy3-c`, `/opt/pypy3/lib`).
+- **Network-model data (ADV23R8-04).** Additional data extensions cover CGMES/CIM and RDF
+  serialisations (`.rdf`, `.ttl`, `.jsonld`, ...), PowerFactory (`.pfd`, `.dz`,
+  `.dgs`), PowerWorld, UCTE-DEF, IIDM, OpenDSS and GridLAB-D files. An XML document
+  that declares the RDF syntax namespace, an `rdf:RDF` element or the IEC TC57 CIM
+  or ENTSO-E namespaces is data by content, whatever its name.
+- **Attribution (ADV23R8-05..08)** adds OpenHands/OpenDevin, Bolt (as `Bolt.new`,
+  `Bolt AI`/`Agent` or `StackBlitz Bolt`), Replit and StackBlitz/All Hands, plus
+  the Tabnine, Phind, All Hands, Replit, StackBlitz and `bolt.new` domains. It also
+  adds reviewed, fixed, debugged and rewritten verbs, the `under` joiner, and the
+  supervision, oversight and direction nouns. Plain `bolt` stays allowed so
+  hardware prose passes.
+
+Residual risk 11 is clarified, and risk 12 is added:
+
+11. The guard trusts the sysroot, the C driver's own directories and the
+    `link_search_roots` OS directories (`/lib*`, `/usr/lib*`) by location. This is
+    location trust, not isolation. GitHub-hosted Linux and macOS runners grant
+    passwordless sudo, so a build script in the unprivileged job could alter those
+    directories, the Rust sysroot or the guard itself. That is the job tampering
+    of risk 5. Read-only tokens, separate trusted jobs, protected workflows and
+    exact-head review remain the controls.
+12. The D-61 exemption trusts GitHub's edit history and actor type. A compromised
+    bot account, or a GitHub API defect, could exempt bot-authored text. The
+    exemption never extends beyond the exact marker block.
