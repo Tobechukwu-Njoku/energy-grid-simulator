@@ -92,6 +92,20 @@ Continue, Supermaven. Residual risks 8–10 in the ADR 0001 revision-7 addendum.
 table in the PR body. Needs exact-head GPT re-review, Gemini adversarial re-check and triage
 before bootstrap attestation.
 
+**PR #23 revision-11 review (2026-11-14 UTC):** exact head
+`d71cf40d1fdae6eb62de28c366ce925ec3108579` re-reviewed; verdict **must-fix**.
+Both GPT round-10 reproductions and five Gemini findings are fixed; bare-tool
+trailers are fixed but the two original generated-by footers remain a safe tracked
+**PERIPHERAL** follow-up (R11-02). All 205 submitted tests, format, clippy, xtask all,
+the full build gate and range attribution pass. New **CORE** R11-01: a known token
+signature in ordinary UTF-16/32 text passes provenance; the UTF-8 control fails.
+The BOM-bearing UTF-16 fixture also passes xtask all and remains undetected after
+being committed in a disposable clone. No live credential or restricted data was
+used. Do not attest this head as the one-time bootstrap seed until that defect is
+fixed and the resulting head reviewed. Reproductions, round-10 mappings/triage and
+the M0 limitation assessment: [revision-11 report](reviews/gpt-2026-11-14-pr23-r11.md).
+PR #23 was not modified.
+
 **PR #23 revision-10 review (2026-11-14 UTC):** exact head
 `88148f01fe91dc6f3f62577d3130ca1e3261fab9` re-reviewed; verdict **must-fix**.
 All twelve round-9 reproductions are addressed; all 197 submitted tests, the full
