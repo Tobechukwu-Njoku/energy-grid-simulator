@@ -7,6 +7,17 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #52 M1 inventory re-check (2026-11-14 UTC):** exact revised head
+`e5ec7171e2d1b57ec9c89bee6343cbbbcd7264f2`; verdict **must-fix**.
+All 18 original findings mapped: nine applied at inventory level, nine partial.
+Remaining defects include unsupported UK ETS OGL clearance, a new demand equation
+that double-subtracts pumping, unsourced per-link loss percentages, unsupported
+evidence/access claims, inconsistent Greenlink interpretations and unreconciled
+source counts. Changed public endpoints and weather/licence terms spot-checked;
+corrected demand CSV and both cached SEMO archives match committed hashes.
+Inventory unchanged; no M1 acceptance or heavy work claimed. Evidence:
+[round-2 re-check](reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md).
+
 **PR #52 M1 inventory review (2026-11-14 UTC):** exact head
 `e7e992e3f213a8d8645bb5e58ea1d7592c55a908` independently checked under D-51;
 verdict **must-fix**. All 77 external link URLs and 15 repository-relative
