@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{Repo, TempDir, footer, root, trailer};
+use common::{Repo, TempDir, footer, j, root, trailer};
 use xtask::attribution::{Range, scan_range};
 use xtask::util::Ctx;
 
@@ -32,6 +32,7 @@ fn scan(repo: &Repo, policy: &TempDir, base: &str, title: Option<&str>) -> Vec<S
         head: repo.git(&["rev-parse", "HEAD"]),
         title: title.map(str::to_owned),
         body: None,
+        body_history: None,
     };
     let (findings, _) = scan_range(&ctx, &range).expect("scan");
     findings
@@ -186,6 +187,7 @@ fn adv23_17_exemptions_are_line_scoped() {
         head: repo.git(&["rev-parse", "HEAD"]),
         title: None,
         body: None,
+        body_history: None,
     };
     assert!(
         scan_range(&ctx, &range).is_err(),
@@ -217,7 +219,7 @@ fn f3_trailing_comment_is_rejected_end_to_end() {
 // message and the diff are clean.
 #[test]
 fn adv23r_05_ai_commit_identity_is_rejected() {
-    let ai = common::j(&["Cla", "ude Code <cla", "ude@anthropic.com>"]);
+    let ai = j(&["Cla", "ude Code <cla", "ude@anthropic.com>"]);
     let (repo, policy, base) = setup();
     repo.write("src/lib.rs", "pub fn solve() {}\n");
     repo.git(&["add", "-A"]);
@@ -233,7 +235,7 @@ fn adv23r_05_ai_commit_identity_is_rejected() {
         .arg("-C")
         .arg(repo.path())
         .args(["commit", "-q", "-m", "feat: solver stub"])
-        .env("GIT_COMMITTER_NAME", common::j(&["Gem", "ini"]))
+        .env("GIT_COMMITTER_NAME", j(&["Gem", "ini"]))
         .env("GIT_COMMITTER_EMAIL", "bot@example.org")
         .output()
         .expect("git");
@@ -258,4 +260,149 @@ fn adv23r_05_ai_commit_identity_is_rejected() {
         "feat: solver stub",
     ]);
     assert!(scan(&repo, &policy, &base, None).is_empty());
+}
+
+/// Runs the CLI attribution scan on a `pull_request` event, with an optional
+/// saved GraphQL edit history; `gh` gets no credentials.
+fn run_event(
+    repo: &Repo,
+    policy: &TempDir,
+    body: &str,
+    history: Option<&serde_json::Value>,
+    actions: bool,
+) -> (i32, String) {
+    let scratch = TempDir::new("event");
+    let head = repo.git(&["rev-parse", "HEAD"]);
+    let event = serde_json::json!({
+        "action": "edited",
+        "pull_request": {
+            "number": 7, "title": "feat: checks", "body": body,
+            "base": {"sha": head}, "head": {"sha": head},
+            "user": {"login": "owner"}
+        },
+        "repository": {"full_name": "o/r"},
+        "sender": {"login": j(&["code", "rabbitai[bot]"]), "type": "Bot"}
+    });
+    let event_path = scratch.path().join("event.json");
+    std::fs::write(&event_path, event.to_string()).expect("event");
+    let gh_config = scratch.path().join("gh");
+    std::fs::create_dir_all(&gh_config).expect("gh config");
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_xtask"));
+    command
+        .arg("--repo")
+        .arg(repo.path())
+        .arg("--policy")
+        .arg(policy.path())
+        .arg("attribution")
+        .env("GITHUB_EVENT_NAME", "pull_request")
+        .env("GITHUB_EVENT_PATH", &event_path)
+        .env("GH_CONFIG_DIR", &gh_config)
+        .env_remove("GH_TOKEN")
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GH_ENTERPRISE_TOKEN")
+        .env_remove("GITHUB_ACTIONS");
+    if actions {
+        command.env("GITHUB_ACTIONS", "true");
+    }
+    if let Some(history) = history {
+        let path = scratch.path().join("history.json");
+        std::fs::write(&path, history.to_string()).expect("history");
+        command.arg("--body-history").arg(path);
+    }
+    let output = command.output().expect("run xtask");
+    (
+        output.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&output.stdout).into_owned(),
+    )
+}
+
+/// A GraphQL response page; `edits` are (login, is bot, body), oldest first.
+fn history(edits: &[(&str, bool, &str)]) -> serde_json::Value {
+    let nodes: Vec<serde_json::Value> = edits
+        .iter()
+        .enumerate()
+        .rev()
+        .map(|(index, (login, bot, text))| {
+            serde_json::json!({
+                "editedAt": format!("2026-11-14T00:00:{index:02}Z"),
+                "deletedAt": null,
+                "diff": text,
+                "editor": {"__typename": if *bot { "Bot" } else { "User" }, "login": login}
+            })
+        })
+        .collect();
+    serde_json::json!({"data": {"repository": {"pullRequest": {
+        "body": edits.last().map(|edit| edit.2),
+        "author": {"__typename": "User", "login": "owner"},
+        "userContentEdits": {"pageInfo": {"hasNextPage": false}, "nodes": nodes}
+    }}}})
+}
+
+// R8-01 (D-61): through the CLI event path, a review bot's PR-description
+// summary block passes only when its edit history shows the bot added it.
+// The reviewer's replay (same body, bot or user sender) exited 1 at bcd4b2c.
+#[test]
+fn r8_01_bot_summary_block_needs_verified_provenance() {
+    let (repo, policy, _) = setup();
+    let bot = j(&["code", "rabbitai"]);
+    let block = [
+        j(&[
+            "<!-- This is an auto-generated comment: release notes by code",
+            "rabbit.ai -->",
+        ]),
+        j(&["## Summary by Code", "Rabbit"]),
+        String::new(),
+        "* Add checks.".to_owned(),
+        j(&[
+            "<!-- end of auto-generated comment: release notes by code",
+            "rabbit.ai -->",
+        ]),
+    ]
+    .join("\n");
+    let body = format!("Implement M0 checks.\n\n{block}\n");
+
+    // Genuine bot block: passes.
+    let genuine = history(&[
+        ("owner", false, "Implement M0 checks."),
+        (&bot, true, &body),
+    ]);
+    let (code, out) = run_event(&repo, &policy, &body, Some(&genuine), false);
+    assert_eq!(code, 0, "{out}");
+
+    // The same block written by a user: fails.
+    let spoofed = history(&[
+        ("owner", false, "Implement M0 checks."),
+        ("owner", false, &body),
+    ]);
+    let (code, out) = run_event(&repo, &policy, &body, Some(&spoofed), false);
+    assert_eq!(code, 1, "{out}");
+    assert!(out.contains("not exempt (D-61)"), "{out}");
+
+    // Extra credit outside a genuine block: fails on that line only.
+    let extra = format!("Implement M0 checks.\n{}\n\n{block}\n", footer());
+    let added = history(&[
+        ("owner", false, "Implement M0 checks."),
+        (&bot, true, &body),
+        ("owner", false, &extra),
+    ]);
+    let (code, out) = run_event(&repo, &policy, &extra, Some(&added), false);
+    assert_eq!(code, 1, "{out}");
+    assert!(
+        out.contains("pull request body line 2: attribution"),
+        "{out}"
+    );
+    assert!(!out.contains("D-61"), "{out}");
+
+    // No usable edit history (gh has no credentials here): fails closed.
+    let (code, out) = run_event(&repo, &policy, &body, None, false);
+    assert_eq!(code, 1, "{out}");
+    assert!(out.contains("could not be verified"), "{out}");
+
+    // A saved history is refused inside GitHub Actions.
+    let (code, out) = run_event(&repo, &policy, &body, Some(&genuine), true);
+    assert_eq!(code, 2, "{out}");
+
+    // A body without a bot block needs no history at all.
+    let (code, out) = run_event(&repo, &policy, "Implement M0 checks.\n", None, false);
+    assert_eq!(code, 0, "{out}");
 }

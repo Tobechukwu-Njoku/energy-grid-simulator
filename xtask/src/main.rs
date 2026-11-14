@@ -31,7 +31,11 @@ commands:
   attribution    AI-attribution scan (D-52) of a range:
                    --base REV --head REV [--title T] [--body-file F]
                  or, in GitHub Actions, the range and metadata of the event;
-                 --base-ref REV replaces the event base (CI: current main)
+                 --base-ref REV replaces the event base (CI: current main).
+                 A bot-managed PR-body block (D-61) is exempt only when the
+                 body's GitHub edit history (gh api graphql, GH_TOKEN) shows
+                 the bot introduced it; --body-history FILE replays a saved
+                 GraphQL response locally (refused in GitHub Actions)
   review         independent-review evidence gate: --main REV (current main,
                  also the evidence tree); head from the pull-request event
   approval       protected-path owner approval gate: --main REV; event fields
@@ -113,7 +117,8 @@ fn run_docs(ctx: &Ctx) -> Result<bool, String> {
 }
 
 fn run_attribution(args: &Args) -> Result<bool, String> {
-    let range = if let Some(head) = option(args, "--head") {
+    let mut pull = None;
+    let mut range = if let Some(head) = option(args, "--head") {
         let body = option(args, "--body-file")
             .map(std::fs::read_to_string)
             .transpose()
@@ -123,9 +128,13 @@ fn run_attribution(args: &Args) -> Result<bool, String> {
             head: head.to_owned(),
             title: option(args, "--title").map(str::to_owned),
             body,
+            body_history: None,
         }
     } else if let Some((name, value)) = event()? {
         let mut range = attribution::Range::from_event(&name, &value)?;
+        if range.body.is_some() {
+            pull = Some(review_gates::PullRequest::from_event(&value));
+        }
         if let Some(base) = option(args, "--base-ref") {
             range.base = Some(base.to_owned());
         }
@@ -133,6 +142,35 @@ fn run_attribution(args: &Args) -> Result<bool, String> {
     } else {
         return Err("attribution: pass --head (and --base) outside GitHub Actions".to_owned());
     };
+    let rules = attribution::load_bot_blocks(&args.ctx)?;
+    if range
+        .body
+        .as_deref()
+        .is_some_and(|body| attribution::has_bot_block(body, &rules))
+    {
+        range.body_history = Some(if let Some(file) = option(args, "--body-history") {
+            if std::env::var_os("GITHUB_ACTIONS").is_some() {
+                return Err(
+                    "--body-history is for local replays; in GitHub Actions the edit history comes from the GitHub API"
+                        .to_owned(),
+                );
+            }
+            let text = std::fs::read_to_string(file).map_err(|e| format!("--body-history: {e}"))?;
+            let value: serde_json::Value =
+                serde_json::from_str(&text).map_err(|e| format!("--body-history: {e}"))?;
+            let pages = match value {
+                serde_json::Value::Array(pages) => pages,
+                page => vec![page],
+            };
+            attribution::parse_body_history(&pages)
+        } else {
+            match pull {
+                Some(Ok(pull)) => attribution::fetch_body_history(&pull.repository, pull.number),
+                Some(Err(error)) => Err(error),
+                None => Err("no pull request event to read the edit history from".to_owned()),
+            }
+        });
+    }
     let (findings, summary) = attribution::scan_range(&args.ctx, &range)?;
     println!(
         "scanned {} commit(s), {} added line(s), title={}, body={}",
@@ -207,10 +245,10 @@ fn run(args: &Args) -> Result<bool, String> {
             let main = option(args, "--main").ok_or("approval: --main REV required")?;
             let value = pull_request_event()?;
             let pull = review_gates::PullRequest::from_event(&value)?;
-            let (files, jobs) = workflows::Policy::load(&args.ctx)?.trusted_gates();
+            let gates = workflows::Policy::load(&args.ctx)?.protected_gates();
             Ok(report(
                 "policy-approval",
-                &review_gates::policy_approval(&args.ctx, main, &pull, &files, &jobs)?,
+                &review_gates::policy_approval(&args.ctx, main, &pull, &gates)?,
             ))
         }
         "all" => {

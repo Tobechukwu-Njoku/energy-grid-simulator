@@ -1,6 +1,21 @@
 # Attribution-scan exemptions (ADR 0001): each names ONE exact added line in ONE
 # file, with a reason. No wildcards and no whole-file or directory exemptions.
-# Commit messages, PR titles and PR bodies are never exempt. Test fixtures build
-# attribution text at runtime instead of needing an exemption.
+# Commit messages and PR titles are never exempt; PR bodies only through a
+# provenance-verified bot_block below. Test fixtures build attribution text at
+# runtime instead of needing an exemption.
 # Changing this file needs the policy owner's review (.github/CODEOWNERS).
 exemption = []
+
+# D-61 (R8-01): CodeRabbit stays, including its PR-description summary. Only the
+# exact block from a `start` marker line to the next `end` marker line is exempt,
+# and only when the PR body's GitHub edit history (GraphQL userContentEdits) shows
+# that the most recent introduction of exactly that block text was an edit by
+# the bot account `login`. Spoofed markers, a block introduced or changed by
+# anyone else, and all text outside the block are scanned as authored text; if
+# the history cannot be read the gate fails closed. The markers use \u escapes so
+# this file holds no literal tool credit.
+[[bot_block]]
+login = "coderabbitai"
+start = "<!-- This is an auto-generated comment: release notes by coderabbit.ai -->"
+end = "<!-- end of auto-generated comment: release notes by coderabbit.ai -->"
+reason = "D-61: the owner keeps CodeRabbit's PR-description summaries"

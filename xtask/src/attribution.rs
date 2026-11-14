@@ -17,9 +17,18 @@
 //! are neither letters, digits nor white space, so comments in any language
 //! are covered without a per-language list (R2/ADV23-01, ADV23R3-03).
 //! Exemptions name one exact line in one file (ADV23-17).
+//!
+//! D-61 (R8-01): a bot-managed block of the PR body (for example a review
+//! bot's release-notes summary between its start and end markers) is exempt
+//! only when the trusted policy lists the markers and the bot, AND the PR
+//! body's GitHub edit history shows that this bot introduced exactly that
+//! block text. Spoofed markers, a block whose most recent introduction was by
+//! anyone else, and all text outside the block are scanned as authored text.
+//! Without the edit history the gate fails closed.
 
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::process::Command;
 use std::sync::OnceLock;
 
 use fancy_regex::{Regex, RegexBuilder};
@@ -497,6 +506,9 @@ pub struct Range {
     pub title: Option<String>,
     /// Pull request body.
     pub body: Option<String>,
+    /// Edit history of the PR body, oldest first, or why it is unavailable.
+    /// Needed only when the body holds a bot-managed block (D-61).
+    pub body_history: Option<BodyHistory>,
 }
 
 impl Range {
@@ -521,6 +533,7 @@ impl Range {
                     head: sha(&pull["head"]["sha"])?.ok_or("event: no head SHA")?,
                     title: Some(pull["title"].as_str().unwrap_or_default().to_owned()),
                     body: Some(pull["body"].as_str().unwrap_or_default().to_owned()),
+                    body_history: None,
                 })
             }
             "push" => Ok(Self {
@@ -528,6 +541,7 @@ impl Range {
                 head: sha(&event["after"])?.ok_or("event: no head SHA")?,
                 title: None,
                 body: None,
+                body_history: None,
             }),
             other => Err(format!("unsupported event {other}")),
         }
@@ -580,6 +594,326 @@ pub fn load_exemptions(ctx: &Ctx) -> Result<Vec<Exemption>, String> {
         }
     }
     Ok(found)
+}
+
+/// A bot-managed block of the PR body (D-61), from the trusted policy.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BotBlock {
+    /// GitHub login of the bot app that writes the block (GraphQL form,
+    /// without `[bot]`).
+    pub login: String,
+    /// Exact start-marker line.
+    pub start: String,
+    /// Exact end-marker line.
+    pub end: String,
+}
+
+/// Loads the `[[bot_block]]` entries of the trusted exemptions file. Each
+/// needs a login, two distinct HTML-comment marker lines and a reason.
+///
+/// # Errors
+///
+/// Fails on a malformed entry.
+pub fn load_bot_blocks(ctx: &Ctx) -> Result<Vec<BotBlock>, String> {
+    let document = ctx.policy_toml(EXEMPTIONS)?;
+    let mut found = Vec::new();
+    if let Some(tables) = document
+        .get("bot_block")
+        .and_then(toml_edit::Item::as_array_of_tables)
+    {
+        for table in tables {
+            let field = |key: &str| {
+                table
+                    .get(key)
+                    .and_then(toml_edit::Item::as_str)
+                    .map(|text| text.trim().to_owned())
+                    .filter(|text| !text.is_empty())
+            };
+            let (Some(login), Some(start), Some(end), Some(_reason)) = (
+                field("login"),
+                field("start"),
+                field("end"),
+                field("reason"),
+            ) else {
+                return Err(format!(
+                    "{EXEMPTIONS}: every bot_block needs login, start, end and reason"
+                ));
+            };
+            let marker = |text: &str| text.starts_with("<!--") && text.ends_with("-->");
+            if start == end || !marker(&start) || !marker(&end) {
+                return Err(format!(
+                    "{EXEMPTIONS}: bot_block markers for {login} must be two distinct HTML comments"
+                ));
+            }
+            found.push(BotBlock { login, start, end });
+        }
+    }
+    Ok(found)
+}
+
+/// Who wrote one version of the PR body.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Editor {
+    /// GitHub login.
+    pub login: String,
+    /// Whether GitHub reports the actor as a `Bot` (an app), not a user.
+    pub bot: bool,
+}
+
+/// One version of the PR body in its edit history.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BodyVersion {
+    /// The editor; `None` for a deleted account.
+    pub editor: Option<Editor>,
+    /// The full body after the edit; `None` when the edit was deleted.
+    pub text: Option<String>,
+}
+
+/// PR body versions, oldest first, or why they could not be read.
+pub type BodyHistory = Result<Vec<BodyVersion>, String>;
+
+/// The GraphQL query for the PR body and its edit history.
+pub const BODY_HISTORY_QUERY: &str = "query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){pullRequest(number:$number){body author{__typename login} userContentEdits(first:100,after:$cursor){pageInfo{hasNextPage endCursor} nodes{editedAt deletedAt diff editor{__typename login}}}}}}";
+
+/// Builds the version list from GraphQL response pages of
+/// [`BODY_HISTORY_QUERY`]. GitHub lists edits newest first; the oldest edit
+/// is the original text by the author. A body that was never edited has no
+/// edits: its only version is the current body, by the author.
+///
+/// # Errors
+///
+/// Fails on a GraphQL error or a response without the pull request.
+pub fn parse_body_history(pages: &[serde_json::Value]) -> Result<Vec<BodyVersion>, String> {
+    let editor = |value: &serde_json::Value| {
+        value["login"].as_str().map(|login| Editor {
+            login: login.to_owned(),
+            bot: value["__typename"].as_str() == Some("Bot"),
+        })
+    };
+    let mut nodes = Vec::new();
+    let mut first = None;
+    for page in pages {
+        if let Some(errors) = page.get("errors") {
+            return Err(format!("GraphQL error: {}", clip(&errors.to_string())));
+        }
+        let pull = &page["data"]["repository"]["pullRequest"];
+        if !pull.is_object() {
+            return Err("GraphQL response has no pull request".to_owned());
+        }
+        first.get_or_insert(pull);
+        let edits = pull["userContentEdits"]["nodes"]
+            .as_array()
+            .ok_or("GraphQL response has no edit list")?;
+        nodes.extend(edits.iter());
+    }
+    let pull = first.ok_or("no GraphQL response")?;
+    if nodes.is_empty() {
+        return Ok(vec![BodyVersion {
+            editor: editor(&pull["author"]),
+            text: pull["body"].as_str().map(str::to_owned),
+        }]);
+    }
+    nodes.reverse();
+    nodes.sort_by(|a, b| {
+        let at =
+            |node: &serde_json::Value| node["editedAt"].as_str().unwrap_or_default().to_owned();
+        at(a).cmp(&at(b))
+    });
+    Ok(nodes
+        .into_iter()
+        .map(|node| BodyVersion {
+            editor: editor(&node["editor"]),
+            text: if node["deletedAt"].is_null() {
+                node["diff"].as_str().map(str::to_owned)
+            } else {
+                None
+            },
+        })
+        .collect())
+}
+
+/// Reads the PR body's edit history with `gh api graphql` (the job's
+/// read-only token in `GH_TOKEN`). Any failure is returned as the reason the
+/// history is unavailable, so the gate fails closed.
+///
+/// # Errors
+///
+/// Returns why the history could not be read.
+pub fn fetch_body_history(repository: &str, number: u64) -> BodyHistory {
+    let (owner, name) = repository
+        .split_once('/')
+        .ok_or_else(|| format!("invalid repository {repository}"))?;
+    let mut pages = Vec::new();
+    let mut cursor: Option<String> = None;
+    for _ in 0..50 {
+        let mut command = Command::new("gh");
+        command.args([
+            "api",
+            "graphql",
+            "--hostname",
+            "github.com",
+            "-f",
+            &format!("query={BODY_HISTORY_QUERY}"),
+            "-f",
+            &format!("owner={owner}"),
+            "-f",
+            &format!("name={name}"),
+            "-F",
+            &format!("number={number}"),
+        ]);
+        if let Some(cursor) = &cursor {
+            command.args(["-f", &format!("cursor={cursor}")]);
+        }
+        let output = command.output().map_err(|error| format!("gh: {error}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "gh api graphql failed: {}",
+                clip(String::from_utf8_lossy(&output.stderr).trim())
+            ));
+        }
+        let page: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| format!("gh api graphql: {error}"))?;
+        let info = &page["data"]["repository"]["pullRequest"]["userContentEdits"]["pageInfo"];
+        let next = info["hasNextPage"]
+            .as_bool()
+            .unwrap_or(false)
+            .then(|| info["endCursor"].as_str().map(str::to_owned))
+            .flatten();
+        pages.push(page);
+        match next {
+            Some(next) => cursor = Some(next),
+            None => return parse_body_history(&pages),
+        }
+    }
+    Err("edit history has more than 50 pages".to_owned())
+}
+
+/// CRLF line ends as LF, so the event body and the stored history compare.
+#[must_use]
+pub fn normalise_body(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
+/// Bot-managed blocks of a body: (rule index, first line, last line), with
+/// zero-based inclusive line indices over [`split_lines`]. A block runs from
+/// a line that is exactly a start marker to the next exact end-marker line;
+/// an unterminated start opens no block.
+fn blocks(lines: &[&str], rules: &[BotBlock]) -> Vec<(usize, usize, usize)> {
+    let mut found = Vec::new();
+    let mut index = 0;
+    while index < lines.len() {
+        let line = lines[index].trim();
+        let opened = rules.iter().position(|rule| rule.start == line);
+        if let Some(rule) = opened
+            && let Some(offset) = lines[index + 1..]
+                .iter()
+                .position(|candidate| candidate.trim() == rules[rule].end)
+        {
+            let end = index + 1 + offset;
+            found.push((rule, index, end));
+            index = end + 1;
+            continue;
+        }
+        index += 1;
+    }
+    found
+}
+
+/// Whether a body holds any bot-managed block of the policy.
+#[must_use]
+pub fn has_bot_block(body: &str, rules: &[BotBlock]) -> bool {
+    let body = normalise_body(body);
+    let lines: Vec<&str> = split_lines(&body).collect();
+    !blocks(&lines, rules).is_empty()
+}
+
+fn block_texts(text: &str, rules: &[BotBlock], rule: usize) -> Vec<String> {
+    let text = normalise_body(text);
+    let lines: Vec<&str> = split_lines(&text).collect();
+    blocks(&lines, rules)
+        .into_iter()
+        .filter(|(found, _, _)| *found == rule)
+        .map(|(_, first, last)| lines[first..=last].join("\n"))
+        .collect()
+}
+
+/// Why a block is not verified as the bot's, or `None` when the most recent
+/// introduction of exactly this block text was an edit by the policy's bot.
+fn unverified(
+    body: &str,
+    block: &str,
+    rules: &[BotBlock],
+    rule: usize,
+    versions: &[BodyVersion],
+) -> Option<String> {
+    let contains = |text: &str| block_texts(text, rules, rule).iter().any(|b| b == block);
+    let Some(mut first) = versions
+        .iter()
+        .rposition(|version| version.text.as_deref().map(normalise_body).as_deref() == Some(body))
+    else {
+        return Some(
+            "the scanned body is not a version in its GitHub edit history (re-run the check)"
+                .to_owned(),
+        );
+    };
+    while first > 0 {
+        match versions[first - 1].text.as_deref() {
+            None => {
+                return Some(
+                    "a deleted edit in the history hides who introduced the block".to_owned(),
+                );
+            }
+            Some(text) if contains(text) => first -= 1,
+            Some(_) => break,
+        }
+    }
+    let wanted = &rules[rule].login;
+    match &versions[first].editor {
+        Some(editor) if editor.bot && editor.login.eq_ignore_ascii_case(wanted) => None,
+        Some(editor) => Some(format!(
+            "the block was introduced by `{}`{}, not by the bot `{wanted}`",
+            editor.login,
+            if editor.bot { " (a different bot)" } else { "" }
+        )),
+        None => Some(format!(
+            "the block was introduced by a deleted account, not by the bot `{wanted}`"
+        )),
+    }
+}
+
+/// One-based body lines exempt as verified bot-managed blocks (D-61), and a
+/// finding for every block that is not verified. An unverified block's lines
+/// are not exempt, so they are scanned like any authored text.
+#[must_use]
+pub fn bot_block_lines(
+    body: &str,
+    rules: &[BotBlock],
+    history: Option<&BodyHistory>,
+) -> (BTreeSet<usize>, Vec<Finding>) {
+    let body = normalise_body(body);
+    let lines: Vec<&str> = split_lines(&body).collect();
+    let mut exempt = BTreeSet::new();
+    let mut findings = Vec::new();
+    for (rule, first, last) in blocks(&lines, rules) {
+        let block = lines[first..=last].join("\n");
+        let reason = match history {
+            None => Some("no edit history was provided to verify it".to_owned()),
+            Some(Err(error)) => Some(format!(
+                "its edit provenance could not be verified ({error}); the gate fails closed"
+            )),
+            Some(Ok(versions)) => unverified(&body, &block, rules, rule, versions),
+        };
+        match reason {
+            None => exempt.extend(first + 1..=last + 1),
+            Some(reason) => findings.push(Finding::general(format!(
+                "pull request body lines {}-{}: bot-managed block of `{}` is not exempt (D-61): {reason}",
+                first + 1,
+                last + 1,
+                rules[rule].login
+            ))),
+        }
+    }
+    (exempt, findings)
 }
 
 /// Counts reported after a scan.
@@ -647,17 +981,27 @@ pub fn scan_range(ctx: &Ctx, range: &Range) -> Result<(Vec<Finding>, Summary), S
             ))),
         }
     }
-    for (label, text) in [
-        ("pull request title", &range.title),
-        ("pull request body", &range.body),
-    ] {
-        if let Some(text) = text {
-            for (line, content) in patterns.scan_text(text) {
-                findings.push(Finding::general(format!(
-                    "{label} line {line}: attribution: {}",
-                    clip(&content)
-                )));
+    if let Some(title) = &range.title {
+        for (line, content) in patterns.scan_text(title) {
+            findings.push(Finding::general(format!(
+                "pull request title line {line}: attribution: {}",
+                clip(&content)
+            )));
+        }
+    }
+    if let Some(body) = &range.body {
+        let body = normalise_body(body);
+        let rules = load_bot_blocks(ctx)?;
+        let (exempt, notes) = bot_block_lines(&body, &rules, range.body_history.as_ref());
+        findings.extend(notes);
+        for (line, content) in patterns.scan_text(&body) {
+            if exempt.contains(&line) {
+                continue;
             }
+            findings.push(Finding::general(format!(
+                "pull request body line {line}: attribution: {}",
+                clip(&content)
+            )));
         }
     }
 
@@ -1622,6 +1966,285 @@ mod tests {
         ] {
             assert!(!p.matches_line(line), "false positive: {line}");
         }
+    }
+
+    // ADV23R8-05..08: OpenHands/OpenDevin, Bolt, Replit; Tabnine, Phind,
+    // All Hands, Replit, StackBlitz domains; reviewed/fixed verbs; `under`
+    // and supervision nouns. Review-bot credit outside its verified D-61
+    // block stays rejected (R8-01).
+    #[test]
+    fn adv23r8_05_08_attribution_spellings_are_detected() {
+        let p = patterns();
+        let claude = j(&["Cla", "ude"]);
+        let rabbit = j(&["Code", "Rabbit"]);
+        let trailer = j(&["Co-Auth", "ored-By: "]);
+        let mut missed = Vec::new();
+        let lines = [
+            // ADV23R8-05: autonomous agents.
+            j(&["Generated with Open", "Hands"]),
+            format!("{trailer}{}", j(&["Open", "Hands"])),
+            format!("{trailer}{}", j(&["Open", "Devin"])),
+            j(&["Generated with Bo", "lt.new"]),
+            j(&["Generated with Rep", "lit Agent"]),
+            format!("{trailer}{}", j(&["Rep", "lit Agent"])),
+            j(&["Built with Stack", "Blitz Bo", "lt"]),
+            // ADV23R8-06: vendor e-mail domains.
+            format!("{trailer}Assistant <assistant@{}>", j(&["tab", "nine.com"])),
+            format!("{trailer}Assistant <assistant@{}>", j(&["ph", "ind.com"])),
+            format!(
+                "{trailer}Assistant <assistant@{}>",
+                j(&["all-", "hands.dev"])
+            ),
+            format!("{trailer}Assistant <assistant@{}>", j(&["rep", "lit.com"])),
+            format!(
+                "{trailer}Assistant <assistant@{}>",
+                j(&["stack", "blitz.com"])
+            ),
+            // ADV23R8-07: reviewed and fixed verbs.
+            format!("Reviewed by {claude}"),
+            format!("Reviewed with {claude}"),
+            format!("Reviewed by {rabbit}"),
+            format!("Fixed by {claude}"),
+            format!("Fixed with {claude}"),
+            format!("Refactored with {claude}"),
+            format!("Debugged with {claude}"),
+            // ADV23R8-08: `under` and supervision nouns.
+            format!("Written under the guidance of {claude}"),
+            format!("Written under the supervision of {claude}"),
+            format!("Written with supervision from {claude}"),
+            format!("Developed under the oversight of {claude}"),
+        ];
+        for line in &lines {
+            if !p.matches_line(line) {
+                missed.push(line.clone());
+            }
+        }
+        assert!(missed.is_empty(), "missed: {missed:#?}");
+        for line in [
+            "Reviewed by the grid operator",
+            "Reviewed-by: Claude Shannon <shannon@example.org>",
+            "Fixed by restarting the solver",
+            "Fixed with a bolt and washer",
+            "Generated with Bolt-on modules",
+            "Built with bolts",
+            "Written under the guidance of the owner",
+            "Bolted joints are modelled as rigid",
+            "Fixed a Boltzmann constant typo",
+            "Replicated with the reference data",
+            "Co-authored-by: Usain Example <usain@example.com>",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
+    }
+
+    fn rabbit_rules() -> Vec<BotBlock> {
+        vec![BotBlock {
+            login: j(&["code", "rabbitai"]),
+            start: j(&[
+                "<!-- This is an auto-generated comment: release notes by code",
+                "rabbit.ai -->",
+            ]),
+            end: j(&[
+                "<!-- end of auto-generated comment: release notes by code",
+                "rabbit.ai -->",
+            ]),
+        }]
+    }
+
+    fn rabbit_block(item: &str) -> String {
+        let rules = rabbit_rules();
+        format!(
+            "{}\n{}\n\n{}\n\n* {item}\n{}",
+            rules[0].start,
+            j(&["<!-- code", "rabbit-ai-generated:v1 -->"]),
+            j(&["## Summary by Code", "Rabbit"]),
+            rules[0].end
+        )
+    }
+
+    fn version(login: &str, bot: bool, text: &str) -> BodyVersion {
+        BodyVersion {
+            editor: Some(Editor {
+                login: login.to_owned(),
+                bot,
+            }),
+            text: Some(text.to_owned()),
+        }
+    }
+
+    /// Body lines reported by the scan logic: unverified-block findings, then
+    /// attribution matches outside exempt lines.
+    fn body_findings(body: &str, history: Option<&BodyHistory>) -> Vec<String> {
+        let p = patterns();
+        let (exempt, notes) = bot_block_lines(body, &rabbit_rules(), history);
+        let mut found: Vec<String> = notes.into_iter().map(|f| f.message).collect();
+        for (line, text) in p.scan_text(&normalise_body(body)) {
+            if !exempt.contains(&line) {
+                found.push(format!("line {line}: {text}"));
+            }
+        }
+        found
+    }
+
+    // R8-01 (D-61): only the exact block that the bot itself most recently
+    // introduced is exempt; spoofed or edited blocks and authored credit
+    // outside the block are still rejected.
+    #[test]
+    fn r8_01_verified_bot_block_is_the_only_exemption() {
+        let bot = j(&["code", "rabbitai"]);
+        let block = rabbit_block("Add checks.");
+        let authored = "Implement M0 checks.\n\n";
+        let body = format!("{authored}{block}\n");
+        // Genuine: the author opened the PR, the bot added its block, the
+        // author then edited text outside the block.
+        let history: BodyHistory = Ok(vec![
+            version("owner", false, "Implement checks."),
+            version(&bot, true, &format!("Implement checks.\n\n{block}\n")),
+            version("owner", false, &body),
+        ]);
+        assert!(body_findings(&body, Some(&history)).is_empty());
+        // CRLF line ends from the web editor compare equal.
+        let crlf = body.replace('\n', "\r\n");
+        assert!(body_findings(&crlf, Some(&history)).is_empty());
+
+        // The same block written by a user (spoofed markers): rejected.
+        let spoofed: BodyHistory = Ok(vec![
+            version("owner", false, "Implement checks."),
+            version("owner", false, &body),
+        ]);
+        let found = body_findings(&body, Some(&spoofed));
+        assert!(
+            found.iter().any(|f| f.contains("not exempt (D-61)")),
+            "{found:?}"
+        );
+        assert!(found.iter().any(|f| f.starts_with("line ")), "{found:?}");
+        // A different bot, or a user account that claims the bot's login.
+        for (login, is_bot) in [("dependabot", true), (bot.as_str(), false)] {
+            let history: BodyHistory = Ok(vec![
+                version("owner", false, "Implement checks."),
+                version(login, is_bot, &body),
+            ]);
+            assert!(!body_findings(&body, Some(&history)).is_empty(), "{login}");
+        }
+        // A user who edits the bot's block content (adds credit inside it).
+        let tampered = rabbit_block(&j(&["Add checks. Written with Cla", "ude"]));
+        let tampered_body = format!("{authored}{tampered}\n");
+        let history: BodyHistory = Ok(vec![
+            version(&bot, true, &body),
+            version("owner", false, &tampered_body),
+        ]);
+        assert!(!body_findings(&tampered_body, Some(&history)).is_empty());
+        // Re-adding an old bot block after the bot removed it is the user's
+        // introduction, not the bot's.
+        let history: BodyHistory = Ok(vec![
+            version(&bot, true, &body),
+            version(&bot, true, authored),
+            version("owner", false, &body),
+        ]);
+        assert!(!body_findings(&body, Some(&history)).is_empty());
+        // Authored credit outside a genuine block is still rejected.
+        let extra = format!(
+            "{authored}{}\n\n{block}\n",
+            j(&["Generated with Cla", "ude Code"])
+        );
+        let history: BodyHistory = Ok(vec![
+            version(&bot, true, &format!("{authored}{block}\n")),
+            version("owner", false, &extra),
+        ]);
+        let found = body_findings(&extra, Some(&history));
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].starts_with("line 3:"), "{found:?}");
+        // A body that is not in the history, a deleted edit, an unavailable
+        // history, or no history at all: fail closed.
+        let other: BodyHistory = Ok(vec![version(&bot, true, "something else")]);
+        let deleted: BodyHistory = Ok(vec![
+            BodyVersion {
+                editor: Some(Editor {
+                    login: "owner".to_owned(),
+                    bot: false,
+                }),
+                text: None,
+            },
+            version("owner", false, "Implement checks."),
+            version(&bot, true, &body),
+        ]);
+        // A deleted edit right before the block's first version could have
+        // held it already, so who introduced it is unknown.
+        let deleted_before: BodyHistory = Ok(vec![
+            BodyVersion {
+                editor: None,
+                text: None,
+            },
+            version(&bot, true, &body),
+        ]);
+        let deleted_first: BodyHistory = Ok(vec![
+            version(&bot, true, &body),
+            BodyVersion {
+                editor: None,
+                text: None,
+            },
+            version("owner", false, &body),
+        ]);
+        let down: BodyHistory = Err("gh api graphql failed: HTTP 502".to_owned());
+        for history in [
+            Some(&other),
+            Some(&down),
+            Some(&deleted_first),
+            Some(&deleted_before),
+            None,
+        ] {
+            let found = body_findings(&body, history);
+            assert!(
+                found.iter().any(|f| f.contains("not exempt (D-61)")),
+                "{found:?}"
+            );
+        }
+        // A deleted edit before a version without the block does not matter.
+        assert!(body_findings(&body, Some(&deleted)).is_empty());
+        // An unterminated start marker opens no block: scanned as text.
+        let open = format!("{authored}{}\n", rabbit_rules()[0].start);
+        assert!(!body_findings(&open, Some(&history)).is_empty());
+        assert!(!has_bot_block(&open, &rabbit_rules()));
+    }
+
+    // R8-01: the trusted policy names CodeRabbit's real markers and login,
+    // and the GraphQL history parses newest-first pages into oldest-first
+    // versions (a never-edited body is its author's only version).
+    #[test]
+    fn r8_01_policy_and_history_parsing() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let ctx = Ctx {
+            repo: root.clone(),
+            policy: root,
+        };
+        assert_eq!(load_bot_blocks(&ctx).expect("policy"), rabbit_rules());
+        let bot = j(&["code", "rabbitai"]);
+        let page = serde_json::json!({"data": {"repository": {"pullRequest": {
+            "body": "b2",
+            "author": {"__typename": "User", "login": "owner"},
+            "userContentEdits": {"pageInfo": {"hasNextPage": false}, "nodes": [
+                {"editedAt": "2026-11-13T14:09:41Z", "deletedAt": null, "diff": "b2",
+                 "editor": {"__typename": "Bot", "login": bot}},
+                {"editedAt": "2026-11-13T14:05:30Z", "deletedAt": null, "diff": "b1",
+                 "editor": {"__typename": "User", "login": "owner"}}
+            ]}
+        }}}});
+        let versions = parse_body_history(&[page]).expect("parse");
+        assert_eq!(
+            versions,
+            vec![version("owner", false, "b1"), version(&bot, true, "b2")]
+        );
+        let unedited = serde_json::json!({"data": {"repository": {"pullRequest": {
+            "body": "b", "author": {"__typename": "User", "login": "owner"},
+            "userContentEdits": {"pageInfo": {"hasNextPage": false}, "nodes": []}
+        }}}});
+        assert_eq!(
+            parse_body_history(&[unedited]).expect("parse"),
+            vec![version("owner", false, "b")]
+        );
+        let error = serde_json::json!({"errors": [{"message": "Resource not accessible"}]});
+        assert!(parse_body_history(&[error]).is_err());
+        assert!(parse_body_history(&[]).is_err());
     }
 
     // Fragment references fail closed: an undefined or unterminated name is
