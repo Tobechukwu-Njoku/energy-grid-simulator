@@ -1591,6 +1591,17 @@ impl FeatureSet {
         }
     }
 
+    /// The one package this configuration builds, if it is scoped to one.
+    #[must_use]
+    pub fn package(&self) -> Option<&str> {
+        match self {
+            Self::Default | Self::All | Self::NoDefault => None,
+            Self::PackageDefault { package, .. }
+            | Self::PackageNoDefault { package, .. }
+            | Self::Single { package, .. } => Some(package),
+        }
+    }
+
     /// A short label for messages.
     #[must_use]
     pub fn label(&self) -> String {
@@ -1843,8 +1854,27 @@ pub fn check_with(
         return Ok(findings);
     }
     let mut seen = BTreeSet::new();
+    // Doctests exist only for library targets; Cargo refuses `test --doc`
+    // for a package without one.
+    let libraries: BTreeSet<&str> = metadata
+        .packages
+        .iter()
+        .zip(&metadata.ids)
+        .filter(|(package, _)| {
+            package.targets.iter().any(|target| {
+                target
+                    .kinds
+                    .iter()
+                    .any(|kind| kind.ends_with("lib") || kind == "proc-macro")
+            })
+        })
+        .map(|(_, id)| id.as_str())
+        .collect();
     for set in &sets {
         for mode in Mode::ALL {
+            if mode == Mode::Doctests && set.package().is_some_and(|id| !libraries.contains(id)) {
+                continue;
+            }
             let mut command = cargo(ctx);
             command.args(mode.args());
             command
