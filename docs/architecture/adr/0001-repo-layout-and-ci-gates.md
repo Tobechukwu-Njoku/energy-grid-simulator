@@ -661,8 +661,8 @@ are no longer expanded.
 - **Attribution (ADV23R10-03..06)** adds verbless credit phrases (`With help from
   <name>`, `With the assistance of <name>`), tested/verified/documented/analysed
   verbs, and CodeLlama and StarCoder. Bare `Blackbox` and `Sweep` are matched only
-  as trailer values (`Co-Authored-By: Sweep`), because both are ordinary words in
-  footers ("parameter sweep", "black-box testing").
+  as the value of a trailer (a co-author or `by:` line naming either), because
+  both are ordinary words in footers ("parameter sweep", "black-box testing").
 
 Risk 12 as refined in revision 10 now holds without the diff-budget exception:
 text of unknown origin, including text past the diff budget, is never exempt.
