@@ -12,5 +12,6 @@ pub mod docs;
 pub mod repository;
 pub mod review_gates;
 pub mod rust_policy;
+pub mod secrets;
 pub mod util;
 pub mod workflows;

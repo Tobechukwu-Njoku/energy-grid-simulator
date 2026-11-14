@@ -420,284 +420,6 @@ pub fn sources_records(path: &str, text: &str) -> (Vec<Finding>, Vec<(String, St
     (findings, restricted)
 }
 
-struct SecretRule {
-    name: &'static str,
-    prefix: &'static str,
-    min_tail: usize,
-    tail: fn(char) -> bool,
-    /// The tail must mix letters and digits (generic prefixes such as `sk-`).
-    mixed: bool,
-}
-
-fn token_char(c: char) -> bool {
-    c.is_ascii_alphanumeric() || c == '_' || c == '-'
-}
-
-fn upper_digit(c: char) -> bool {
-    c.is_ascii_uppercase() || c.is_ascii_digit()
-}
-
-const SECRET_RULES: &[SecretRule] = &[
-    SecretRule {
-        name: "AWS access key",
-        prefix: "AKIA",
-        min_tail: 16,
-        tail: upper_digit,
-        mixed: false,
-    },
-    SecretRule {
-        name: "AWS access key",
-        prefix: "ASIA",
-        min_tail: 16,
-        tail: upper_digit,
-        mixed: false,
-    },
-    SecretRule {
-        name: "GitHub token",
-        prefix: "ghp_",
-        min_tail: 36,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "GitHub token",
-        prefix: "gho_",
-        min_tail: 36,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "GitHub token",
-        prefix: "ghu_",
-        min_tail: 36,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "GitHub token",
-        prefix: "ghs_",
-        min_tail: 36,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "GitHub token",
-        prefix: "ghr_",
-        min_tail: 36,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "GitHub token",
-        prefix: "github_pat_",
-        min_tail: 40,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Slack token",
-        prefix: "xoxb-",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Slack token",
-        prefix: "xoxp-",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Google API key",
-        prefix: "AIza",
-        min_tail: 35,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "OpenAI-style key",
-        prefix: "sk-proj-",
-        min_tail: 32,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Anthropic-style key",
-        prefix: "sk-ant-",
-        min_tail: 32,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Stripe key",
-        prefix: "sk_live_",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "OpenAI-style key",
-        prefix: "sk-",
-        min_tail: 32,
-        tail: token_char,
-        mixed: true,
-    },
-    SecretRule {
-        name: "Slack token",
-        prefix: "xoxa-",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Slack token",
-        prefix: "xoxr-",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Slack token",
-        prefix: "xapp-",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Slack webhook",
-        prefix: "hooks.slack.com/services/T",
-        min_tail: 20,
-        tail: |c| token_char(c) || c == '/',
-        mixed: false,
-    },
-    SecretRule {
-        name: "GitLab token",
-        prefix: "glpat-",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Hugging Face token",
-        prefix: "hf_",
-        min_tail: 30,
-        tail: token_char,
-        mixed: true,
-    },
-    SecretRule {
-        name: "npm token",
-        prefix: "npm_",
-        min_tail: 36,
-        tail: token_char,
-        mixed: true,
-    },
-    SecretRule {
-        name: "PyPI token",
-        prefix: "pypi-AgE",
-        min_tail: 50,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Stripe key",
-        prefix: "rk_live_",
-        min_tail: 20,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Google OAuth token",
-        prefix: "ya29.",
-        min_tail: 30,
-        tail: |c| token_char(c) || c == '.',
-        mixed: true,
-    },
-    SecretRule {
-        name: "SendGrid key",
-        prefix: "SG.",
-        min_tail: 60,
-        tail: |c| token_char(c) || c == '.',
-        mixed: true,
-    },
-    SecretRule {
-        name: "Groq key",
-        prefix: "gsk_",
-        min_tail: 40,
-        tail: token_char,
-        mixed: true,
-    },
-    SecretRule {
-        name: "xAI key",
-        prefix: "xai-",
-        min_tail: 40,
-        tail: token_char,
-        mixed: true,
-    },
-    SecretRule {
-        name: "DigitalOcean token",
-        prefix: "dop_v1_",
-        min_tail: 64,
-        tail: token_char,
-        mixed: false,
-    },
-    SecretRule {
-        name: "Azure storage key",
-        prefix: "AccountKey=",
-        min_tail: 40,
-        tail: |c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='),
-        mixed: true,
-    },
-];
-
-// Split so this source file does not match its own rule.
-const PEM_HEADER: &str = concat!("-----BEG", "IN");
-const PEM_KEY: &str = concat!("PRIVATE", " KEY");
-
-/// Secret findings in one text.
-#[must_use]
-pub fn scan_secrets(path: &str, text: &str) -> Vec<Finding> {
-    let mut findings = Vec::new();
-    for (index, line) in text.lines().enumerate() {
-        if line.contains(PEM_HEADER) && line.contains(PEM_KEY) {
-            findings.push(Finding::at(
-                path,
-                Some(index + 1),
-                "private key material must not be committed",
-            ));
-        }
-        let mut reported = false;
-        for rule in SECRET_RULES {
-            if reported {
-                break;
-            }
-            let mut rest = line;
-            while let Some(position) = rest.find(rule.prefix) {
-                let before_ok = position == 0
-                    || !rest[..position].ends_with(|c: char| c.is_ascii_alphanumeric());
-                let tail: String = rest[position + rule.prefix.len()..]
-                    .chars()
-                    .take_while(|c| (rule.tail)(*c))
-                    .collect();
-                let mixed_ok = !rule.mixed
-                    || (tail.chars().any(|c| c.is_ascii_digit())
-                        && tail.chars().any(|c| c.is_ascii_alphabetic()));
-                if before_ok && tail.len() >= rule.min_tail && mixed_ok {
-                    findings.push(Finding::at(
-                        path,
-                        Some(index + 1),
-                        format!("possible {} committed", rule.name),
-                    ));
-                    reported = true;
-                    break;
-                }
-                rest = &rest[position + rule.prefix.len()..];
-            }
-        }
-    }
-    findings
-}
-
 const KEY_FILES: &[&str] = &[
     ".env",
     "id_rsa",
@@ -1281,7 +1003,7 @@ pub fn check_paths_with_content(
 
 /// Git blob hash of one line's text, used to name an exempt line without
 /// repeating its content.
-fn line_blob(repo: &std::path::Path, text: &str) -> String {
+pub(crate) fn line_blob(repo: &std::path::Path, text: &str) -> String {
     use std::io::Write as _;
     let child = git_command(repo)
         .args(["hash-object", "--stdin"])
@@ -1460,6 +1182,7 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let mut records = Vec::new();
     let mut manifests = 0;
     let secret_exemptions = load_secret_exemptions(&document)?;
+    let secrets = crate::secrets::Ruleset::load(ctx)?;
     let metadata = string_array(&document["data_metadata_files"]);
     let dtd_allowed = string_array(&document["xml_dtd_allowed"]);
     if document
@@ -1506,17 +1229,17 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
             findings.extend(found);
             records.extend(entries);
         }
-        let lines: Vec<&str> = text.lines().collect();
-        findings.extend(scan_secrets(path, &text).into_iter().filter(|finding| {
-            let content = finding
-                .line
-                .and_then(|line| lines.get(line - 1))
-                .copied()
-                .unwrap_or_default();
-            !secret_exemptions
-                .iter()
-                .any(|(file, blob)| file == path && line_blob(&ctx.repo, content) == *blob)
-        }));
+        // R12-01: secrets are searched in every text view of the raw bytes,
+        // not only the decoded text, so no encoding choice hides one.
+        for hit in secrets.scan(path, &bytes) {
+            let exempt = hit.line.is_some()
+                && secret_exemptions.iter().any(|(file, blob)| {
+                    file == path && line_blob(&ctx.repo, &hit.line_text) == *blob
+                });
+            if !exempt {
+                findings.push(Finding::at(path, hit.line, hit.message));
+            }
+        }
     }
     if manifests == 0 {
         findings.push(Finding::general(
@@ -2389,6 +2112,28 @@ mod tests {
         }
     }
 
+    fn secret_rules() -> &'static crate::secrets::Ruleset {
+        static RULES: std::sync::OnceLock<crate::secrets::Ruleset> = std::sync::OnceLock::new();
+        RULES.get_or_init(|| {
+            crate::secrets::Ruleset::parse(&[
+                ("gitleaks.toml", include_str!("../policy/gitleaks.toml")),
+                (
+                    "secret-rules.toml",
+                    include_str!("../policy/secret-rules.toml"),
+                ),
+            ])
+            .expect("ruleset")
+        })
+    }
+
+    fn scan_bytes(bytes: &[u8]) -> Vec<crate::secrets::Hit> {
+        secret_rules().scan("f", bytes)
+    }
+
+    fn scan_secrets(path: &str, text: &str) -> Vec<crate::secrets::Hit> {
+        secret_rules().scan(path, text.as_bytes())
+    }
+
     fn trusted_policy() -> DocumentMut {
         std::fs::read_to_string(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/repository.toml"),
@@ -2601,25 +2346,15 @@ mod tests {
         let line = format!("service_token={key}\n");
         assert_eq!(decode_text(line.as_bytes()).as_deref(), Some(line.as_str()));
         for (name, bytes) in encodings(&line) {
-            // The d71cf40 view (lossy UTF-8) misses it.
-            if !name.starts_with("utf-8") {
-                assert!(
-                    scan_secrets("f", &String::from_utf8_lossy(&bytes)).is_empty(),
-                    "{name}"
-                );
-            }
             let text = decode_text(&bytes).unwrap_or_else(|| panic!("{name}"));
             assert_eq!(text, line, "{name}");
-            assert_eq!(scan_secrets("f", &text).len(), 1, "{name}");
+            assert_eq!(scan_bytes(&bytes).len(), 1, "{name}");
         }
         // A signature after 64 KiB is still found.
         let long = format!("{}{line}", "a\n".repeat(40 * 1024));
         let bytes: Vec<u8> = long.encode_utf16().flat_map(u16::to_le_bytes).collect();
         assert!(bytes.len() > 64 * 1024);
-        assert_eq!(
-            scan_secrets("f", &decode_text(&bytes).expect("utf-16")).len(),
-            1
-        );
+        assert_eq!(scan_bytes(&bytes).len(), 1);
         // Not confidently text: invalid UTF-8, odd UTF-16, unpaired
         // surrogates, NUL and other control bytes.
         for bytes in [
@@ -2646,7 +2381,7 @@ mod tests {
         // Controls: ordinary text in every encoding decodes and has no secret.
         for (name, bytes) in encodings("# Notes\n\tgrid é 電\r\n") {
             let text = decode_text(&bytes).unwrap_or_else(|| panic!("{name}"));
-            assert!(scan_secrets("f", &text).is_empty(), "{name}");
+            assert!(scan_bytes(&bytes).is_empty(), "{name}");
             assert_eq!(content_class("docs/a.md", &bytes, Some(&text), &[]), None);
         }
     }

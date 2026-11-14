@@ -84,6 +84,31 @@ path = "docs/requirements/reviews/gemini-2026-11-13-pr23-r2.md"
 line_blob = "d38e78289d703f77d3083278ff71cd146aecb5c2"
 reason = "ADV23R-09 reproduction input; a synthetic hexadecimal sequence, not a credential"
 
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+line_blob = "6a0c486a322d768b9e444b3ada415158736d94af"
+reason = "ADV23R12-01 reproduction: PuTTY key header line quoted in prose, no key body"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+line_blob = "4008fdecffda6aa6bf309962c5d3bd1a6726a782"
+reason = "ADV23R12-01 reproduction: synthetic PuTTY key header (both quoted copies share this line)"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+line_blob = "ceddc8d7a84bf800def0f8c47dd80ea8aff066ad"
+reason = "ADV23R12-01 reproduction command: synthetic, truncated PuTTY key"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+line_blob = "dc1907f651103ee19ff1d3b8a8c311b5a14261d0"
+reason = "ADV23R12-02 reproduction command: synthetic GitLab runner token"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+line_blob = "b2777bf78dc8be85a58f89b9430ff1c9ef7d8742"
+reason = "ADV23R12-02 reproduction command: synthetic Perplexity key"
+
 # Committed sample name -> the provenance record (sources.tsv local-name) it was cut from.
 [sample_sources]
 "spikes/data/samples/generation-2024.csv" = "generation-mix.csv"

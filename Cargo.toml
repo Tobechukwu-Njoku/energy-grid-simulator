@@ -36,6 +36,8 @@ uuid = { version = "1", default-features = false, features = ["std"] }
 
 # Policy tooling (xtask, D-73) only; never a production dependency.
 fancy-regex = "0.20"
+memchr = "2"
+regex = { version = "1", default-features = false, features = ["std", "perf", "unicode"] }
 proc-macro2 = { version = "1", default-features = false, features = ["span-locations"] }
 quote = { version = "1", default-features = false }
 serde_json = "1"

@@ -625,6 +625,7 @@ fn r10_01_adv23r10_01_dtd_and_solutions_end_to_end() {
     assert_eq!(files(&found).len(), 1, "{:?}", files(&found));
     let policy = Repo::new();
     let text = std::fs::read_to_string(root().join(repository::POLICY)).expect("policy");
+    copy_secret_policy(&policy);
     policy.write(
         repository::POLICY,
         &text.replace(
@@ -690,11 +691,7 @@ fn r11_01_encoded_secret_end_to_end() {
         repo.commit("docs: notes");
         let found = repository::provenance(&ctx(&repo)).expect("provenance");
         assert_eq!(found.len(), 1, "{bytes:?}: {:?}", files(&found));
-        assert!(
-            found[0].message.contains("GitHub token"),
-            "{:?}",
-            files(&found)
-        );
+        assert!(found[0].message.contains("github"), "{:?}", files(&found));
         assert_eq!(found[0].line, Some(1));
     }
     // Undecodable bytes under an allowed text type are data.
@@ -753,4 +750,124 @@ fn adv23r11_02_unlisted_types_end_to_end() {
     let mut expected: Vec<&str> = inputs.iter().map(|(path, _)| *path).collect();
     expected.sort_unstable();
     assert_eq!(flagged, expected, "{:?}", files(&found));
+}
+
+/// Copies the trusted secret-scanning policy into a scratch policy tree.
+fn copy_secret_policy(policy: &Repo) {
+    for file in [
+        xtask::secrets::LOCAL_RULES,
+        "xtask/policy/gitleaks.toml",
+        "xtask/policy/gitleaks.LICENSE",
+    ] {
+        policy.write(
+            file,
+            &std::fs::read_to_string(root().join(file)).expect("secret policy"),
+        );
+    }
+}
+
+fn provenance_of(path: &str, bytes: &[u8]) -> Vec<Finding> {
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    let full = repo.path().join(path);
+    std::fs::create_dir_all(full.parent().expect("parent")).expect("dir");
+    std::fs::write(full, bytes).expect("write");
+    repo.commit("docs: synthetic notes");
+    repository::provenance(&ctx(&repo)).expect("provenance")
+}
+
+// R12-01 (CORE): the reviewer's exact 58-byte file passed `provenance` at
+// d996aac: `41 00` selected UTF-16LE and the raw ASCII token was never scanned.
+#[test]
+fn r12_01_encoding_guess_cannot_hide_raw_token_end_to_end() {
+    let token = ["gh", "p_", &"0".repeat(36)].concat();
+    let bytes = [b"A\x00service_token=", token.as_bytes(), b"\n "].concat();
+    assert_eq!(bytes.len(), 58);
+    let found = provenance_of("docs/connection-notes.txt", &bytes);
+    assert_eq!(found.len(), 1, "{:?}", files(&found));
+    assert_eq!(found[0].line, Some(1));
+    assert!(found[0].message.contains("raw view"), "{:?}", files(&found));
+    // Harmless control with the same prefix.
+    assert!(provenance_of("docs/connection-notes.txt", b"A\x00harmless\n ").is_empty());
+}
+
+// ADV23R12-01 (CORE): the reviewer's PuTTY key in `crates/putty_key.txt`
+// passed `provenance` at d996aac.
+#[test]
+fn adv23r12_01_putty_key_end_to_end() {
+    let key = concat!(
+        "PuTTY-User-Key-File",
+        "-3: ssh-ed25519\nEncryption: none\nComment: test-key\n",
+        "Public-Lines: 2\nAAAAC3NzaC1lZDI1NTE5AAAAIGx5\nPrivate-Lines: 1\nAAAAYCe\n"
+    );
+    let found = provenance_of("crates/putty_key.txt", key.as_bytes());
+    assert_eq!(found.len(), 1, "{:?}", files(&found));
+    assert!(found[0].message.contains("putty"), "{:?}", files(&found));
+}
+
+// ADV23R12-02 (CORE): the reviewer's GitLab runner and Perplexity tokens in
+// `crates/token.rs` passed `provenance` at d996aac.
+#[test]
+fn adv23r12_02_vendored_formats_end_to_end() {
+    for text in [
+        [
+            "gitlab_runner_token=\"gl",
+            "rt-1234567890abcdef1234567890\"\n",
+        ]
+        .concat(),
+        [
+            "perplexity_key=\"pp",
+            "lx-abcdef1234567890abcdef1234567890abcdef1234567890\"\n",
+        ]
+        .concat(),
+    ] {
+        let found = provenance_of("crates/token.rs", text.as_bytes());
+        assert_eq!(found.len(), 1, "{text}: {:?}", files(&found));
+    }
+}
+
+// ADV23R12-01/02 class fix: the vendored ruleset is pinned by blob id, and a
+// ruleset xtask cannot fully evaluate fails the check instead of skipping.
+#[test]
+fn vendored_secret_ruleset_fails_closed() {
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.commit("docs: notes");
+    let vendored =
+        std::fs::read_to_string(root().join("xtask/policy/gitleaks.toml")).expect("vendored");
+    let local = std::fs::read_to_string(root().join(xtask::secrets::LOCAL_RULES)).expect("local");
+    let cases = [
+        // A locally edited vendored copy no longer matches the pin.
+        (
+            vendored.replace("ghp_[0-9a-zA-Z]{36}", "ghp_[0-9a-zA-Z]{99}"),
+            local.clone(),
+        ),
+        // A local rule that does not compile.
+        (
+            vendored.clone(),
+            format!("{local}\n[[rules]]\nid = \"broken\"\nregex = \"(unclosed\"\n"),
+        ),
+        // A schema feature xtask does not evaluate.
+        (
+            vendored.clone(),
+            format!(
+                "{local}\n[[rules]]\nid = \"composite\"\nregex = \"x\"\n[[rules.required]]\nid = \"y\"\n"
+            ),
+        ),
+    ];
+    for (vendored, local) in cases {
+        let policy = Repo::new();
+        copy_secret_policy(&policy);
+        policy.write(
+            repository::POLICY,
+            &std::fs::read_to_string(root().join(repository::POLICY)).expect("policy"),
+        );
+        policy.write("xtask/policy/gitleaks.toml", &vendored);
+        policy.write(xtask::secrets::LOCAL_RULES, &local);
+        let trusted = Ctx {
+            repo: repo.path().to_path_buf(),
+            policy: policy.path().to_path_buf(),
+        };
+        assert!(repository::provenance(&trusted).is_err());
+    }
 }
