@@ -31,6 +31,18 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision-8 review (2026-11-14 UTC):** exact head
+`bcd4b2c7aa933662ad952f3656b1a1f408057fc3` re-reviewed; verdict **must-fix**.
+All 176 submitted tests pass; the round-7 reproduction inputs are rejected,
+including the original native linker-script fixture. One STRUCTURAL rule conflict
+remains: the attribution gate rejects D-61-permitted automatic bot summaries and
+has no provenance-qualified block exception. The round-7 recommendation to remove
+the integration is withdrawn. Standard OS library roots are reasonable M0 location
+trust under the documented job-tampering limit; hosted passwordless sudo means they
+are not process isolation. Do not attest this head as the one-time bootstrap seed.
+Evidence, regression matrix and required correction:
+[revision-8 report](reviews/gpt-2026-11-14-pr23-r8.md). PR #23 was not modified.
+
 **PR #23 revision-7 review (2026-11-14 UTC):** exact head
 `f986bbc48b23390ca50f4b22065313bcb08d94ea` re-reviewed; verdict **must-fix**.
 All 163 submitted tests pass, and all fourteen round-6 reported inputs are fixed.
