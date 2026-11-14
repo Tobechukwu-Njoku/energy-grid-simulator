@@ -757,7 +757,7 @@ fn copy_secret_policy(policy: &Repo) {
     for file in [
         xtask::secrets::LOCAL_RULES,
         "xtask/policy/gitleaks.toml",
-        "xtask/policy/gitleaks.LICENSE",
+        "xtask/policy/gitleaks-LICENSE.txt",
     ] {
         policy.write(
             file,
@@ -870,4 +870,42 @@ fn vendored_secret_ruleset_fails_closed() {
         };
         assert!(repository::provenance(&trusted).is_err());
     }
+}
+
+// The tracked vendored ruleset quotes its own patterns and upstream example
+// keys: only the exact pinned copy is not scanned; any edit to it is.
+#[test]
+fn only_the_pinned_vendored_ruleset_is_not_scanned() {
+    let vendored =
+        std::fs::read_to_string(root().join("xtask/policy/gitleaks.toml")).expect("vendored");
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write("xtask/policy/gitleaks.toml", &vendored);
+    repo.commit("chore: vendored ruleset");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert!(found.is_empty(), "{:?}", files(&found));
+    let token = ["gh", "p_", &"0".repeat(36)].concat();
+    repo.write(
+        "xtask/policy/gitleaks.toml",
+        &format!("{vendored}# {token}\n"),
+    );
+    repo.commit("chore: edited");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert!(
+        found
+            .iter()
+            .any(|f| f.message.contains("local-github-token")),
+        "{:?}",
+        files(&found)
+    );
+    // The same pinned content at another path is scanned.
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write("docs/rules.toml", &vendored);
+    repo.commit("docs: copy");
+    assert!(
+        !repository::provenance(&ctx(&repo))
+            .expect("provenance")
+            .is_empty()
+    );
 }

@@ -101,7 +101,7 @@ protected policy change that needs the owner's approval):
 1. Pick a gitleaks release tag at least two weeks old and resolve it to a commit:
    `gh api repos/gitleaks/gitleaks/commits/<tag> --jq .sha`.
 2. Replace `xtask/policy/gitleaks.toml` with `config/gitleaks.toml` from that commit,
-   byte for byte, and `xtask/policy/gitleaks.LICENSE` with its `LICENSE`.
+   byte for byte, and `xtask/policy/gitleaks-LICENSE.txt` with its `LICENSE`.
 3. In `xtask/policy/secret-rules.toml` set `[vendor]` `version`, `commit`, `source` and
    `blob` (`git hash-object xtask/policy/gitleaks.toml`). A copy that differs from the
    pinned blob fails the check.

@@ -1231,7 +1231,11 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
         }
         // R12-01: secrets are searched in every text view of the raw bytes,
         // not only the decoded text, so no encoding choice hides one.
-        for hit in secrets.scan(path, &bytes) {
+        let pinned = secrets.is_pinned_copy(path, || {
+            std::str::from_utf8(&bytes)
+                .map_or_else(|_| String::new(), |text| line_blob(&ctx.repo, text))
+        });
+        for hit in secrets.scan(path, &bytes).into_iter().filter(|_| !pinned) {
             let exempt = hit.line.is_some()
                 && secret_exemptions.iter().any(|(file, blob)| {
                     file == path && line_blob(&ctx.repo, &hit.line_text) == *blob

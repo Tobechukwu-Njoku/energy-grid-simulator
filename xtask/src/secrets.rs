@@ -96,6 +96,8 @@ struct Rule {
 pub struct Ruleset {
     rules: Vec<Rule>,
     global: Vec<Allowlist>,
+    /// The vendored ruleset's path and pinned blob id, when loaded from policy.
+    pinned: Option<(String, String)>,
 }
 
 /// One secret finding: the line of the first view that showed it.
@@ -420,7 +422,11 @@ impl Ruleset {
                 return Err(format!("allowlist targetRules names unknown rule `{id}`"));
             }
         }
-        Ok(Self { rules, global })
+        Ok(Self {
+            rules,
+            global,
+            pinned: None,
+        })
     }
 
     /// Loads the trusted local rules and the pinned vendored gitleaks ruleset.
@@ -457,7 +463,19 @@ impl Ruleset {
                 "{file}: blob {blob} differs from the pinned vendor.blob in {LOCAL_RULES}; follow the CONTRIBUTING update procedure"
             ));
         }
-        Self::parse(&[(file, &vendored), (LOCAL_RULES, &local)])
+        let mut rules = Self::parse(&[(file, &vendored), (LOCAL_RULES, &local)])?;
+        rules.pinned = Some((file.to_owned(), blob));
+        Ok(rules)
+    }
+
+    /// Whether a tracked file is the pinned vendored ruleset, byte for byte:
+    /// it quotes its own patterns and upstream's allowlisted example keys,
+    /// so only that exact copy is not scanned. Any edit makes it scanned.
+    #[must_use]
+    pub fn is_pinned_copy(&self, path: &str, blob: impl FnOnce() -> String) -> bool {
+        self.pinned
+            .as_ref()
+            .is_some_and(|(file, pinned)| file == path && blob() == *pinned)
     }
 
     /// Secret findings in one file, over every text view of its bytes,

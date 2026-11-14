@@ -736,8 +736,9 @@ revision 12. This addendum implements D-56 and D-52 as written and adds no decis
   private-key armour header alone, PuTTY key headers and `.ppk` files, and keep the
   earlier prefix rules without entropy thresholds. One local allowlist exempts bare
   40-digit hexadecimal strings (Git commit ids) from `sourcegraph-access-token`
-  only. GitLab runner (`glrt-`) and Perplexity (`pplx-`) tokens are covered
-  upstream. The update procedure is in CONTRIBUTING.md.
+  only. The tracked vendored file quotes its own patterns and upstream's example
+  keys, so it alone is not scanned, and only while its blob equals the pin. GitLab
+  runner (`glrt-`) and Perplexity (`pplx-`) tokens are covered upstream. The update procedure is in CONTRIBUTING.md.
 - **Attribution (R12-02, ADV23R12-03..08).** CodeGemma, WizardCoder and Yi-Coder
   join the model names. Thank-you, kudos, shout-out, acknowledgment and
   in-consultation-with phrases and acknowledgment trailers are matched. Review,
