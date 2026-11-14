@@ -31,6 +31,20 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision-9 review (2026-11-14 UTC):** exact head
+`e64acc5cfb7343485e660436cfd9fb8da1a0e5dd` re-reviewed; verdict **must-fix**.
+All 185 submitted tests and the full build gate pass. All original round-8
+reproduction inputs are addressed; nineteen attribution strings were also
+independently rejected by the CLI and stripped by the hook. Three new STRUCTURAL
+probes remain: a partial bot edit exempts inherited owner-authored credit,
+actual CI check display names are omitted from name protection, and valid RDF/XML
+without an XML declaration escapes sniffing when it uses a default namespace.
+Historical restoration of genuinely bot-originated text is consistent with D-61;
+whole-block novelty does not prove each line's origin. Risk 11 is accurate, while
+risk 12 omits that inherited-content path. Do not attest this head as the one-time
+bootstrap seed. Reproductions, controls, round-8 triage and the M0 assessment:
+[revision-9 report](reviews/gpt-2026-11-14-pr23-r9.md). PR #23 was not modified.
+
 **PR #23 revision-8 review (2026-11-14 UTC):** exact head
 `bcd4b2c7aa933662ad952f3656b1a1f408057fc3` re-reviewed; verdict **must-fix**.
 All 176 submitted tests pass; the round-7 reproduction inputs are rejected,
