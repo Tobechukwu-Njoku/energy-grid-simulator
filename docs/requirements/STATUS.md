@@ -7,6 +7,15 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 cumulative triage (2026-11-14 UTC):**
+[triage record](reviews/triage-pr23.md) inventories all 182 finding IDs from 28
+reports across rounds 1–14 against head `112de8d2b7452ecfcb45b79f91d96841add16954`,
+with revision/test evidence, partial-fix qualifications, accepted limitations and
+deferred operations. All 12 round-14 items remain **OPEN — scheduled for revision
+15**; revision 15 is paused. D-75 ends the review loop after that final revision
+and coordinator reproduction verification; this record does not approve, attest
+or modify PR #23.
+
 **PR #23 revision-14 review:** exact head `112de8d2b7452ecfcb45b79f91d96841add16954`
 re-reviewed; verdict **must-fix**. Original round-13 CORE and adversarial
 reproductions are addressed, but three CORE gaps remain: historical research-only
