@@ -1805,7 +1805,14 @@ pub fn check_with(
         .repo
         .canonicalize()
         .map_err(|error| format!("{}: {error}", ctx.repo.display()))?;
-    let metadata = match metadata(ctx) {
+    // Package ids name the manifest path; read them from the same canonical
+    // path Cargo builds from, or `--package <id>` would not match (macOS
+    // temporary directories are symlinks).
+    let canonical_ctx = Ctx {
+        repo: repo.clone(),
+        policy: ctx.policy.clone(),
+    };
+    let metadata = match metadata(&canonical_ctx) {
         Ok(metadata) => metadata,
         Err(message) => return Ok(vec![Finding::at("Cargo.toml", None, message)]),
     };
@@ -2065,7 +2072,8 @@ mod tests {
             frameworks: strings(&["CoreFoundation"]),
             target_dir: PathBuf::from("/t"),
             sysroot: PathBuf::from("/s"),
-            temp: PathBuf::from("/tmp"),
+            // `/tmp` is `/private/tmp` on macOS.
+            temp: canonical(Path::new("/tmp")),
             system_dirs: Vec::new(),
             search_roots: Vec::new(),
             cwd: PathBuf::from("/t"),
