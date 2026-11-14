@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-14_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-74 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
@@ -30,6 +30,17 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
+
+**PR #23 revision-6 review (2026-11-14 UTC):** exact head
+`68a583d88276cd4339c0d08cebf6f0c8367ca76a` re-reviewed; verdict **must-fix**.
+The four GPT round-5 inputs and Gemini's actionable underlying gaps are fixed;
+two literal Gemini reproduction layouts need the qualifications in the report.
+Four new STRUCTURAL counterexamples remain: a real crate named `___` skips the
+wrapper, response-file quoting hides a native library name, all-features builds
+omit default-feature link code, and doctests do not inherit the claimed root
+unsafe forbid. Do not attest this head as the one-time bootstrap seed.
+Reproductions, controls, regression matrix and M0 limitation assessment:
+[revision-6 report](reviews/gpt-2026-11-13-pr23-r6.md). PR #23 was not modified.
 
 **PR #23 revision 6 (implementation, 2026-11-13):** R5-01..04 (GPT) and ADV23R5-01..10
 (Gemini) addressed by a change of approach (coordinator decision): the static Rust
