@@ -7,6 +7,19 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #52 M1 inventory final re-check (2026-11-14 UTC):** exact revised head
+`8af069ca0af0712f29b9645810282070b02e45a4`; verdict **accept-with-corrections**.
+Six round-2 findings applied; R2-05 substantially applied but still partial:
+54 external rows and the 29 open-commercial / 25 research-only split reconcile,
+but the publisher mapping lists 32 groups while claiming 31 distinct publishers.
+Correct that count/grouping and the all-applied summary; abbreviated TSD and
+metering-response wording are non-blocking. NESO's ND/TSD definitions support
+the corrected ND-plus-embedded starting identity without another pumping
+subtraction. New/split candidate classes checked; no identified share-alike
+source admitted. Inventory unchanged; no acquisition, commercial clearance or
+M1 acceptance claimed. Evidence:
+[round-3 final re-check](reviews/gpt-2026-11-14-pr52-m1-inventory-r3.md).
+
 **PR #52 M1 inventory re-check (2026-11-14 UTC):** exact revised head
 `e5ec7171e2d1b57ec9c89bee6343cbbbcd7264f2`; verdict **must-fix**.
 All 18 original findings mapped: nine applied at inventory level, nine partial.
