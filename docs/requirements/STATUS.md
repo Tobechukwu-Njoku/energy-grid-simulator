@@ -31,6 +31,20 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision-10 review (2026-11-14 UTC):** exact head
+`88148f01fe91dc6f3f62577d3130ca1e3261fab9` re-reviewed; verdict **must-fix**.
+All twelve round-9 reproductions are addressed; all 197 submitted tests, the full
+build gate, format, clippy, xtask all and range attribution pass. Fifteen original
+credit inputs also fail the CLI and are stripped by the hook. A new **CORE**
+provenance counterexample remains: composed internal XML entities hide a valid
+RDF namespace in a node-root network graph, so both provenance and xtask all pass
+unregistered data. A separate **PERIPHERAL** diff-budget fallback misattributes
+kept human PR-body lines to the bot; that item can be a tracked, owner-accepted
+follow-up, with the ADR guarantee corrected. Do not attest this head as the
+one-time bootstrap seed until the CORE defect is fixed and the new head reviewed.
+Reproductions, all round-9 mappings/triage and M0 limitation assessment:
+[revision-10 report](reviews/gpt-2026-11-14-pr23-r10.md). PR #23 was not modified.
+
 **PR #23 revision-9 review (2026-11-14 UTC):** exact head
 `e64acc5cfb7343485e660436cfd9fb8da1a0e5dd` re-reviewed; verdict **must-fix**.
 All 185 submitted tests and the full build gate pass. All original round-8
