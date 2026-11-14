@@ -31,6 +31,18 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
 
+**PR #23 revision-7 review (2026-11-14 UTC):** exact head
+`f986bbc48b23390ca50f4b22065313bcb08d94ea` re-reviewed; verdict **must-fix**.
+All 163 submitted tests pass, and all fourteen round-6 reported inputs are fixed.
+Two new STRUCTURAL probes remain: an allowlisted library name resolves through
+an OUT_DIR linker script to a Python-named archive, and dev-dependency feature
+unification hides a production single-feature native link. A CodeRabbit credit
+also escapes the shared attribution patterns (ATTRIBUTION-SPELLING). The first
+two gaps are outside the ADR's stated tampering/multi-feature limitations.
+Do not attest this head as the one-time bootstrap seed. Reproductions, controls,
+the finding/test matrix and M0 assessment:
+[revision-7 report](reviews/gpt-2026-11-14-pr23-r7.md). PR #23 was not modified.
+
 **PR #23 revision-6 review (2026-11-14 UTC):** exact head
 `68a583d88276cd4339c0d08cebf6f0c8367ca76a` re-reviewed; verdict **must-fix**.
 The four GPT round-5 inputs and Gemini's actionable underlying gaps are fixed;
