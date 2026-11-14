@@ -13,6 +13,21 @@ runner_labels = ["ubuntu-24.04", "macos-15"]
 # *RUSTFLAGS) a workflow `env:` may set (ADV23R5-01). None of them changes
 # compiler flags, wrappers, linkers or lint levels.
 allowed_env = ["CARGO_TERM_COLOR", "CARGO_INCREMENTAL", "CARGO_DENY_VERSION"]
+# Lines a `run:` script may contain that name a GitHub Actions file-command
+# file ($GITHUB_ENV, $GITHUB_PATH, $GITHUB_OUTPUT, $GITHUB_STATE,
+# $GITHUB_STEP_SUMMARY). Exact trimmed lines; empty by default (ADV23R6-03).
+allowed_file_command_lines = []
+
+# The build gate's linker guard (NFR-10, R6-02, ADV23R6-02) accepts only these
+# library and framework names, plus Rust's own rlibs and objects. Anything else a
+# build needs (a native solver library) is added here with the owner's approval.
+link_libraries = [
+    # Linux: the C runtime and the libraries the Rust standard library links.
+    "c", "m", "dl", "rt", "pthread", "util", "gcc_s", "gcc", "gcc_eh",
+    # macOS: the system umbrella library and what std links there.
+    "System", "iconv", "resolv", "objc",
+]
+link_frameworks = ["CoreFoundation", "Security", "SystemConfiguration"]
 
 # Pull-request gates. They build and test PR code with a read-only token and no
 # secrets. Their workflow files are protected paths: any change needs the owner's

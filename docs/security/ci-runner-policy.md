@@ -40,15 +40,23 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    `powershell` or `cmd`; any other value, including an `interpreter {0}` template, is
    rejected (ADV23R3-05). No YAML aliases. No `env:` may set a `CARGO_*`, `RUSTC*`,
    `RUSTDOC*`, `RUSTUP_*` or `*RUSTFLAGS` variable (flags, wrappers, linkers, lint
-   caps) unless `allowed_env` in the trusted `gates.toml` lists it, and no script may
-   write `$GITHUB_ENV` or `$GITHUB_PATH` (ADV23R5-01). Cargo config files may hold
-   only `[alias]`.
+   caps) unless `allowed_env` in the trusted `gates.toml` lists it (ADV23R5-01).
+   A `run:` script may name a file-command file (`$GITHUB_ENV`, `$GITHUB_PATH`,
+   `$GITHUB_OUTPUT`, `$GITHUB_STATE`, `$GITHUB_STEP_SUMMARY`, compared without case
+   or quoting) only on a line `allowed_file_command_lines` lists (none today), and
+   may not reach variables indirectly (`${!x}`, `eval`, `printenv`, environment
+   listings, namerefs, `ENVIRON`, `process.env`) (ADV23R6-03). That lint is not
+   the guarantee: see 5a. Cargo config files may hold only `[alias]`.
 5a. **Compiler-enforced unsafe scope.** The `policy` job also runs
    `cargo xtask build-gate` from `main`'s tree: it builds the PR workspace with
-   `main`'s xtask as rustc wrapper, adding `-F unsafe_code` to every repository crate
-   outside `crates/solver-*` and a linker guard that refuses Python or Julia
-   runtimes (ADR 0001 addendum, revision 6). It runs PR build scripts, so it only
-   ever runs in this unprivileged job, never in the trusted gates.
+   `main`'s xtask as rustc wrapper, adding `-F unsafe_code` to every local crate
+   except the reviewed adapters listed (package and directory) in `main`'s
+   `repository.toml`, and a linker guard that accepts only allow-listed libraries
+   (ADR 0001 addenda, revisions 6 and 7). It runs PR build scripts, proc macros and
+   doctests, so it only ever runs in this unprivileged job, never in the trusted
+   gates, and it must be the job's last step, without an `id` and in a job without
+   `outputs`: whatever PR code writes to a file-command file reaches no later step,
+   and a later step can only fail the job (ADV23R6-03).
 6. No `secrets.*` other than `GITHUB_TOKEN`, no `secrets: inherit`; only the hosted
    labels `ubuntu-24.04` and `macos-15` before M1; no `container:` or `services:`.
 7. **Trusted gates.** `independent-review` and `policy-approval` run from `main`

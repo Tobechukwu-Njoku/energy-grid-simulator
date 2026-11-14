@@ -7,9 +7,14 @@
 //! (`build_gate`, run in the unprivileged CI job). This module keeps:
 //!
 //! - `unsafe-scope`: every target (library, binaries, tests, examples, benches,
-//!   build script) of every local package outside `crates/solver-*`, as
+//!   build script) of every local package that is not a reviewed adapter, as
 //!   `cargo metadata` lists it, starts with `#![forbid(unsafe_code)]` (F4,
-//!   R3-01), so ordinary builds reject an opt-out too; every local package and
+//!   R3-01), so ordinary builds reject an opt-out too; every library root also
+//!   carries `#![doc(test(attr(forbid(unsafe_code))))]`, because rustdoc builds
+//!   each doctest as a separate crate that does not inherit the root lint
+//!   (R6-04). Reviewed adapters are an explicit list of package names and
+//!   directories in the trusted `repository.toml` (ADV23R6-01), never a
+//!   directory prefix; their build scripts are never exempt. Every local package and
 //!   target file is a tracked file inside the repository; dependencies come
 //!   from crates.io or the repository only; a tracked package outside
 //!   `spikes/` that the workspace does not build is reported.
@@ -40,15 +45,76 @@ fn in_scope(path: &str) -> bool {
     !path.starts_with("spikes/")
 }
 
-/// Whether a repository-relative package directory is a reviewed solver
-/// adapter: exactly `crates/solver-<name>`.
+/// A reviewed native solver adapter from the trusted policy: an exact Cargo
+/// package name at an exact repository directory (ADV23R6-01).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Adapter {
+    /// Cargo package name.
+    pub package: String,
+    /// Repository-relative package directory.
+    pub path: String,
+}
+
+/// Trusted policy file that lists the reviewed adapters.
+pub const REPOSITORY_POLICY: &str = "xtask/policy/repository.toml";
+
+/// Loads the reviewed adapters (`[[adapter]]` in the trusted
+/// `repository.toml`). The list is the only way a package may allow unsafe
+/// code; changing it changes a protected path, so it needs the policy owner's
+/// exact-head approval (D-74).
+///
+/// # Errors
+///
+/// Fails if the policy is missing or an entry is malformed.
+pub fn adapters(ctx: &Ctx) -> Result<Vec<Adapter>, String> {
+    parse_adapters(&ctx.policy_toml(REPOSITORY_POLICY)?)
+}
+
+/// Parses `[[adapter]]` tables.
+///
+/// # Errors
+///
+/// Fails on an entry without an exact package name and plain relative path.
+pub fn parse_adapters(document: &DocumentMut) -> Result<Vec<Adapter>, String> {
+    let mut out = Vec::new();
+    let Some(item) = document.get("adapter") else {
+        return Ok(out);
+    };
+    let tables = item
+        .as_array_of_tables()
+        .ok_or("trusted policy: `adapter` must be an array of tables")?;
+    for table in tables {
+        let field = |key: &str| table.get(key).and_then(Item::as_str).map(str::to_owned);
+        match (field("package"), field("path")) {
+            (Some(package), Some(path))
+                if !package.is_empty()
+                    && !path.is_empty()
+                    && !path.contains(['*', '?', '[', '\\'])
+                    && !path.starts_with('/')
+                    && path
+                        .split('/')
+                        .all(|part| !part.is_empty() && part != "." && part != "..") =>
+            {
+                out.push(Adapter { package, path });
+            }
+            _ => {
+                return Err(
+                    "trusted policy: every [[adapter]] needs an exact package name and a plain relative path"
+                        .to_owned(),
+                );
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Whether a local package (name, repository-relative directory) is a
+/// reviewed adapter. Both the name and the directory must match an entry.
 #[must_use]
-pub fn is_adapter_dir(dir: &str) -> bool {
-    let mut parts = dir.split('/');
-    matches!(
-        (parts.next(), parts.next(), parts.next()),
-        (Some("crates"), Some(name), None) if name.len() > "solver-".len() && name.starts_with("solver-")
-    )
+pub fn is_adapter(adapters: &[Adapter], name: &str, dir: &str) -> bool {
+    adapters
+        .iter()
+        .any(|adapter| adapter.package == name && adapter.path == dir)
 }
 
 /// Environment variables a policy-run Cargo never inherits: anything that can
@@ -102,6 +168,8 @@ pub struct Target {
     pub src: String,
     /// Whether `src` lies inside the repository.
     pub inside: bool,
+    /// Canonical absolute source path.
+    pub src_abs: String,
 }
 
 /// One resolved package.
@@ -115,8 +183,12 @@ pub struct Package {
     pub inside: bool,
     /// Source (`None` for a local path package).
     pub source: Option<String>,
-    /// Whether the package is a reviewed `crates/solver-*` adapter.
+    /// Whether the package is a reviewed adapter of the trusted policy.
     pub adapter: bool,
+    /// Canonical absolute manifest path, as Cargo reports it.
+    pub manifest_abs: String,
+    /// Feature names the package declares (`cargo metadata`).
+    pub features: Vec<String>,
     /// Targets.
     pub targets: Vec<Target>,
 }
@@ -126,6 +198,10 @@ pub struct Package {
 pub struct Metadata {
     /// Every package in the resolve, local and registry.
     pub packages: Vec<Package>,
+    /// Package ids of the workspace members.
+    pub members: Vec<String>,
+    /// Package ids, parallel to `packages`.
+    pub ids: Vec<String>,
 }
 
 impl Metadata {
@@ -136,9 +212,13 @@ impl Metadata {
     }
 }
 
-fn relative(root: &Path, path: &str) -> (String, bool) {
+fn canonical(path: &str) -> PathBuf {
     let path = Path::new(path);
-    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
+fn relative(root: &Path, path: &str) -> (String, bool) {
+    let canonical = canonical(path);
     match canonical.strip_prefix(root) {
         Ok(rest) => (rest.to_string_lossy().replace('\\', "/"), true),
         Err(_) => (canonical.to_string_lossy().into_owned(), false),
@@ -150,7 +230,7 @@ fn relative(root: &Path, path: &str) -> (String, bool) {
 /// # Errors
 ///
 /// Fails on malformed JSON.
-pub fn parse_metadata(repo: &Path, json: &[u8]) -> Result<Metadata, String> {
+pub fn parse_metadata(repo: &Path, json: &[u8], adapters: &[Adapter]) -> Result<Metadata, String> {
     let root = repo.canonicalize().unwrap_or_else(|_| repo.to_path_buf());
     let value: serde_json::Value =
         serde_json::from_slice(json).map_err(|error| format!("cargo metadata: {error}"))?;
@@ -158,8 +238,11 @@ pub fn parse_metadata(repo: &Path, json: &[u8]) -> Result<Metadata, String> {
         .as_array()
         .ok_or("cargo metadata: no packages")?;
     let mut out = Vec::new();
+    let mut ids = Vec::new();
     for package in packages {
-        let (manifest, inside) = relative(&root, package["manifest_path"].as_str().unwrap_or(""));
+        ids.push(package["id"].as_str().unwrap_or_default().to_owned());
+        let manifest_path = package["manifest_path"].as_str().unwrap_or("");
+        let (manifest, inside) = relative(&root, manifest_path);
         let dir = manifest.rsplit_once('/').map_or("", |(dir, _)| dir);
         let source = package["source"].as_str().map(str::to_owned);
         let targets = package["targets"]
@@ -168,8 +251,10 @@ pub fn parse_metadata(repo: &Path, json: &[u8]) -> Result<Metadata, String> {
             .unwrap_or_default()
             .iter()
             .map(|target| {
-                let (src, inside) = relative(&root, target["src_path"].as_str().unwrap_or(""));
+                let src_path = target["src_path"].as_str().unwrap_or("");
+                let (src, inside) = relative(&root, src_path);
                 Target {
+                    src_abs: canonical(src_path).to_string_lossy().into_owned(),
                     name: target["name"].as_str().unwrap_or_default().to_owned(),
                     kinds: target["kind"]
                         .as_array()
@@ -183,16 +268,33 @@ pub fn parse_metadata(repo: &Path, json: &[u8]) -> Result<Metadata, String> {
                 }
             })
             .collect();
+        let name = package["name"].as_str().unwrap_or_default().to_owned();
         out.push(Package {
-            name: package["name"].as_str().unwrap_or_default().to_owned(),
-            adapter: source.is_none() && inside && is_adapter_dir(dir),
+            adapter: source.is_none() && inside && is_adapter(adapters, &name, dir),
+            name,
+            manifest_abs: canonical(manifest_path).to_string_lossy().into_owned(),
+            features: package["features"]
+                .as_object()
+                .map(|features| features.keys().cloned().collect())
+                .unwrap_or_default(),
             manifest,
             inside,
             source,
             targets,
         });
     }
-    Ok(Metadata { packages: out })
+    let members = value["workspace_members"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|id| id.as_str().map(str::to_owned))
+        .collect();
+    Ok(Metadata {
+        packages: out,
+        members,
+        ids,
+    })
 }
 
 /// Runs `cargo metadata` on the tree under test: every feature, every
@@ -222,7 +324,7 @@ pub fn metadata(ctx: &Ctx) -> Result<Metadata, String> {
             String::from_utf8_lossy(&output.stderr).trim()
         ));
     }
-    parse_metadata(&ctx.repo, &output.stdout)
+    parse_metadata(&ctx.repo, &output.stdout, &adapters(ctx)?)
 }
 
 /// Whether a parsed file starts with a top-level `#![forbid(unsafe_code)]`
@@ -257,16 +359,65 @@ pub fn forbids_unsafe(file: &syn::File) -> bool {
     })
 }
 
-/// Checks that a crate root forbids unsafe code (F4).
+fn lists_forbid_unsafe(meta: &syn::Meta, path: &[&str]) -> bool {
+    use syn::punctuated::Punctuated;
+    let syn::Meta::List(list) = meta else {
+        return false;
+    };
+    let Some((head, rest)) = path.split_first() else {
+        return false;
+    };
+    if !list.path.is_ident(head) {
+        return false;
+    }
+    list.parse_args_with(Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated)
+        .is_ok_and(|entries| {
+            entries.iter().any(|entry| match rest {
+                [] => matches!(entry, syn::Meta::Path(path)
+                    if path.leading_colon.is_none()
+                        && path.segments.len() == 1
+                        && path.segments[0].arguments.is_none()
+                        && path.segments[0].ident.unraw() == "unsafe_code"),
+                _ => lists_forbid_unsafe(entry, rest),
+            })
+        })
+}
+
+/// Whether a parsed file carries a top-level, unconditional
+/// `#![doc(test(attr(forbid(unsafe_code))))]`. rustdoc compiles every
+/// doctest as its own crate; this attribute is how the crate's forbid reaches
+/// those crates (R6-04).
 #[must_use]
-pub fn check_crate_root(path: &str, source: &str) -> Vec<Finding> {
+pub fn forbids_unsafe_in_doctests(file: &syn::File) -> bool {
+    file.attrs.iter().any(|attribute| {
+        matches!(attribute.style, syn::AttrStyle::Inner(_))
+            && lists_forbid_unsafe(&attribute.meta, &["doc", "test", "attr", "forbid"])
+    })
+}
+
+/// Checks that a crate root forbids unsafe code (F4) and, for a library
+/// root, in its doctests too (R6-04).
+#[must_use]
+pub fn check_crate_root(path: &str, source: &str, library: bool) -> Vec<Finding> {
     match syn::parse_file(source) {
-        Ok(file) if forbids_unsafe(&file) => Vec::new(),
-        Ok(_) => vec![Finding::at(
-            path,
-            Some(1),
-            "crate root outside crates/solver-* must start with #![forbid(unsafe_code)] (ADR 0001)",
-        )],
+        Ok(file) => {
+            let mut findings = Vec::new();
+            if !forbids_unsafe(&file) {
+                findings.push(Finding::at(
+                    path,
+                    Some(1),
+                    "crate root of a package that is not a reviewed adapter must start with #![forbid(unsafe_code)] (ADR 0001)",
+                ));
+            }
+            if library && !forbids_unsafe_in_doctests(&file) {
+                findings.push(Finding::at(
+                    path,
+                    Some(1),
+                    "library root of a package that is not a reviewed adapter must carry #![doc(test(attr(forbid(unsafe_code))))]: doctests are separate crates (R6-04)",
+                ));
+            }
+            findings
+        }
         Err(error) => vec![Finding::at(
             path,
             Some(error.span().start().line),
@@ -287,7 +438,8 @@ pub fn check_crate_root(path: &str, source: &str) -> Vec<Finding> {
 pub fn check_graph(ctx: &Ctx, metadata: &Metadata) -> Result<Vec<Finding>, String> {
     let files: BTreeSet<String> = tracked(&ctx.repo)?.into_iter().collect();
     let mut findings = Vec::new();
-    let mut roots: BTreeMap<String, bool> = BTreeMap::new(); // root -> needs forbid
+    // root -> (needs forbid, is a library root)
+    let mut roots: BTreeMap<String, (bool, bool)> = BTreeMap::new();
     let mut built = BTreeSet::new();
     for package in &metadata.packages {
         match &package.source {
@@ -325,16 +477,26 @@ pub fn check_graph(ctx: &Ctx, metadata: &Metadata) -> Result<Vec<Finding>, Strin
                 ));
                 continue;
             }
-            *roots.entry(target.src.clone()).or_default() |= !package.adapter;
+            let library = target
+                .kinds
+                .iter()
+                .any(|kind| matches!(kind.as_str(), "lib" | "rlib" | "dylib" | "proc-macro"));
+            let entry = roots.entry(target.src.clone()).or_default();
+            // A build script is never exempt (ADV23R6-01).
+            let build_script = target.kinds.iter().any(|kind| kind == "custom-build");
+            if !package.adapter || build_script {
+                entry.0 = true;
+                entry.1 |= library;
+            }
         }
     }
-    for (path, needs_forbid) in roots {
+    for (path, (needs_forbid, library)) in roots {
         if !needs_forbid {
             continue;
         }
         let source = std::fs::read_to_string(ctx.repo.join(&path))
             .map_err(|error| format!("{path}: {error}"))?;
-        findings.extend(check_crate_root(&path, &source));
+        findings.extend(check_crate_root(&path, &source, library));
     }
     for manifest in &files {
         let is_manifest = manifest == "Cargo.toml" || manifest.ends_with("/Cargo.toml");

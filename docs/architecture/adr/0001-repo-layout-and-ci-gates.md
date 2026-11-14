@@ -347,9 +347,79 @@ Residual risks of this approach:
    secrets) and is never a trusted gate; build-time code is reviewed like any
    other code, and the root `forbid` rule still holds in every ordinary build.
 6. Only code that is compiled for the CI host is checked by the compiler: code
-   behind another target's `cfg`, and doctests, are covered by the root `forbid`
-   rule (which applies whenever they are compiled) but not by the gate itself.
+   behind another target's `cfg` is covered by the root `forbid` rule (which
+   applies whenever it is compiled) but not by the gate itself. *Corrected in the
+   revision-7 addendum:* doctests do NOT inherit the root `forbid` (R6-04), and
+   all-features builds omit code that a feature switches off (R6-03).
 7. A native library linked statically from a `#[link(kind = "static")]` attribute
    is bundled into the rlib without a linker flag. It is caught only when its
    search path comes from a build script; Cargo config and `RUSTFLAGS` cannot add
    one in the gate.
+
+## Addendum — 2026-11-14: build-gate attribution, linker allowlist, features, doctests (PR #23 revision 7)
+
+Round-6 reviews (R6-01..04, ADV23R6-01..04) found false negatives in the revision-6
+build gate. The compiler-enforced design stays; these changes close the gaps. It adds
+no decision beyond D-73 and D-74.
+
+- **Reviewed adapters are an explicit list (ADV23R6-01).** `[[adapter]]` entries in
+  the trusted `xtask/policy/repository.toml` name each adapter's exact Cargo package
+  AND its directory; both must match. A `crates/solver-*` directory confers nothing.
+  The file is under the protected `/xtask/` path, so adding or changing an adapter
+  needs the owner's exact-head approval (D-74). Adapter build scripts are never exempt.
+- **Wrapper attribution by the package graph (R6-01).** The gate writes the resolved
+  packages from `cargo metadata` (package id, canonical manifest directory, name,
+  local or registry, adapter or not, each target's canonical source and kind) to a
+  configuration file. The wrapper attributes each rustc compilation by Cargo's
+  `CARGO_MANIFEST_DIR` and `CARGO_PKG_NAME` and by the source file on the command
+  line; a compilation it cannot attribute is refused. A crate name decides nothing;
+  Cargo's stdin target-information probe gets the strictest flags and only a bare
+  `rustc -vV` passes unchanged. A build script's `cargo:rustc-env` naming a
+  toolchain, Cargo, `XTASK_*`, `PATH`, loader or temp-directory variable is a finding.
+- **Linker allowlist (R6-02, ADV23R6-02).** The linker guard (a copy of `main`'s
+  xtask) parses the C-driver command line, `-Wl,` lists and `-Xlinker` values. It
+  refuses every response file (`@file`, also forwarded), linker script, plugin,
+  `-specs`, `-B`/`-fuse-ld=` outside the toolchain, and accepts only: library and
+  framework names in `link_libraries`/`link_frameworks` of the trusted `gates.toml`
+  (every `-l`, `--library`, `-l:`, `-framework`, weak/needed/re-export/lazy/upward
+  form), and input files Rust produced (rlibs and codegen objects in the build's
+  `deps`/`build/<unit>` directories, rustc/rustdoc work directories, the toolchain
+  sysroot). A library a build script writes into `OUT_DIR` is refused whatever its
+  name. Python and Julia names are reported as NFR-10 explicitly.
+- **Feature configurations (R6-03).** The gate builds default features, all
+  features, no default features, and each feature of each workspace member alone on
+  top of no default features (bounded at 256 configurations; beyond that it fails
+  closed). *Bound:* code compiled only under a combination of two or more
+  non-default features that all-features also excludes is not built. Such code is
+  still subject to the root `forbid` in any build that compiles it.
+- **Doctests (R6-04).** rustdoc compiles each doctest as its own crate, which
+  neither the wrapper nor the crate's root lint reaches (`RUSTDOCFLAGS=-F` does not
+  either). Every non-adapter library root must carry
+  `#![doc(test(attr(forbid(unsafe_code))))]` (`cargo xtask policy`), and the build
+  gate runs `cargo test --doc` in every feature configuration in its sanitised
+  environment, so that attribute is applied by the compiler; doctest executables
+  link through the same linker guard.
+- **File commands (ADV23R6-03).** Guarantee: the build-gate step, the only step of
+  a gate job that runs pull-request code, must be the job's last step, without an
+  `id`, in a job without `outputs` (`cargo xtask policy`), and the gate removes the
+  file-command variables from the environment it builds in. Whatever PR code writes
+  to `$GITHUB_ENV`, `$GITHUB_PATH`, `$GITHUB_OUTPUT` or `$GITHUB_STATE` therefore
+  reaches no later step except action post-steps, and a later step can only fail a
+  job, never turn its failure into success. Every earlier step runs `main`'s code.
+  Workflow and action files are protected paths. The script lint (no file-command
+  name outside `allowed_file_command_lines`, compared without case or quoting; no
+  indirect variable access) is defence in depth, not the guarantee: shell text
+  cannot be decided.
+- **Provenance path rules ignore letter case (ADV23R6-04)**: `raw/`, `__pycache__/`,
+  Python and data extensions and research-only record names.
+
+Residual risks (in addition to 5 and 7 above, which stand):
+
+8. The bound in the feature bullet above: multi-feature-only code is not compiled by
+   the gate.
+9. The link allowlist trusts files under the build's `deps` and `build/<unit>`
+   directories and rustc work directories by location. A build script that writes
+   outside its `OUT_DIR` into those directories is the same-user tampering of
+   risk 5, not a normal build-script output.
+10. If rustc must fall back to a linker response file for a very long command line,
+    the gate fails closed; the supported fix is a shorter link line, not a parser.

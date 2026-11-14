@@ -29,7 +29,24 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Linux distro (Q-H-7)
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
-## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
+## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
+
+**PR #23 revision 7 (implementation, 2026-11-14):** R6-01..04 (GPT) and ADV23R6-01..10
+(Gemini) addressed; the compiler-enforced design stays. Reviewed adapters are an explicit
+`[[adapter]]` list (package name AND directory) in the trusted, protected
+`repository.toml`. The rustc wrapper attributes every compilation through a `cargo
+metadata` configuration (manifest directory, package name, source file) and refuses what it
+cannot attribute; no crate-name heuristics. The linker guard accepts only allow-listed
+library/framework names (`gates.toml` `link_libraries`/`link_frameworks`) and Rust's own
+artifacts, and refuses response files, scripts, plugins and driver redirection. The gate
+builds default, all, no-default and each single feature, and runs `cargo test --doc`; every
+non-adapter library root needs `#![doc(test(attr(forbid(unsafe_code))))]`. The build-gate
+step must be its job's last step (file-command guarantee); scripts may not name or
+indirectly reach file-command files. Provenance path rules ignore case. Attribution: generic
+AI/LLM/vendor-AI names, collaboration joiners, possessives, `from:` trailers, Roo Code,
+Continue, Supermaven. Residual risks 8–10 in the ADR 0001 revision-7 addendum. Finding→test
+table in the PR body. Needs exact-head GPT re-review, Gemini adversarial re-check and triage
+before bootstrap attestation.
 
 **PR #23 revision-6 review (2026-11-14 UTC):** exact head
 `68a583d88276cd4339c0d08cebf6f0c8367ca76a` re-reviewed; verdict **must-fix**.

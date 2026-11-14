@@ -141,9 +141,12 @@ jobs:
         run: |
           cd "$TRUSTED"
           cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" policy
-      # Builds the PR workspace (its build scripts and proc macros run here, in this
-      # unprivileged job only) with main's xtask as rustc wrapper and linker guard:
-      # -F unsafe_code outside crates/solver-*, no Python/Julia link (ADR 0001, NFR-10).
+      # Builds the PR workspace in several feature configurations and runs its doctests
+      # (its build scripts, proc macros and doctests run here, in this unprivileged job
+      # only) with main's xtask as rustc wrapper and linker guard: -F unsafe_code outside
+      # the reviewed adapters of main's repository.toml, allow-listed link libraries only
+      # (ADR 0001, NFR-10). It must stay the LAST step of this job, without an id, so
+      # file-command writes by PR code reach no later step (ADV23R6-03).
       - name: Compiler-enforced unsafe scope and native runtimes (flags from main)
         env:
           TRUSTED: ${{ steps.trusted.outputs.dir }}

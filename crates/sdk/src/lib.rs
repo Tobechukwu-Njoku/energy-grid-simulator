@@ -3,3 +3,4 @@
 //! Skeleton crate (M0). Implementation arrives in M3.
 
 #![forbid(unsafe_code)]
+#![doc(test(attr(forbid(unsafe_code))))]

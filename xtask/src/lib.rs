@@ -4,6 +4,7 @@
 //! revision (`--policy`) against the pull-request checkout (`--repo`).
 
 #![forbid(unsafe_code)]
+#![doc(test(attr(forbid(unsafe_code))))]
 
 pub mod attribution;
 pub mod build_gate;

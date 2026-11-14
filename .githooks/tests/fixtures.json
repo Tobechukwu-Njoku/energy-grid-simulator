@@ -1121,5 +1121,166 @@
     "input": "fix: exercise message policy\n\nPrompted by: the outage report\n",
     "exit": 0,
     "expected": "fix: exercise message policy\n\nPrompted by: the outage report\n"
+  },
+  {
+    "name": "r6-strip-1",
+    "source": "gemini ADV23R6-05",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a2041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-2",
+    "source": "gemini ADV23R6-05",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a204c4c4d0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-3",
+    "source": "gemini ADV23R6-05",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d617574686f7265642d62793a20414920417373697374616e740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-4",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820476f6f676c652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-5",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642077697468204d6574612041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-6",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642077697468204170706c6520496e74656c6c6967656e63650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-7",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20476f6f676c652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-8",
+    "source": "gemini ADV23R6-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a506169722d70726f6772616d6d6564207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-9",
+    "source": "gemini ADV23R6-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e20696e20636f6c6c61626f726174696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-10",
+    "source": "gemini ADV23R6-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207468616e6b7320746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-11",
+    "source": "gemini ADV23R6-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e207769746820436c6175646527732068656c700a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-12",
+    "source": "gemini ADV23R6-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a4275696c74207769746820436c61756465277320617373697374616e63650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-13",
+    "source": "gemini ADV23R6-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a48656c702066726f6d3a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-14",
+    "source": "gemini ADV23R6-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a417373697374616e63652066726f6d3a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-15",
+    "source": "gemini ADV23R6-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f64652066726f6d3a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-16",
+    "source": "gemini ADV23R6-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820526f6f20436f64650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-17",
+    "source": "gemini ADV23R6-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436f6e74696e75650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-18",
+    "source": "gemini ADV23R6-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682053757065726d6176656e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-keep-1",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Ai Nakamura <ai@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Ai Nakamura <ai@example.com>\n"
+  },
+  {
+    "name": "r6-keep-2",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nHelp from: Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nHelp from: Jane Doe\n"
+  },
+  {
+    "name": "r6-keep-3",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nBuilt with Google Cloud Build\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nBuilt with Google Cloud Build\n"
+  },
+  {
+    "name": "r6-keep-4",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nWritten in collaboration with the grid operator\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nWritten in collaboration with the grid operator\n"
+  },
+  {
+    "name": "r6-keep-5",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nGenerated with continued fractions\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nGenerated with continued fractions\n"
   }
 ]

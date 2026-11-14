@@ -17,10 +17,13 @@ usage: cargo xtask [--repo DIR] [--policy DIR] <command> [options]
 commands:
   policy         crate-root forbid over `cargo metadata`, manifests, workflows, Python,
                  CODEOWNERS
-  build-gate     build the whole workspace with the compiler forbidding unsafe code
-                 outside crates/solver-* and a linker guard refusing Python/Julia
-                 runtimes [--target-dir DIR]. Runs the tree's build scripts: CI runs
-                 it only in an unprivileged job, never in the trusted gates
+  build-gate     build the whole workspace (default, all, no-default and each single
+                 feature) and run its doctests, with the compiler forbidding unsafe
+                 code outside the reviewed adapters of the trusted policy and a
+                 linker guard accepting only allow-listed libraries
+                 [--target-dir DIR] [--jobs N]. Runs the tree's build scripts and
+                 doctests: CI runs it only as the last step of an unprivileged job,
+                 never in the trusted gates
   provenance     dataset manifests, raw/research-only data, secrets (D-56)
   docs           Markdown links and requirement traceability
   attribution    AI-attribution scan (D-52) of a range:
@@ -172,9 +175,20 @@ fn run(args: &Args) -> Result<bool, String> {
                 || args.ctx.repo.join("target").join("build-gate"),
                 PathBuf::from,
             );
+            let jobs = option(args, "--jobs")
+                .map(|jobs| {
+                    jobs.parse()
+                        .map_err(|_| format!("--jobs {jobs}: not a number"))
+                })
+                .transpose()?;
             Ok(report(
                 "build-gate: compiler-enforced unsafe scope and native runtimes",
-                &build_gate::check(&args.ctx, &wrapper, &target)?,
+                &build_gate::check_with(
+                    &args.ctx,
+                    &wrapper,
+                    &target,
+                    &build_gate::Options { jobs },
+                )?,
             ))
         }
         "attribution" => run_attribution(args),

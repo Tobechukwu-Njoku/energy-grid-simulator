@@ -4,3 +4,4 @@
 //! Skeleton crate (M0). Source adapters arrive in M1.
 
 #![forbid(unsafe_code)]
+#![doc(test(attr(forbid(unsafe_code))))]

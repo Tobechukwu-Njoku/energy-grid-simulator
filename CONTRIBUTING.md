@@ -48,8 +48,9 @@ on the separate target system (D-65).
 ## Rules that CI enforces
 
 - **No AI attribution** in commits, PR titles and bodies, or added lines (D-52).
-- **No `unsafe`** outside `crates/solver-*` adapters; there, allow it per item with a
-  `// SAFETY:` comment.
+- **No `unsafe`** outside the reviewed solver adapters listed (package name and
+  directory) under `[[adapter]]` in `xtask/policy/repository.toml`; there, allow it per
+  item with a `// SAFETY:` comment. A new adapter is a protected policy change.
 - **Licences:** new dependencies must pass `deny.toml` as it is on the base branch.
   Allow-list or exception changes need independent review and the policy owner's
   approval (NFR-8, `.github/CODEOWNERS`).
@@ -70,10 +71,15 @@ on the separate target system (D-65).
   review on the exact head. Agents push and open pull requests from the machine account
   in `xtask/policy/repository.toml` (`agent_account`, D-74); the owner cannot approve a
   pull request they opened, so an owner-opened policy change cannot pass.
-- **Unsafe code:** every crate root outside `crates/solver-*` starts with
-  `#![forbid(unsafe_code)]`: the bare Rust lint, not a tool-qualified one such as
-  `clippy::unsafe_code` (R3-01). Every file Cargo selects as a target or build script
-  is checked whatever its file name (R3-02).
+- **Unsafe code:** every crate root of a package that is not a reviewed adapter (and
+  every build script) starts with `#![forbid(unsafe_code)]`: the bare Rust lint, not a
+  tool-qualified one such as `clippy::unsafe_code` (R3-01). Every library root also
+  carries `#![doc(test(attr(forbid(unsafe_code))))]`, because each doctest is a separate
+  crate (R6-04). Every file Cargo selects as a target or build script is checked
+  whatever its file name (R3-02).
+- **Native libraries:** the build gate's linker accepts only the libraries and
+  frameworks listed in `xtask/policy/gates.toml` (`link_libraries`, `link_frameworks`)
+  plus Rust's own artifacts; a new native dependency is a protected policy change.
 
 Checks to require on `main` (branch protection is configured by the owner; it is not
 on yet): `merge-gates` (all automated gates, listing the ones not yet applicable),

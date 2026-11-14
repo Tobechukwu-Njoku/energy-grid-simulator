@@ -8,9 +8,32 @@
 //! credentials; `run:` scripts contain only allow-listed `${{ }}` expressions
 //! (ADV23-16) and never invoke Python (D-73); no secrets but `GITHUB_TOKEN`;
 //! no `CARGO_*`, `RUSTC*`, `RUSTDOC*`, `RUSTUP_*` or `*RUSTFLAGS` variable set
-//! in any `env:` unless the trusted policy allow-lists it, and no `run:` script
-//! writes `$GITHUB_ENV` or `$GITHUB_PATH` (ADV23R5-01); and the required gate
-//! graph from the trusted policy is intact (R1).
+//! in any `env:` unless the trusted policy allow-lists it (ADV23R5-01); and the
+//! required gate graph from the trusted policy is intact (R1).
+//!
+//! GitHub Actions file commands (ADV23R6-03). A step can change the
+//! environment, `PATH`, outputs or state of LATER steps of its job through the
+//! files named by `$GITHUB_ENV`, `$GITHUB_PATH`, `$GITHUB_OUTPUT`,
+//! `$GITHUB_STATE` and `$GITHUB_STEP_SUMMARY`. The guarantee does not rest on
+//! reading shell text, which cannot be decided:
+//!
+//! 1. A step that executes pull-request code under a trusted check (the
+//!    `build-gate` step) must be the LAST step of its job, have no `id` and
+//!    sit in a job without `outputs`. Whatever that code writes to a
+//!    file-command file can only reach steps that run after it; there are none
+//!    but post-steps of actions, and a later step can only fail the job, never
+//!    turn the gate's failure into success. The gate also removes those
+//!    variables from the environment it builds in. Every other step of every
+//!    gate job runs trusted code from `main` before any pull-request code.
+//! 2. Workflow and action files are protected paths: any change needs the
+//!    owner's exact-head approval from the trusted `policy-approval` gate.
+//! 3. As a lint over the reviewed text, a `run:` script may name a
+//!    file-command file only on a line the trusted `allowed_file_command_lines`
+//!    lists exactly (none by default), and may not use the indirect forms
+//!    that reach a variable without naming it (`${!x}`, `eval`, `printenv`,
+//!    environment listings, namerefs, `ENVIRON`, `process.env`, the runner's
+//!    file-command directory). Names are compared case-insensitively after
+//!    removing shell quoting.
 
 use yaml_rust2::{Yaml, YamlLoader};
 
@@ -26,6 +49,7 @@ pub struct Policy {
     expressions: Vec<String>,
     runners: Vec<String>,
     env: Vec<String>,
+    file_command_lines: Vec<String>,
     graphs: Vec<Graph>,
 }
 
@@ -89,6 +113,10 @@ impl Policy {
             runners: string_array(&document["runner_labels"]),
             env: document
                 .get("allowed_env")
+                .map(string_array)
+                .unwrap_or_default(),
+            file_command_lines: document
+                .get("allowed_file_command_lines")
                 .map(string_array)
                 .unwrap_or_default(),
             graphs,
@@ -553,14 +581,32 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
                     ));
                 }
             }
-            if script.contains("GITHUB_ENV") || script.contains("GITHUB_PATH") {
+            for problem in file_command_problems(&script, &policy.file_command_lines) {
                 findings.push(Finding::at(
                     path,
                     None,
-                    format!(
-                        "{step_scope}: run: may not write $GITHUB_ENV or $GITHUB_PATH; set env: per step"
-                    ),
+                    format!("{step_scope}: run: {problem} (ADV23R6-03); set env: per step"),
                 ));
+            }
+            if runs_untrusted_build(&script) {
+                if index + 1 != steps.len() {
+                    findings.push(Finding::at(
+                        path,
+                        None,
+                        format!(
+                            "{step_scope}: the build-gate step runs pull-request code and must be the last step of its job, so file-command writes reach no later step (ADV23R6-03)"
+                        ),
+                    ));
+                }
+                if get(step, "id").is_some() || get(job, "outputs").is_some() {
+                    findings.push(Finding::at(
+                        path,
+                        None,
+                        format!(
+                            "{step_scope}: the build-gate step may not have an id and its job may not declare outputs (ADV23R6-03)"
+                        ),
+                    ));
+                }
             }
             if invokes_python(&script) {
                 findings.push(Finding::at(
@@ -574,6 +620,83 @@ fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut
             check_shell(path, &step_scope, shell, findings);
         }
     }
+}
+
+/// File-command variable names (lower case) and the runner's file names.
+const FILE_COMMANDS: &[&str] = &[
+    "github_env",
+    "github_path",
+    "github_output",
+    "github_state",
+    "github_step_summary",
+    "runner_file_commands",
+    "set_env_",
+    "add_path_",
+    "set_output_",
+    "save_state_",
+    "step_summary_",
+];
+
+/// Shell and interpreter forms that reach a variable or a file-command file
+/// without naming it.
+const INDIRECT: &[&str] = &[
+    r"\$\{!",
+    r"(?:^|[^\w-])eval(?:$|[^\w-])",
+    r"(?:^|[^\w-])printenv(?:$|[^\w-])",
+    r"(?:^|[^\w-])compgen(?:$|[^\w-])",
+    r"(?:^|[^\w-])envsubst(?:$|[^\w-])",
+    r"(?:^|[^\w-])(?:declare|local|typeset|readonly)\s+-\w*[np]",
+    r"(?:^|[^\w-])export\s+-p",
+    r"(?:^|[^\w$-])(?:env|set)\s*(?:$|[|>;&)])",
+    r"\benviron\b",
+    r"process\.env",
+    r"%env\b|\$env\{|\benv\[",
+];
+
+/// Problems with one `run:` script's use of file-command files.
+#[must_use]
+pub fn file_command_problems(script: &str, allowed: &[String]) -> Vec<String> {
+    let indirect: Vec<fancy_regex::Regex> = INDIRECT
+        .iter()
+        .filter_map(|pattern| fancy_regex::Regex::new(&format!("(?i){pattern}")).ok())
+        .collect();
+    let mut problems = Vec::new();
+    for line in script.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+        // Remove shell quoting so `GITHU""B_ENV` and `GITHU\B_ENV` read as
+        // the name they spell.
+        let plain: String = trimmed
+            .chars()
+            .filter(|c| !matches!(c, '"' | '\'' | '\\' | '`'))
+            .collect::<String>()
+            .to_lowercase();
+        let names = FILE_COMMANDS.iter().any(|name| plain.contains(name));
+        if names && !allowed.iter().any(|line| line.trim() == trimmed) {
+            problems.push(format!(
+                "may not name a GitHub file-command file outside allowed_file_command_lines: `{trimmed}`"
+            ));
+        }
+        if let Some(pattern) = indirect
+            .iter()
+            .find(|pattern| pattern.is_match(&plain).unwrap_or(true))
+        {
+            problems.push(format!(
+                "may not reach environment variables indirectly (`{}`): `{trimmed}`",
+                pattern.as_str().trim_start_matches("(?i)")
+            ));
+        }
+    }
+    problems
+}
+
+/// Whether a `run:` script runs the build gate, which executes pull-request
+/// build scripts, proc macros and doctests.
+#[must_use]
+pub fn runs_untrusted_build(script: &str) -> bool {
+    script.contains("build-gate")
 }
 
 fn check_graph(path: &str, jobs: &[(String, &Yaml)], policy: &Policy, findings: &mut Vec<Finding>) {
@@ -935,6 +1058,69 @@ jobs:
             let text = GOOD.replace("run: cargo xtask docs", &format!("run: {script}"));
             assert_eq!(run(&text).len(), 1, "{script}");
         }
+    }
+
+    // ADV23R6-03: dynamic references to file-command files, and the
+    // structural rule that the untrusted build step is its job's last step.
+    #[test]
+    fn adv23r6_03_file_commands_are_unreachable_from_scripts() {
+        for script in [
+            "echo \"RUSTFLAGS=-Aunsafe_code\" >> $(env | grep ^GITHUB_E | cut -d= -f2)",
+            "target=GITHU; target+=B_ENV; echo x >> \"${!target}\"",
+            "eval \"echo RUSTFLAGS=-Aunsafe_code >> \\$GITHU\"B_ENV",
+            "echo x >> \"$GITHU\"\"B_ENV\"",
+            "echo x >> $github_output",
+            "echo x >> \"$GITHUB_STEP_SUMMARY\"",
+            "printenv GITHUB_E",
+            "declare -n ref=GITHUB_PATH_X",
+            "f=$(ls \"$RUNNER_TEMP\"/_runner_file_commands/*)",
+            "awk 'BEGIN { print ENVIRON[\"GITHU\" \"B_ENV\"] }'",
+            "node -e 'console.log(process.env.X)'",
+            "perl -e 'print $ENV{X}'",
+            "set > /tmp/vars",
+        ] {
+            let problems = file_command_problems(script, &[]);
+            assert!(!problems.is_empty(), "{script}");
+        }
+        for script in [
+            "cargo xtask docs",
+            "env RUST_LOG=info cargo test",
+            "cd \"$TRUSTED\" && cargo run -- policy",
+            "set -euo pipefail",
+            "echo \"$NEEDS\" | jq .",
+        ] {
+            assert_eq!(
+                file_command_problems(script, &[]),
+                Vec::<String>::new(),
+                "{script}"
+            );
+        }
+        let allowed = vec!["echo \"dir=$x\" >> \"$GITHUB_OUTPUT\"".to_owned()];
+        assert!(
+            file_command_problems("echo \"dir=$x\" >> \"$GITHUB_OUTPUT\"", &allowed).is_empty()
+        );
+        // The build-gate step must be last, without id or job outputs.
+        let gate = "run: cargo xtask docs\n      - run: cargo xtask build-gate";
+        let last = GOOD.replace("run: cargo xtask docs", gate);
+        assert!(run(&last).is_empty(), "{:?}", run(&last));
+        let not_last = GOOD.replace(
+            "run: cargo xtask docs",
+            "run: cargo xtask build-gate\n      - run: cargo xtask docs",
+        );
+        assert!(
+            run(&not_last)
+                .iter()
+                .any(|f| f.message.contains("last step"))
+        );
+        let with_id = GOOD.replace(
+            "run: cargo xtask docs",
+            "run: cargo xtask docs\n      - id: gate\n        run: cargo xtask build-gate",
+        );
+        assert!(
+            run(&with_id)
+                .iter()
+                .any(|f| f.message.contains("may not have an id"))
+        );
     }
 
     // ADV23R4-03: actions outside .github/actions/ are checked, and local

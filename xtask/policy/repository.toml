@@ -64,3 +64,24 @@ reason = "ADV23R-09 reproduction input; a synthetic hexadecimal sequence, not a 
 # Committed sample name -> the provenance record (sources.tsv local-name) it was cut from.
 [sample_sources]
 "spikes/data/samples/generation-2024.csv" = "generation-mix.csv"
+
+# Reviewed native solver adapters (ADR 0001, ADR 0003): the only local packages
+# whose library, binary and test targets may allow unsafe code. Each entry names
+# the exact Cargo package AND its repository directory; both must match. A new
+# adapter, or any change here, is a change to this protected file and needs the
+# policy owner's exact-head approval (D-74). Build scripts are never exempt.
+[[adapter]]
+package = "egs-solver-highs"
+path = "crates/solver-highs"
+
+[[adapter]]
+package = "egs-solver-gurobi"
+path = "crates/solver-gurobi"
+
+[[adapter]]
+package = "egs-solver-xpress"
+path = "crates/solver-xpress"
+
+[[adapter]]
+package = "egs-solver-cuopt"
+path = "crates/solver-cuopt"

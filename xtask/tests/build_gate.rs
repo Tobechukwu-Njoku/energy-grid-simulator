@@ -26,7 +26,7 @@ license = \"LicenseRef-EGS-Unreleased\"
 unsafe_code = \"deny\"
 ";
 
-const FORBID: &str = "#![forbid(unsafe_code)]\n";
+const FORBID: &str = "#![forbid(unsafe_code)]\n#![doc(test(attr(forbid(unsafe_code))))]\n";
 
 /// A reviewed solver adapter opts out of the workspace `deny`.
 const ADAPTER: &str = "#![allow(unsafe_code)]\n";
@@ -351,7 +351,10 @@ fn adv23r5_02_out_dir_includes_are_built_and_checked() {
             "spikes/native.inc",
             "#[link(name = \"python3.12\")]\nunsafe extern \"C\" {}\n",
         )
-        .write("crates/solver-highs/Cargo.toml", &package("solver-highs"))
+        .write(
+            "crates/solver-highs/Cargo.toml",
+            &package("egs-solver-highs"),
+        )
         .write("crates/solver-highs/build.rs", build)
         .write(
             "crates/solver-highs/src/lib.rs",
@@ -376,7 +379,10 @@ fn adv23r5_03_macro_generated_path_modules_are_built_and_checked() {
 
     let fixture = Fixture::new();
     fixture
-        .write("crates/solver-highs/Cargo.toml", &package("solver-highs"))
+        .write(
+            "crates/solver-highs/Cargo.toml",
+            &package("egs-solver-highs"),
+        )
         .write(
             "crates/solver-highs/src/lib.rs",
             &format!("{ADAPTER}{decl}"),
@@ -400,7 +406,10 @@ fn adv23r5_04_generated_link_attributes_reach_the_linker_guard() {
     ] {
         let fixture = Fixture::new();
         fixture
-            .write("crates/solver-highs/Cargo.toml", &package("solver-highs"))
+            .write(
+                "crates/solver-highs/Cargo.toml",
+                &package("egs-solver-highs"),
+            )
             .write(
                 "crates/solver-highs/src/lib.rs",
                 &format!("{ADAPTER}{source}"),
@@ -410,7 +419,7 @@ fn adv23r5_04_generated_link_attributes_reach_the_linker_guard() {
     // Control: an ordinary system library links.
     let fixture = Fixture::new();
     fixture
-        .write("crates/solver-highs/Cargo.toml", &package("solver-highs"))
+        .write("crates/solver-highs/Cargo.toml", &package("egs-solver-highs"))
         .write(
             "crates/solver-highs/src/lib.rs",
             &format!("{ADAPTER}macro_rules! link_lib {{\n    ($lib:expr) => {{\n        #[link(name = $lib)]\n        unsafe extern \"C\" {{}}\n    }};\n}}\nlink_lib!(\"m\");\n"),
@@ -522,12 +531,18 @@ fn metadata_selects_every_target() {
         "spikes/standalone.rs",
         "#![allow(unsafe_code)]\nfn main() {}\n",
     );
-    fixture.write("crates/solver-highs/Cargo.toml", &package("solver-highs"));
+    fixture.write(
+        "crates/solver-highs/Cargo.toml",
+        &package("egs-solver-highs"),
+    );
     fixture.write("crates/solver-highs/src/lib.rs", "//! Adapter.\n");
     let found = fixture.graph();
     let missing: Vec<&str> = found
         .iter()
-        .filter(|f| f.message.contains("forbid(unsafe_code)"))
+        .filter(|f| {
+            f.message
+                .contains("must start with #![forbid(unsafe_code)]")
+        })
         .filter_map(|f| f.file.as_deref())
         .collect();
     for path in [
@@ -593,4 +608,316 @@ fn metadata_selects_every_target() {
         "{}",
         text(&found)
     );
+}
+
+/// A build script that writes an (empty, valid) archive named like the
+/// Python runtime into OUT_DIR and returns its path; `emit` decides how it
+/// reaches the linker.
+fn archive_build_script(emit: &str) -> String {
+    format!(
+        "#![forbid(unsafe_code)]\nfn main() {{\n    let out = std::path::PathBuf::from(std::env::var_os(\"OUT_DIR\").unwrap());\n    let library = out.join(\"libpython3.12.a\");\n    std::fs::write(&library, \"!<arch>\\n\").unwrap();\n    {emit}\n}}\n"
+    )
+}
+
+const ADAPTER_PACKAGE: &str = "egs-solver-highs";
+
+// R6-01: a real library target named `___` was mistaken for Cargo's probe
+// and got neither the forbid nor the linker guard. Compilations are now
+// attributed through `cargo metadata` (manifest directory, package name,
+// source file), never by crate name.
+#[test]
+fn r6_01_crate_named_like_the_probe_is_still_guarded() {
+    let lib = "[lib]\nname = \"___\"\n";
+    let link_arg = "println!(\"cargo:rustc-link-arg={}\", library.display());";
+    let fixture = Fixture::new();
+    fixture
+        .write(
+            "crates/solver-highs/Cargo.toml",
+            &format!("{}{lib}", package(ADAPTER_PACKAGE)),
+        )
+        .write("crates/solver-highs/src/lib.rs", ADAPTER)
+        .write(
+            "crates/solver-highs/build.rs",
+            &archive_build_script(link_arg),
+        );
+    assert_runtime_rejected(&fixture.build());
+    // The same name on an ordinary package: unsafe code is still forbidden.
+    let fixture = Fixture::new();
+    fixture.write(
+        "crates/engine/Cargo.toml",
+        &format!("{}{lib}", package("engine")),
+    );
+    fixture.write("crates/engine/src/lib.rs", MACRO_OPT_OUT);
+    assert_unsafe_rejected(&fixture.build());
+    // Control: the same build script without the link argument.
+    let fixture = Fixture::new();
+    fixture
+        .write(
+            "crates/solver-highs/Cargo.toml",
+            &format!("{}{lib}", package(ADAPTER_PACKAGE)),
+        )
+        .write("crates/solver-highs/src/lib.rs", ADAPTER)
+        .write("crates/solver-highs/build.rs", &archive_build_script(""));
+    assert_clean(&fixture.build());
+}
+
+// R6-02: a response file whose embedded quotes spell `libpython3.12.a` in
+// pieces. Response files are refused whatever their content; any linker
+// input that is not Rust's own artifact is refused too.
+#[test]
+fn r6_02_linker_response_files_and_foreign_inputs_are_refused() {
+    let rsp = "let rsp = out.join(\"native.rsp\");\n    std::fs::write(&rsp, format!(\"\\\"{}\\\"/libpyth\\\"on\\\"3.12.a\\n\", out.display())).unwrap();\n    println!(\"cargo:rustc-link-arg=@{}\", rsp.display());";
+    let fixture = Fixture::new();
+    fixture
+        .write(
+            "crates/engine/src/main.rs",
+            &format!("{FORBID}fn main() {{}}\n"),
+        )
+        .write("crates/engine/build.rs", &archive_build_script(rsp));
+    let found = fixture.build();
+    assert!(
+        found
+            .iter()
+            .any(|f| f.message.contains("NFR-10") && f.message.contains("response files")),
+        "{}",
+        text(&found)
+    );
+    // A library a build script made, whatever its name, is not allow-listed.
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/engine/src/main.rs", &format!("{FORBID}fn main() {{}}\n"))
+        .write(
+            "crates/engine/build.rs",
+            &archive_build_script(
+                "let other = out.join(\"libnative.a\");\n    std::fs::copy(&library, &other).unwrap();\n    println!(\"cargo:rustc-link-arg={}\", other.display());",
+            ),
+        );
+    assert_runtime_rejected(&fixture.build());
+    // Control: no extra linker input.
+    let fixture = Fixture::new();
+    fixture
+        .write(
+            "crates/engine/src/main.rs",
+            &format!("{FORBID}fn main() {{}}\n"),
+        )
+        .write("crates/engine/build.rs", &archive_build_script(""));
+    assert_clean(&fixture.build());
+}
+
+// ADV23R6-02: a framework link request on the command line and from a
+// build script reaches the allowlist (end to end through the CLI guard).
+#[test]
+fn adv23r6_02_framework_requests_are_refused_by_the_linker_guard() {
+    for args in [
+        &["-framework", "Python"][..],
+        &["-Wl,-framework,Python"][..],
+        &["-Xlinker", "-framework", "-Xlinker", "Julia"][..],
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_xtask"))
+            .args(args)
+            .env(build_gate::LINK_ENV, "1")
+            .output()
+            .expect("run linker guard");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(1), "{args:?}: {stderr}");
+        assert!(stderr.contains("NFR-10"), "{args:?}: {stderr}");
+    }
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/engine/src/main.rs", &format!("{FORBID}fn main() {{}}\n"))
+        .write(
+            "crates/engine/build.rs",
+            "#![forbid(unsafe_code)]\nfn main() { println!(\"cargo:rustc-link-arg=-Wl,-framework,Python\"); }\n",
+        );
+    assert_runtime_rejected(&fixture.build());
+}
+
+// R6-03: code compiled only without a feature, or with one feature alone, is
+// built: default, all, no-default and each single feature are configurations.
+#[test]
+fn r6_03_feature_disabled_code_is_built_and_checked() {
+    let features = "[features]\npure = []\n";
+    let fixture = Fixture::new();
+    fixture
+        .write(
+            "crates/solver-highs/Cargo.toml",
+            &format!("{}{features}", package(ADAPTER_PACKAGE)),
+        )
+        .write(
+            "crates/solver-highs/src/lib.rs",
+            &format!(
+                "{ADAPTER}#[cfg(not(feature = \"pure\"))]\n#[link(name = \"python3.12\")]\nunsafe extern \"C\" {{}}\n"
+            ),
+        );
+    assert_runtime_rejected(&fixture.build());
+    // Ordinary package: unsafe behind `not(feature)` and behind one feature
+    // that another feature switches off.
+    for (manifest, guard) in [
+        ("[features]\nsafe = []\n", "not(feature = \"safe\")"),
+        (
+            "[features]\na = []\nb = []\n",
+            "all(feature = \"a\", not(feature = \"b\"))",
+        ),
+    ] {
+        let fixture = Fixture::new();
+        fixture
+            .write(
+                "crates/engine/Cargo.toml",
+                &format!("{}{manifest}", package("engine")),
+            )
+            .write(
+                "crates/engine/src/lib.rs",
+                &format!("{FORBID}#[cfg({guard})]\nmod hidden {{\n#![allow(unsafe_code)]\n}}\n"),
+            );
+        assert_unsafe_rejected(&fixture.build());
+    }
+    // Control: no feature-dependent link request.
+    let fixture = Fixture::new();
+    fixture
+        .write(
+            "crates/solver-highs/Cargo.toml",
+            &format!("{}{features}", package(ADAPTER_PACKAGE)),
+        )
+        .write(
+            "crates/solver-highs/src/lib.rs",
+            &format!("{ADAPTER}#[cfg(not(feature = \"pure\"))]\npub fn f() {{}}\n"),
+        );
+    assert_clean(&fixture.build());
+}
+
+const UNSAFE_DOCTEST: &str = "/// ```\n/// let n = 1;\n/// let p = &n as *const i32;\n/// assert_eq!(unsafe { *p }, 1);\n/// ```\npub fn f() {}\n";
+
+// R6-04: doctests are separate crates. The policy requires the doctest
+// forbid on every non-adapter library root, and the gate runs the doctests
+// so the compiler applies it; doctest links go through the linker guard.
+#[test]
+fn r6_04_doctests_are_checked() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "crates/engine/src/lib.rs",
+        &format!("#![forbid(unsafe_code)]\n{UNSAFE_DOCTEST}"),
+    );
+    let graph = fixture.graph();
+    assert!(
+        graph
+            .iter()
+            .any(|f| f.message.contains("doc(test(attr(forbid(unsafe_code))))")),
+        "{}",
+        text(&graph)
+    );
+    fixture.write(
+        "crates/engine/src/lib.rs",
+        &format!("{FORBID}{UNSAFE_DOCTEST}"),
+    );
+    assert_clean(&fixture.graph());
+    assert_unsafe_rejected(&fixture.build());
+    // An adapter's doctest that links a runtime reaches the linker guard.
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/solver-highs/Cargo.toml", &package(ADAPTER_PACKAGE))
+        .write(
+            "crates/solver-highs/src/lib.rs",
+            &format!(
+                "{ADAPTER}/// ```\n/// #[link(name = \"python3.12\")]\n/// unsafe extern \"C\" {{}}\n/// fn main() {{}}\n/// ```\npub fn f() {{}}\n"
+            ),
+        );
+    assert_runtime_rejected(&fixture.build());
+    // Control: a safe doctest passes.
+    let fixture = Fixture::new();
+    fixture.write(
+        "crates/engine/src/lib.rs",
+        &format!("{FORBID}/// ```\n/// assert_eq!(1 + 1, 2);\n/// ```\npub fn f() {{}}\n"),
+    );
+    assert_clean(&fixture.build());
+}
+
+// ADV23R6-01: adapters are an explicit list of package names and
+// directories in the trusted policy; a `crates/solver-*` directory or a
+// borrowed adapter name elsewhere is ordinary code.
+#[test]
+fn adv23r6_01_adapters_come_from_the_trusted_list() {
+    for (dir, name) in [
+        ("crates/solver-evil", "solver-evil"),
+        ("crates/solver-evil", ADAPTER_PACKAGE),
+        ("crates/solver-highs", "solver-highs"),
+    ] {
+        let fixture = Fixture::new();
+        fixture
+            .write(&format!("{dir}/Cargo.toml"), &package(name))
+            .write(
+                &format!("{dir}/src/lib.rs"),
+                &format!("{ADAPTER}{UNSAFE_FN}"),
+            );
+        assert_unsafe_rejected(&fixture.build());
+        let graph = fixture.graph();
+        assert!(
+            graph.iter().any(
+                |f| f.file.as_deref() == Some(format!("{dir}/src/lib.rs").as_str())
+                    && f.message.contains("must start with")
+            ),
+            "{dir} {name}: {}",
+            text(&graph)
+        );
+    }
+    // Control: the listed package at its listed directory.
+    let fixture = Fixture::new();
+    fixture
+        .write("crates/solver-highs/Cargo.toml", &package(ADAPTER_PACKAGE))
+        .write(
+            "crates/solver-highs/src/lib.rs",
+            &format!("{ADAPTER}{UNSAFE_FN}"),
+        );
+    assert_clean(&fixture.build());
+    assert_clean(&fixture.graph());
+    // The list lives in a protected policy file (owner approval, D-74).
+    let ctx = Ctx::local(&root());
+    let adapters = rust_policy::adapters(&ctx).expect("adapters");
+    assert_eq!(adapters.len(), 4);
+    let policy = ctx
+        .policy_toml(rust_policy::REPOSITORY_POLICY)
+        .expect("policy");
+    let protected = xtask::util::string_array(&policy["protected_paths"]);
+    assert!(
+        protected.iter().any(|pattern| xtask::util::glob_match(
+            pattern.trim_start_matches('/'),
+            rust_policy::REPOSITORY_POLICY
+        )),
+        "{protected:?}"
+    );
+    // Malformed entries fail closed.
+    for bad in [
+        "[[adapter]]\npackage = \"x\"\npath = \"crates/solver-*\"\n",
+        "[[adapter]]\npackage = \"x\"\n",
+        "[[adapter]]\npackage = \"x\"\npath = \"../x\"\n",
+        "adapter = \"crates/solver-x\"\n",
+    ] {
+        assert!(
+            rust_policy::parse_adapters(&bad.parse().expect("toml")).is_err(),
+            "{bad}"
+        );
+    }
+}
+
+// Build scripts may not hand the compiler variables that redirect the
+// toolchain or the gate (`cargo:rustc-env` reaches the wrapper).
+#[test]
+fn build_script_rustc_env_cannot_redirect_the_gate() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "crates/engine/build.rs",
+        "#![forbid(unsafe_code)]\nfn main() { println!(\"cargo:rustc-env=XTASK_BUILD_GATE_CONFIG=/nonexistent\"); }\n",
+    );
+    let found = fixture.build();
+    assert!(
+        found
+            .iter()
+            .any(|f| f.message.contains("XTASK_BUILD_GATE_CONFIG")),
+        "{}",
+        text(&found)
+    );
+    fixture.write(
+        "crates/engine/build.rs",
+        "#![forbid(unsafe_code)]\nfn main() { println!(\"cargo:rustc-env=GIT_HASH=abc\"); }\n",
+    );
+    assert_clean(&fixture.build());
 }

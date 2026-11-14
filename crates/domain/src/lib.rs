@@ -5,6 +5,7 @@
 //! contracts; network records and revisions follow in M1.
 
 #![forbid(unsafe_code)]
+#![doc(test(attr(forbid(unsafe_code))))]
 
 use std::fmt;
 use std::str::FromStr;

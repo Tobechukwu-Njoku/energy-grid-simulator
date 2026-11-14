@@ -3,3 +3,4 @@
 //! Skeleton crate (M0). Parsing, canonicalisation and hashing arrive in M1.
 
 #![forbid(unsafe_code)]
+#![doc(test(attr(forbid(unsafe_code))))]

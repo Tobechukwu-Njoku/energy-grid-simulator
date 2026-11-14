@@ -46,7 +46,8 @@ unicode-security = { version = "0.1", default-features = false }
 yaml-rust2 = { version = "0.13", default-features = false }
 
 [workspace.lints.rust]
-# ADR 0001: no unsafe code outside individually reviewed solver-* adapters. Those
+# ADR 0001: no unsafe code outside the individually reviewed solver adapters listed
+# under [[adapter]] in xtask/policy/repository.toml. Those
 # adapters may allow it item by item. Every other crate root also starts with
 # `#![forbid(unsafe_code)]`, which no later attribute or macro can lower (F4);
 # `cargo xtask policy` requires both.

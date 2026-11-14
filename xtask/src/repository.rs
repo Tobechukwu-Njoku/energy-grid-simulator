@@ -25,6 +25,15 @@ fn policy(ctx: &Ctx) -> Result<DocumentMut, String> {
     ctx.policy_toml(POLICY)
 }
 
+/// Whether any component of a repository path equals `name`, ignoring letter
+/// case: Git stores `RAW/` and `raw/` as different paths, but case-insensitive
+/// file systems and people read them as the same directory (ADV23R6-04).
+#[must_use]
+pub fn has_component(path: &str, name: &str) -> bool {
+    path.split('/')
+        .any(|part| part.to_lowercase() == name.to_lowercase())
+}
+
 /// Python and bytecode check over a list of tracked paths.
 #[must_use]
 pub fn check_python(
@@ -35,9 +44,8 @@ pub fn check_python(
     let mut findings = Vec::new();
     for path in paths {
         let name = path.rsplit('/').next().unwrap_or(path);
-        if name.ends_with(".pyc")
-            || name.ends_with(".pyo")
-            || path.split('/').any(|part| part == "__pycache__")
+        let lower = name.to_lowercase();
+        if lower.ends_with(".pyc") || lower.ends_with(".pyo") || has_component(path, "__pycache__")
         {
             findings.push(Finding::at(
                 path,
@@ -51,7 +59,7 @@ pub fn check_python(
         }
         let python_name = [".py", ".pyw", ".pyi", ".ipynb"]
             .iter()
-            .any(|ext| name.ends_with(ext));
+            .any(|ext| lower.ends_with(ext));
         let python_shebang = !name.contains('.')
             && heads(path).is_some_and(|first| first.starts_with("#!") && first.contains("python"));
         if python_name || python_shebang {
@@ -670,15 +678,15 @@ pub fn check_paths(
         let base = file.rsplit('/').next().unwrap_or(file);
         if !base.is_empty() {
             registry
-                .entry(base.to_owned())
+                .entry(base.to_lowercase())
                 .or_default()
                 .insert(status.clone());
         }
     }
     for path in paths {
         let name = path.rsplit('/').next().unwrap_or(path);
-        let lower = name.to_ascii_lowercase();
-        if path.split('/').any(|part| part == "raw") {
+        let lower = name.to_lowercase();
+        if has_component(path, "raw") {
             findings.push(Finding::at(
                 path,
                 None,
@@ -697,7 +705,7 @@ pub fn check_paths(
         }
         let listed_metadata = metadata.iter().any(|file| file == path);
         let source = aliases.get(path).map_or(name, String::as_str);
-        let statuses = registry.get(source);
+        let statuses = registry.get(&source.to_lowercase());
         if !listed_metadata && statuses.is_some_and(|s| s.contains("research-only")) {
             findings.push(Finding::at(
                 path,
@@ -1230,6 +1238,34 @@ mod tests {
         let pem = ["-----BEGIN RSA PRIV", "ATE KEY-----"].concat();
         assert_eq!(scan_secrets("f", &pem).len(), 1);
         assert!(scan_secrets("f", "AKIA is a prefix; ghp_short").is_empty());
+    }
+
+    // ADV23R6-04: every path-component and file-name rule ignores letter case.
+    #[test]
+    fn adv23r6_04_path_rules_ignore_case() {
+        let document: DocumentMut = "data_extensions = [\".csv\", \".xlsx\"]\nopen_commercial_data = [\"spikes/data/samples/*\"]\ndata_metadata_files = []\n".parse().expect("toml");
+        let records = vec![
+            ("research-only".to_owned(), "etys.xlsx".to_owned()),
+            ("research-only".to_owned(), "grid.bin".to_owned()),
+        ];
+        for path in [
+            "x/GRID.BIN",
+            "spikes/RAW/notes.txt",
+            "spikes/Raw/notes.txt",
+            "data/rAw/x.md",
+            "x/ETYS.XLSX",
+        ] {
+            let found = check_paths(&paths(&[path]), &document, &records);
+            assert!(!found.is_empty(), "{path}");
+        }
+        // Control: an ordinary file name that merely contains the letters.
+        assert!(check_paths(&paths(&["spikes/drawing/notes.txt"]), &document, &records).is_empty());
+        let none = |_: &str| None;
+        for path in ["tools/Gen.PY", "a/__PYCACHE__/m.txt", "b/m.PYC"] {
+            assert_eq!(check_python(&paths(&[path]), &[], &none).len(), 1, "{path}");
+        }
+        assert!(has_component("a/RAW/b", "raw"));
+        assert!(!has_component("a/rawdata/b", "raw"));
     }
 
     #[test]

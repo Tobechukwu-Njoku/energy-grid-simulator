@@ -12,27 +12,37 @@
 # co-author is credited, and people share first names with models (a person
 # called Claude). There the name may be followed only by versions and the
 # QUALIFIER words below; vendor addresses are matched by the e-mail rules.
+# GENERIC: an assistant named without a model (AI, an LLM, a chatbot, a
+# language model) or by its vendor alone (Google AI, Apple Intelligence,
+# Meta AI) (ADV23R6-05/06). It is used where no e-mail address is given, so a
+# human co-author credited with a real address is never matched by it.
+# NAME: what an attribution names: an article, then AINAME or GENERIC, with
+# an optional possessive (`Claude's help`, ADV23R6-08).
 define DASH = \-\x{2010}-\x{2015}\x{2043}\x{2212}\x{2796}\x{02D7}\x{FE58}\x{FE63}\x{FF0D}
 define VENDOR = (?:google|alphabet|deepmind|openai|anthropic|meta|facebook|microsoft|github|amazon|aws|mistral|xai|x\.ai|deepseek|alibaba|cognition|cursor|codeium|nvidia|ibm|cohere|perplexity|apple|moonshot|zhipu|sourcegraph)
-define MODEL = (?:claude|chatgpt|gpt|codex|gemini|gemma|bard|copilot|cursor|grok|sonnet|opus|haiku|deepseek|qwen|qwq|llama|mistral|mixtral|codestral|devin|aider|windsurf|codeium|amazon[\s_-]*q|jules|openai|anthropic|antigravity|cline|tabnine|phind|kimi|cody|codewhisperer|(?:chat)?glm|command[\s_-]*r\b|o[1-9])
+define MODEL = (?:claude|chatgpt|gpt|codex|gemini|gemma|bard|copilot|cursor|grok|sonnet|opus|haiku|deepseek|qwen|qwq|llama|mistral|mixtral|codestral|devin|aider|windsurf|codeium|amazon[\s_-]*q|jules|openai|anthropic|antigravity|cline|tabnine|phind|kimi|cody|codewhisperer|(?:chat)?glm|command[\s_-]*r\b|roo[\s_-]*(?:code|cline)|supermaven|continue(?:\.dev)?(?![\p{L}\p{N}])|o[1-9])
 define WORD = [\p{L}\p{N}][\p{L}\p{N}.+'\x{2019}]*
 define SEP = [\s_{{DASH}}:/,&()]
-define AINAME = (?:(?:{{VENDOR}}(?:[\s_-]*ai)?(?:['\x{2019}]s)?[\s_-]+)*{{MODEL}}[\p{L}\p{N}.+]*(?:{{SEP}}+{{WORD}})*{{SEP}}*)
-define QUALIFIER = (?:ai|code|sonnet|opus|haiku|flash|pro|mini|nano|turbo|large|small|medium|coder|instruct|sol|developer|codex|lite|preview|cli|assist|assistant|editor|agent|agents|chat|workspace|advanced|experimental|exp|thinking|reasoning|reasoner|high|low|max|ultra|plus|online|bot|app|api|web|desktop|extension|ide|enterprise|business|team)
+define AINAME = (?:(?:{{VENDOR}}(?:[\s_-]*ai)?(?:['\x{2019}]s)?[\s_-]+)*{{MODEL}}[\p{L}\p{N}.+]*(?:['\x{2019}]s)?(?:{{SEP}}+{{WORD}})*{{SEP}}*)
+define QUALIFIER = (?:coding|programming|help|assistance|aid|support|input|guidance|model|models|tool|tools|studio|intelligence|llm|ai|code|sonnet|opus|haiku|flash|pro|mini|nano|turbo|large|small|medium|coder|instruct|sol|developer|codex|lite|preview|cli|assist|assistant|editor|agent|agents|chat|workspace|advanced|experimental|exp|thinking|reasoning|reasoner|high|low|max|ultra|plus|online|bot|app|api|web|desktop|extension|ide|enterprise|business|team)
 define VERSION = [vr]?\d[\p{L}\p{N}.+]*
 define IDNAME = (?:(?:{{VENDOR}}(?:[\s_-]*ai)?(?:['\x{2019}]s)?[\s_-]+)*{{MODEL}}(?:\d[\p{L}\p{N}.+]*)?(?:{{SEP}}+(?:{{QUALIFIER}}|{{VERSION}})\b)*{{SEP}}*)
-# ATTRIBUTE: an attribution verb, BY: what joins it to the name, HELP: an
-# optional "the help/assistance/aid/support of/from" phrase (ADV23R5-06/07).
-define ATTRIBUTE = (?:generated|produced|written|wrote|authored|assisted|powered|created|made|drafted|built|crafted|developed|coded|implemented|prepared|composed|designed|engineered|edited|refactored)
-define BY = (?:with|by|via|using|through|from)
+define GENERIC = (?:(?:{{VENDOR}}(?:['\x{2019}]s)?[\s_-]*(?:ai|intelligence|llms?|assistant|agent|models?)|(?:gen[\s_-]*)?ai|a\.i\.|llms?|chat[\s_-]*bots?|(?:large[\s_-]+)?language[\s_-]+models?)(?![\p{L}\p{N}]))
+define GENERICNAME = (?:{{GENERIC}}(?:['\x{2019}]s)?(?:{{SEP}}+(?:{{QUALIFIER}}|{{VERSION}})(?![\p{L}\p{N}]))*{{SEP}}*)
+define NAME = (?:(?:an?|the|my|our|some)\s+)?(?:{{AINAME}}|{{GENERICNAME}})
+# ATTRIBUTE: an attribution verb or collaboration noun, BY: what joins it to
+# the name, HELP: an optional "the help/assistance/aid/support of/from" phrase
+# (ADV23R5-06/07, ADV23R6-07).
+define ATTRIBUTE = (?:generated|produced|written|wrote|authored|assisted|powered|created|made|drafted|built|crafted|developed|coded|implemented|prepared|composed|designed|engineered|edited|refactored|pair[{{DASH}}\s]*programm?(?:ed|ing)|co[{{DASH}}\s]*(?:written|authored|developed|created|programm?ed|wrote)|collaborated|collaboration|paired|partnered|teamed(?:[{{DASH}}\s]*up)?|helped|aided|supported)
+define BY = (?:with|by|via|using|through|from|thanks\s+to|courtesy\s+of|alongside|(?:together|jointly)\s+with|in\s+(?:collaboration|partnership|cooperation|conjunction|tandem)\s+with)
 define HELP = (?:(?:the\s+|some\s+)?(?:help|assistance|aid|support)\s+(?:of|from)\s+)
 define DECOR = (?:>\s*)?(?:[\p{So}\p{Sk}\x{FE0F}\x{200D}]\s*)*
 
-^\s*{{DECOR}}(?:[\w{{DASH}}]*[{{DASH}}]|(?:co[{{DASH}}\s]*)?(?:authored|written|assisted|generated|created|developed|helped|signed[{{DASH}}\s]*off|pair[{{DASH}}\s]*programmed)\s+)(?:by|with)\s*:\s*(?:{{AINAME}}|{{IDNAME}}\s*<[^<>\r\n]+>|[^\r\n]*<?(?:[^<>\s]+@(?:[\w-]+\.)*(?:anthropic\.com|claude\.ai|openai\.com|chatgpt\.com|gemini\.google|cursor\.(?:com|sh)|anysphere\.co|codeium\.com|windsurf\.com|deepseek\.com|mistral\.ai|aider\.chat|x\.ai|cognition\.ai|cognition-labs\.com|cohere\.com|perplexity\.ai|qwen\.ai|moonshot\.ai|antigravity\.google|sourcegraph\.com|zhipuai\.cn|bigmodel\.cn)|(?<![^<\s:])(?:[^<>\s@]*[._+-])?(?:{{MODEL}}|assistant|agent)(?:[._+\d-][^<>\s@]*)?@(?:[\w-]+\.)*(?:google\.com|googlemail\.com|deepmind\.com|microsoft\.com|meta\.com|fb\.com|amazon\.com|nvidia\.com|ibm\.com|apple\.com|alibaba-inc\.com)|(?<![\w.-])(?:agent|{{MODEL}})(?:\[bot\])?@(?:users\.)?noreply\.(?:github\.com|google\.com)|[^<>\s]*{{MODEL}}[^<>\s]*\[bot\]@[^<>\s]+)>?)\s*$
-# Any other `<Words> by:` / `<Words> with:` trailer (ADV23R5-10): the name may
-# carry only versions and QUALIFIER words, so a human credit (a first name that
-# is also a model name, then a surname) stays allowed.
-^\s*{{DECOR}}(?:\p{L}+[\s{{DASH}}]+){1,4}(?:by|with)\s*:\s*{{IDNAME}}(?:<[^<>\r\n]+>)?\s*$
+^\s*{{DECOR}}(?:[\w{{DASH}}]*[{{DASH}}]|(?:co[{{DASH}}\s]*)?(?:authored|written|assisted|generated|created|developed|helped|signed[{{DASH}}\s]*off|pair[{{DASH}}\s]*programmed)\s+)(?:by|with|from)\s*:\s*(?:{{NAME}}|{{IDNAME}}\s*<[^<>\r\n]+>|[^\r\n]*<?(?:[^<>\s]+@(?:[\w-]+\.)*(?:anthropic\.com|claude\.ai|openai\.com|chatgpt\.com|gemini\.google|cursor\.(?:com|sh)|anysphere\.co|codeium\.com|windsurf\.com|deepseek\.com|mistral\.ai|aider\.chat|x\.ai|cognition\.ai|cognition-labs\.com|cohere\.com|perplexity\.ai|qwen\.ai|moonshot\.ai|antigravity\.google|sourcegraph\.com|zhipuai\.cn|bigmodel\.cn)|(?<![^<\s:])(?:[^<>\s@]*[._+-])?(?:{{MODEL}}|assistant|agent)(?:[._+\d-][^<>\s@]*)?@(?:[\w-]+\.)*(?:google\.com|googlemail\.com|deepmind\.com|microsoft\.com|meta\.com|fb\.com|amazon\.com|nvidia\.com|ibm\.com|apple\.com|alibaba-inc\.com)|(?<![\w.-])(?:agent|{{MODEL}})(?:\[bot\])?@(?:users\.)?noreply\.(?:github\.com|google\.com)|[^<>\s]*{{MODEL}}[^<>\s]*\[bot\]@[^<>\s]+)>?)\s*$
+# Any other `<Words> by:` / `with:` / `from:` trailer (ADV23R5-10, ADV23R6-09):
+# the name may carry only versions and QUALIFIER words, so a human credit (a
+# first name that is also a model name, then a surname) stays allowed.
+^\s*{{DECOR}}(?:\p{L}+[\s{{DASH}}]+){1,4}(?:by|with|from)\s*:\s*(?:(?:an?|the|my|our|some)\s+)?(?:{{IDNAME}}(?:<[^<>\r\n]+>)?|{{GENERICNAME}})\s*$
 
-^\s*{{DECOR}}(?:\*{1,2})?{{ATTRIBUTE}}\s+{{BY}}\s*:?\s*{{HELP}}?(?:(?:{{AINAME}}|AI|LLM)|\[(?:{{AINAME}}|AI|LLM)\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
+^\s*{{DECOR}}(?:\*{1,2})?{{ATTRIBUTE}}\s+{{BY}}\s*:?\s*{{HELP}}?(?:{{NAME}}|\[{{NAME}}\]\(https?://[^\s)]+\))[.!]?(?:\*{1,2})?\s*$
 ^\s*(?:>\s*)?\x{1F916}\x{FE0F}?\s*$
