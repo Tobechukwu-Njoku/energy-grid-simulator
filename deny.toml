@@ -1,0 +1,66 @@
+# cargo-deny policy (ADR 0001, NFR-8, Q-N-8). Run: cargo deny check
+# Any exception or allow-list change is a policy change and needs independent review
+# and the policy owner's approval (.github/CODEOWNERS). CI reads this file from the
+# base revision (--config), so a pull request is judged by the policy it started from.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+unmaintained = "all"
+# Approved advisory exceptions only, each with a reason and review reference.
+ignore = []
+
+[licenses]
+version = 2
+# Q-N-8 starting allow-list. MPL-2.0 needs a file-level obligation review first,
+# and copyleft licences are not on the list, so they fail until reviewed.
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+    # ASSUMPTION (D-17 open): placeholder carried by every workspace crate until the
+    # owner chooses a project licence. `cargo xtask policy` requires every crate to
+    # inherit exactly this value from the workspace.
+    "LicenseRef-EGS-Unreleased",
+]
+confidence-threshold = 0.93
+# Keep the reviewed list even when no current dependency uses an entry.
+unused-allowed-license = "allow"
+# Reviewed per-crate licence exceptions only.
+exceptions = []
+
+[licenses.private]
+# Workspace crates are checked too (ADV23-13): they declare the placeholder above.
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# NFR-10.AC1: no Python or Julia runtime in the production graph.
+deny = [
+    { crate = "pyo3", reason = "NFR-10: no Python runtime in production" },
+    { crate = "pyo3-ffi", reason = "NFR-10: no Python runtime in production" },
+    { crate = "cpython", reason = "NFR-10: no Python runtime in production" },
+    { crate = "python3-sys", reason = "NFR-10: no Python runtime in production" },
+    { crate = "jlrs", reason = "NFR-10: no Julia runtime in production" },
+    { crate = "jl-sys", reason = "NFR-10: no Julia runtime in production" },
+    { crate = "jlrs-macros", reason = "NFR-10: no Julia runtime in production" },
+    { crate = "pyo3-build-config", reason = "NFR-10: no Python runtime in production" },
+    { crate = "pyo3-macros", reason = "NFR-10: no Python runtime in production" },
+    { crate = "inline-python", reason = "NFR-10: no Python runtime in production" },
+    { crate = "rustpython-vm", reason = "NFR-10: no Python runtime in production" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -1,0 +1,206 @@
+# M0 merge gates on GitHub-hosted runners (ADR 0001 bootstrap profile, NFR-3).
+# Security rules: docs/security/ci-runner-policy.md, enforced by `cargo xtask policy`.
+# Policy checks, deny.toml and check configuration come from the current tip of
+# main (.github/actions/trusted-policy), never from the pull request (R1, F1).
+# This file is defined by the pull request when it runs; it is a protected path,
+# so the trusted policy-approval gate (trusted-gates.yml, run from main) fails
+# unless the owner approves the exact head of any change to it.
+# Never add pull_request_target, workflow_run, self-hosted runners or secrets here.
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  NEXTEST_VERSION: "0.9.151"
+  CARGO_DENY_VERSION: "0.20.2"
+
+jobs:
+  rust-linux:
+    name: rust (fmt, clippy, nextest incl. xtask and hook tests) linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup toolchain install && rustc --version && cargo --version
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest@${{ env.NEXTEST_VERSION }}
+      - name: cargo fmt
+        run: cargo fmt --all --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: cargo nextest
+        run: cargo nextest run --workspace --locked --no-fail-fast
+      - name: doctests
+        run: cargo test --workspace --doc --locked
+
+  rust-macos:
+    name: rust (build, nextest) macos
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup toolchain install && rustc --version
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest@${{ env.NEXTEST_VERSION }}
+      - name: cargo nextest
+        run: cargo nextest run --workspace --locked --no-fail-fast
+
+  licences:
+    name: licences and advisories (cargo-deny, trusted deny.toml)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-deny@${{ env.CARGO_DENY_VERSION }}
+      - name: cargo deny (policy from current main)
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: cargo deny --config "$TRUSTED/deny.toml" --locked check
+
+  attribution:
+    name: attribution policy (D-52)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # pull-requests: read lets main's xtask read the PR body's edit history
+    # (GraphQL userContentEdits) to verify a D-61 bot-managed summary block.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      - name: Scan commits, identities, title, body and added lines
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+          MAIN: ${{ steps.trusted.outputs.main }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$TRUSTED"
+          base=()
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then base=(--base-ref "$MAIN"); fi
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" attribution "${base[@]}"
+
+  docs:
+    name: documentation gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      - name: Links and traceability
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" docs
+
+  policy:
+    name: repository policy (unsafe scope, manifests, workflows, Python)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      - name: Policy checks
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" policy
+      # Builds the PR workspace in several feature configurations and runs its doctests
+      # (its build scripts, proc macros and doctests run here, in this unprivileged job
+      # only) with main's xtask as rustc wrapper and linker guard: -F unsafe_code outside
+      # the reviewed adapters of main's repository.toml, allow-listed link libraries only
+      # (ADR 0001, NFR-10). It must stay the LAST step of this job, without an id, so
+      # file-command writes by PR code reach no later step (ADV23R6-03).
+      - name: Compiler-enforced unsafe scope and native runtimes (flags from main)
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+        run: |
+          cd "$TRUSTED"
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" build-gate --target-dir "$RUNNER_TEMP/build-gate"
+
+  provenance:
+    name: provenance, secrets and raw data (D-56)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: trusted
+        uses: ./.github/actions/trusted-policy
+      # Scans the checkout and every file version the event's commits introduced
+      # (R13-03); on a pull request, from current main.
+      - name: Provenance gate
+        env:
+          TRUSTED: ${{ steps.trusted.outputs.dir }}
+          MAIN: ${{ steps.trusted.outputs.main }}
+        run: |
+          cd "$TRUSTED"
+          base=()
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then base=(--base-ref "$MAIN"); fi
+          cargo run --locked --quiet -p xtask -- --repo "$GITHUB_WORKSPACE" --policy "$TRUSTED" provenance "${base[@]}"
+
+  merge-gates:
+    name: merge-gates
+    if: always()
+    needs: [rust-linux, rust-macos, licences, attribution, docs, policy, provenance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every applicable gate
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$NEEDS" | jq -r 'to_entries[] | "\(if .value.result == "success" then "PASS" else "FAIL" end): \(.key) (\(.value.result))"'
+          echo "N/A: typescript fmt/lint/tests: no TypeScript package exists yet (apps/web)"
+          echo "N/A: numerical-reference: no numerical model or reference fixtures exist yet"
+          echo "N/A: benchmark-regression: B1 profile starts at M1 on the D-65 target runner"
+          echo "N/A: mutation: no commitment/redispatch/network/pricing/optimisation model logic yet"
+          echo "N/A: gpu-validation: no enabled GPU adapter (cuOpt is a capability stub)"
+          echo "SEPARATE: independent-review and policy-approval are required checks in trusted-gates.yml (run from main)"
+          failed="$(printf '%s' "$NEEDS" | jq '[.[] | select(.result != "success")] | length')"
+          test "$failed" -eq 0

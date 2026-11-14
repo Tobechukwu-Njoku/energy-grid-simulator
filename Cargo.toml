@@ -1,0 +1,74 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99.1"
+publish = false
+# ASSUMPTION (D-17 open): no project licence is chosen yet. Every workspace crate
+# carries this placeholder so cargo-deny checks private crates instead of ignoring them.
+license = "LicenseRef-EGS-Unreleased"
+repository = "https://github.com/Tobechukwu-Njoku/energy-grid-simulator"
+
+[workspace.dependencies]
+# Internal crates.
+egs-domain = { path = "crates/domain" }
+egs-scenario = { path = "crates/scenario" }
+egs-ingest = { path = "crates/ingest" }
+egs-network = { path = "crates/network" }
+egs-market = { path = "crates/market" }
+egs-optimisation = { path = "crates/optimisation" }
+egs-solver-highs = { path = "crates/solver-highs" }
+egs-solver-gurobi = { path = "crates/solver-gurobi" }
+egs-solver-xpress = { path = "crates/solver-xpress" }
+egs-solver-cuopt = { path = "crates/solver-cuopt" }
+egs-commitment = { path = "crates/commitment" }
+egs-redispatch = { path = "crates/redispatch" }
+egs-pricing = { path = "crates/pricing" }
+egs-engine = { path = "crates/engine" }
+egs-api = { path = "crates/api" }
+egs-sdk = { path = "crates/sdk" }
+
+# Third-party crates. Every addition is checked by cargo-deny (deny.toml).
+uuid = { version = "1", default-features = false, features = ["std"] }
+
+# Policy tooling (xtask, D-73) only; never a production dependency.
+fancy-regex = "0.20"
+memchr = "2"
+regex = { version = "1", default-features = false, features = ["std", "perf", "unicode"] }
+proc-macro2 = { version = "1", default-features = false, features = ["span-locations"] }
+quote = { version = "1", default-features = false }
+serde_json = "1"
+syn = { version = "2", default-features = false, features = ["full", "parsing", "printing", "visit"] }
+toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
+unicode-normalization = "0.1"
+unicode-security = { version = "0.1", default-features = false }
+yaml-rust2 = { version = "0.13", default-features = false }
+
+[workspace.lints.rust]
+# ADR 0001: no unsafe code outside the individually reviewed solver adapters listed
+# under [[adapter]] in xtask/policy/repository.toml. Those
+# adapters may allow it item by item. Every other crate root also starts with
+# `#![forbid(unsafe_code)]`, which no later attribute or macro can lower (F4);
+# `cargo xtask policy` requires both.
+unsafe_code = "deny"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+float_cmp = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+
+[profile.release]
+debug = "line-tables-only"

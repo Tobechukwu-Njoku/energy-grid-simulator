@@ -1,0 +1,17 @@
+//! Repository policy checks and CI gates (D-73, ADR 0001).
+//!
+//! Run `cargo xtask help`. In CI every check runs from the trusted base
+//! revision (`--policy`) against the pull-request checkout (`--repo`).
+
+#![forbid(unsafe_code)]
+#![doc(test(attr(forbid(unsafe_code))))]
+
+pub mod attribution;
+pub mod build_gate;
+pub mod docs;
+pub mod repository;
+pub mod review_gates;
+pub mod rust_policy;
+pub mod secrets;
+pub mod util;
+pub mod workflows;

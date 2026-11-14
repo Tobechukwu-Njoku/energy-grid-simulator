@@ -39,7 +39,99 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 - Linux distro (Q-H-7)
 - Remaining unanswered questionnaire items have defaults or are P2+ concerns
 
-## Work state (coordinator: Claude Opus 5.5) — 2026-11-13
+## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
+
+**PR #23 revision 14 (implementation, 2026-11-14):** R13-01..03 (GPT) and
+ADV23R13-01..08 (Gemini) addressed (ADR 0001 revision-14 addendum). Secret exemptions
+name the whole detected block (key header through end marker) by blob hash, per view;
+match locations drop consumed newlines so a following line cannot allowlist a finding;
+inline gitleaks markers are ignored; `provenance` scans every file version a PR's
+commits introduced (CI base: current main). Local rules add URI user-info passwords,
+kubeconfig credentials, netrc/pgpass records and over-150-character assignments.
+Attribution adds CodeQwen, Refact, appreciation/discussion/conversation phrases and
+preposition-less credit trailers. Next: round-14 review.
+
+**PR #23 revision 13 (implementation, 2026-11-14):** R12-01..02 (GPT) and
+ADV23R12-01..08 (Gemini) addressed (ADR 0001 revision-13 addendum). The secrets scan
+runs over every text view of a file (raw bytes, UTF-8, UTF-16/32 both byte orders and
+alignments); any view's finding fails. Secret formats now come from the gitleaks
+v8.30.1 default ruleset (MIT), vendored unchanged in `xtask/policy/gitleaks.toml`,
+pinned by blob id and evaluated in Rust, plus local rules (PEM header, PuTTY, `.ppk`,
+earlier prefixes); unsupported rules or keys fail closed. Update procedure in
+CONTRIBUTING.md. Attribution adds CodeGemma/WizardCoder/Yi-Coder, thank-you/kudos/
+shout-out/acknowledgment/consultation phrases and capitalised bare tools after review
+verbs. Next: round-13 review; the bootstrap seed waits for a clean review.
+
+**PR #23 revision 12 (implementation, 2026-11-14):** R11-01..02 (GPT) and
+ADV23R11-01..06 (Gemini) addressed (ADR 0001 revision-12 addendum). Files are decoded
+(UTF-8/16/32, BOM or NUL pattern) before the secrets, manifest and shebang checks; a
+file that is not decodable text and not an allowed image is data. `data_extensions` is
+replaced by the trusted file-type allowlist (`tracked_extensions_allowed`,
+`binary_extensions_allowed`, `tracked_names_allowed`); content sniffing still applies,
+plus delimited tables in `.txt`. Attribution adds bare Blackbox/Sweep/Granite after
+authorship verbs, thanks/courtesy/credit phrases and trailers, CodeGeeX and IBM Granite.
+Next: round-12 review; the bootstrap seed waits for a clean review of the new head.
+
+**PR #23 revision 11 (implementation, 2026-11-14):** R10-01..02 (GPT) and
+ADV23R10-01..06 (Gemini) addressed (ADR 0001 revision-11 addendum). Markup holding a
+DTD or entity declaration is data unless listed in the trusted `xml_dtd_allowed`
+(entities are no longer expanded). Solver solution, start, basis and infeasibility
+formats are data extensions. D-73 now rejects every non-allow-listed script or source
+language (and non-`sh`/`bash` shebangs) outside `spikes/` and reference validators.
+The LCS diff budget fails closed (unknown lines are human). Attribution adds verbless
+credit phrases, tested/verified/documented/analysed, CodeLlama, StarCoder, and bare
+Blackbox/Sweep as trailer values. Next: round-11 review; the one-time bootstrap seed
+waits for a clean review of the new head.
+
+**PR #23 revision 10 (implementation, 2026-11-14):** R9-01..03 (GPT) and
+ADV23R9-01..09 (Gemini) addressed. D-61 provenance is per line: a CodeRabbit block is
+exempt only if every line inside its markers was added by a `coderabbitai` bot edit;
+lines a bot edit only kept, lines of the original body (or of the earliest known text
+when GitHub lacks the creation record) and lines of unknown origin are scanned.
+Gate job ids AND published check names (`[workflow.names]` in `gates.toml`) are
+reserved, case-insensitively; each gate job must publish its trusted name. The
+aggregator must publish `merge-gates` and run exactly main's steps. Workflow `env:`
+names are an allowlist; loader and shell/interpreter/Git start-up variables are
+always rejected. RDF/XML is detected whatever its prefix, declaration, encoding or
+BOM; solver instances (`.mps`, `.lp`, `.qps`, `.nl`, `.gms`, ...) are data, MPS/LP/GAMS
+also by content. New attribution spellings: JetBrains AI, Blackbox AI, Sweep and
+domains, optimised/polished/completed, recommendation/coaching/prompt/instruction
+nouns. ADR 0001 has a revision-10 addendum. Needs exact-head GPT re-review, Gemini
+adversarial re-check and triage before bootstrap attestation.
+
+**PR #23 revision 9 (implementation, 2026-11-14):** R8-01 (GPT) and ADV23R8-01..08
+(Gemini) addressed. D-61 is implemented as written, and CodeRabbit's PR-description
+summary stays. Only the exact marker block is exempt, and only when the PR body's
+GitHub edit history (GraphQL `userContentEdits`, read-only token) shows that the
+`coderabbitai` bot introduced that block text. Spoofed markers, blocks with unverified
+provenance and text outside the block are still rejected. An unreadable history fails
+closed. Every check name in the trusted policy (`merge-gates`, the ci.yml gates, the
+trusted gates and `required_checks`) is protected in all workflows. Workflows may not
+set `LD_*`/`DYLD_*`, and the build gate removes them. The build gate and the
+workflow lint share one Python/Julia runtime-family list (PyPy, GraalPy, ...).
+CIM/RDF, PowerFactory and other network-model files are data, and CIM/RDF XML is
+also detected by content. New attribution spellings: OpenHands, Bolt, Replit and
+related domains, reviewed/fixed verbs, `under` and supervision nouns. ADR 0001 has a
+revision-9 addendum: risk 11 is clarified for hosted sudo, and risk 12 covers trust in
+GitHub edit history. Needs exact-head GPT re-review, Gemini adversarial re-check and
+triage before bootstrap attestation.
+
+**PR #23 revision 7 (implementation, 2026-11-14):** R6-01..04 (GPT) and ADV23R6-01..10
+(Gemini) addressed; the compiler-enforced design stays. Reviewed adapters are an explicit
+`[[adapter]]` list (package name AND directory) in the trusted, protected
+`repository.toml`. The rustc wrapper attributes every compilation through a `cargo
+metadata` configuration (manifest directory, package name, source file) and refuses what it
+cannot attribute; no crate-name heuristics. The linker guard accepts only allow-listed
+library/framework names (`gates.toml` `link_libraries`/`link_frameworks`) and Rust's own
+artifacts, and refuses response files, scripts, plugins and driver redirection. The gate
+builds default, all, no-default and each single feature, and runs `cargo test --doc`; every
+non-adapter library root needs `#![doc(test(attr(forbid(unsafe_code))))]`. The build-gate
+step must be its job's last step (file-command guarantee); scripts may not name or
+indirectly reach file-command files. Provenance path rules ignore case. Attribution: generic
+AI/LLM/vendor-AI names, collaboration joiners, possessives, `from:` trailers, Roo Code,
+Continue, Supermaven. Residual risks 8–10 in the ADR 0001 revision-7 addendum. Finding→test
+table in the PR body. Needs exact-head GPT re-review, Gemini adversarial re-check and triage
+before bootstrap attestation.
 
 **PR #23 revision-12 review (2026-11-14 UTC):** exact head
 `d996aac5b9d439d9f328d7f7b47a4c75ec540a91` re-reviewed; verdict **must-fix**.
@@ -131,6 +223,22 @@ unsafe forbid. Do not attest this head as the one-time bootstrap seed.
 Reproductions, controls, regression matrix and M0 limitation assessment:
 [revision-6 report](reviews/gpt-2026-11-13-pr23-r6.md). PR #23 was not modified.
 
+**PR #23 revision 6 (implementation, 2026-11-13):** R5-01..04 (GPT) and ADV23R5-01..10
+(Gemini) addressed by a change of approach (coordinator decision): the static Rust
+reachability walker is deleted. What Cargo builds now comes from `cargo metadata`
+(resolved members, targets, path deps, patches, build-deps); the cheap static rules stay
+(crate-root `forbid`, manifests, alias-only Cargo config, workflows). New
+`cargo xtask build-gate`, a step of the unprivileged `policy` CI job, builds the PR
+workspace (all targets, all features) with main's xtask as `RUSTC_WRAPPER`: `-F unsafe_code`
+for every repository crate outside `crates/solver-*` (lint caps stripped), plus a linker
+guard and Cargo `build-script-executed` output for the Python/Julia ban. Workflows may set
+no `CARGO_*`/`RUSTC*`/`RUSTDOC*`/`RUSTUP_*`/`*RUSTFLAGS` variable unless `allowed_env` in
+the trusted `gates.toml` lists it. Attribution: generic verb/joiner/"help of" footer
+phrases, any `<Words> by:` trailer with a model-shaped name, and Cody/Sourcegraph,
+CodeWhisperer, GLM, Command R in the single name list. Residual risks in the ADR 0001
+revision-6 addendum. Finding→test table in the PR body. Needs exact-head GPT re-review,
+Gemini adversarial re-check and triage before bootstrap attestation.
+
 **PR #23 revision-5 review:** exact head `b21d83de896ba09b59259fa687e427271bbc06ed`
 re-reviewed; verdict **must-fix**. All 143 submitted tests pass, and all fourteen
 round-4 concrete inputs are fixed. Four new STRUCTURAL probes, each verified with
@@ -150,6 +258,16 @@ this head as the one-time trusted bootstrap seed. Reproductions, regression
 assessments and activation limits: [revision-4 report](reviews/gpt-2026-11-13-pr23-r4.md).
 PR #23 was not modified.
 
+**PR #23 revision 4 (implementation, 2026-11-13):** R3-01..04 (GPT) and ADV23R3-01..07
+(Gemini) addressed with general mechanisms and mapped regression tests (finding→test
+table in the PR body): structural parse of the `forbid` lint list; every Cargo-selected
+target scanned regardless of suffix; no currentness exemption for the reviews directory;
+`?` wildcard with a differential test against `git check-ignore`; NFKD plus removal of
+all combining marks; vendor-prefixed model names and vendor domains; generic comment
+delimiter stripping; shell allow-list including inherited `defaults.run.shell`; a
+schema rule for manifest file keys; one canonical manifest name. Needs exact-head GPT
+re-review, Gemini adversarial re-check and triage before bootstrap attestation.
+
 **PR #23 revision-3 review:** exact head `b2173e28f8f232366ffe6a27d5e787fd2adfc39c`
 re-reviewed; verdict **must-fix**. All 111 submitted tests pass. The original
 F1–F9 / ADV23R-01..09 inputs are addressed (D-74 account/approval activation
@@ -163,6 +281,14 @@ re-reviewed; verdict **must-fix**. All 81 submitted tests pass, but nine remaini
 enforcement findings require correction and exact-head re-review. Evidence and
 R1–R8 / ADV23-01..18 dispositions:
 [revision-2 report](reviews/gpt-2026-11-13-pr23-r2.md). PR #23 was not modified.
+
+**PR #23 revision 3 (implementation, 2026-11-13):** F1–F9 and ADV23R-01..09 addressed with
+mapped regression tests (finding→test table in the PR body). Trusted gates now run from
+`main` (`trusted-gates.yml`); PR jobs fail closed until `main` holds policy. **Coordinator
+action before CI can pass:** commit `docs/process/ci-bootstrap.toml` with
+`seed_sha = "<final PR #23 head>"` to `main` and re-run CI; then GPT re-review, Gemini
+adversarial re-check and a triage record for every adversarial finding (format in
+REVIEW-BRIEF.md). The D-74 machine account (`egs-bot` placeholder) is still to be created.
 
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).

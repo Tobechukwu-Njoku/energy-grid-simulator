@@ -1,0 +1,177 @@
+# Trusted repository policy (D-56, D-73, ADR 0001). Read from the base branch in CI.
+# Changing it needs the policy owner's review (.github/CODEOWNERS, policy-approval).
+
+# GitHub login whose approval protected-path changes need (D-74).
+policy_owner = "Tobechukwu-Njoku"
+
+# Separate GitHub machine account agents push and open pull requests from (D-74),
+# so the owner can approve them. ASSUMPTION: placeholder name until the owner
+# creates the account; change it here when it exists.
+agent_account = "egs-bot"
+
+# Paths whose change is a policy change. Keep in step with .github/CODEOWNERS.
+protected_paths = [
+    "/.github/",
+    "/.githooks/",
+    "/.cargo/",
+    "/xtask/",
+    "/deny.toml",
+    "/Cargo.toml",
+    "/rust-toolchain.toml",
+    "/docs/security/",
+]
+
+# ASSUMPTION (D-17 open): placeholder licence carried by every workspace crate until
+# the owner chooses one. It lets cargo-deny check private crates (no ignore).
+workspace_licence = "LicenseRef-EGS-Unreleased"
+
+# D-73: Python only in spikes/ and offline reference validators.
+# The directory list also exempts every other script language (ADV23R10-02).
+python_allowed = ["spikes/", "tools/reference-validators/"]
+# Outside those directories, a file whose extension is a programming or
+# scripting language (xtask LANGUAGE_EXTENSIONS: .py, .jl, .r, .m, .js, .ts,
+# .rb, .pl, .lua, C/C++, ...) must have one of these extensions, and a file
+# that starts with a shebang must name one of these interpreters.
+source_extensions_allowed = [".rs", ".toml", ".yml", ".yaml", ".md", ".sh"]
+shebang_interpreters_allowed = ["sh", "bash"]
+
+# R10-01: exact paths of files that may hold an XML DTD or entity declaration
+# without counting as data. Entities are never expanded by the sniffer.
+xml_dtd_allowed = []
+
+# D-56 data gate (ADV23R11-02): an allowlist of file types, replacing the old
+# list of data extensions. A tracked file is data unless its extension is in
+# tracked_extensions_allowed or binary_extensions_allowed, or its exact file
+# name is in tracked_names_allowed. Data must be either an exact path in
+# data_metadata_files (provenance, fixtures, aggregates), or a file under
+# open_commercial_data whose name (or sample_sources alias) has an
+# open-commercial record in a provenance manifest or sources.tsv (F9). Content
+# still decides as well: a
+# file of an allowed type is data when it is not decodable text (R11-01), when
+# it holds a known data signature, RDF/XML, a DTD or a solver model, or (for
+# .txt and extensionless non-script files) a delimited table; an allowed binary type must
+# carry its own signature. Adding a type is a policy change for the owner.
+tracked_extensions_allowed = [
+    ".rs", ".toml", ".lock", ".yml", ".yaml", ".md", ".sh", ".py", ".txt", ".regex",
+    ".svg",
+]
+# Images used in documentation; each must start with its format's signature.
+binary_extensions_allowed = [".png", ".jpg", ".jpeg", ".gif", ".webp"]
+# Exact file names (any directory) of extensionless or dot files.
+tracked_names_allowed = [
+    ".gitignore", ".gitattributes", "CODEOWNERS", "commit-msg", "LICENSE",
+    "LICENSE-APACHE", "LICENSE-MIT", "COPYING", "NOTICE",
+]
+open_commercial_data = ["spikes/data/samples/*"]
+# Exact paths of provenance records, test fixtures and non-reconstructive
+# aggregates that carry a data extension but are not datasets.
+data_metadata_files = [
+    ".githooks/tests/fixtures.json",
+    "spikes/data/sources.tsv",
+    "spikes/data/era5-request-2024-01.json",
+    "spikes/data/samples/download-manifest.json",
+    "spikes/data/samples/network-statistics.json",
+    "spikes/data/samples/tabular-statistics.json",
+    "spikes/data-gathering/elexon/verification-2026-11-13.json",
+    "spikes/data-gathering/elexon/verification-supplement-2026-11-13.json",
+]
+
+# Synthetic, non-working example credentials quoted in review reports. Each
+# names one exact detected block of one file by the Git blob hash of the block
+# text (so this file does not repeat it); never a wildcard. A block is the
+# finding's whole lines and, for a private key header, every line through the
+# end of that key, so a reviewed header never admits another key body (R13-01).
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-13-pr23-r2.md"
+block_blob = "d38e78289d703f77d3083278ff71cd146aecb5c2"
+reason = "ADV23R-09 reproduction input; a synthetic hexadecimal sequence, not a credential"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+block_blob = "027d0d0b213edf10f2011f857d48f3af13db97f6"
+reason = "ADV23R12-01: header names quoted in prose, through the end of the synthetic key that follows"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+block_blob = "7345f93be5d7afb04fb47cae06e1b92130a35d15"
+reason = "ADV23R12-01 reproduction: the complete synthetic seven-line PuTTY key block"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+block_blob = "cf6296f6375eac81d0a196c3458cdb9262600dff"
+reason = "ADV23R12-01: truncated synthetic PuTTY key block, through the reproduction command"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+block_blob = "48ddc4d37157073345e30b27645e4d44e3843cfe"
+reason = "ADV23R12-01 reproduction command: synthetic PuTTY key in one printf line"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+block_blob = "dc1907f651103ee19ff1d3b8a8c311b5a14261d0"
+reason = "ADV23R12-02 reproduction command: synthetic GitLab runner token"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+block_blob = "b2777bf78dc8be85a58f89b9430ff1c9ef7d8742"
+reason = "ADV23R12-02 reproduction command: synthetic Perplexity key"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "147aff8b0be9e23931730b7cf5741a2320fe646f"
+reason = "ADV23R13-01 description: example connection URI with a placeholder password"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "bd0a83fa433fe96c29df354d962464125c27f805"
+reason = "ADV23R13-01 description: the URI syntax with placeholder user and password"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "a695c1c87f154e8c5bd855ea098989e5f5b27de8"
+reason = "ADV23R13-01 reproduction command: synthetic database password"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "188bb156bc4f84dafde5302fdbd51edec570e35e"
+reason = "ADV23R13-02 reproduction: truncated synthetic kubeconfig client key"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "42390573153f582e31254ee03cc5e2ec9cc0604b"
+reason = "ADV23R13-03 reproduction input: synthetic netrc record"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "6881c40e7d2e909b3100bbf61d92436b54fbca34"
+reason = "ADV23R13-03 reproduction command: synthetic netrc record"
+
+[[secret_exemption]]
+path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+block_blob = "cab0353426e20dfead33a2a5724689d69527a328"
+reason = "ADV23R13-03 description: netrc syntax with placeholders"
+
+# Committed sample name -> the provenance record (sources.tsv local-name) it was cut from.
+[sample_sources]
+"spikes/data/samples/generation-2024.csv" = "generation-mix.csv"
+
+# Reviewed native solver adapters (ADR 0001, ADR 0003): the only local packages
+# whose library, binary and test targets may allow unsafe code. Each entry names
+# the exact Cargo package AND its repository directory; both must match. A new
+# adapter, or any change here, is a change to this protected file and needs the
+# policy owner's exact-head approval (D-74). Build scripts are never exempt.
+[[adapter]]
+package = "egs-solver-highs"
+path = "crates/solver-highs"
+
+[[adapter]]
+package = "egs-solver-gurobi"
+path = "crates/solver-gurobi"
+
+[[adapter]]
+package = "egs-solver-xpress"
+path = "crates/solver-xpress"
+
+[[adapter]]
+package = "egs-solver-cuopt"
+path = "crates/solver-cuopt"
