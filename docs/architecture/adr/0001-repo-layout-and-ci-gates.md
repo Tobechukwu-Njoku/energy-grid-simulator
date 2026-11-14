@@ -562,3 +562,64 @@ Residual risk 11 is clarified, and risk 12 is added:
 12. The D-61 exemption trusts GitHub's edit history and actor type. A compromised
     bot account, or a GitHub API defect, could exempt bot-authored text. The
     exemption never extends beyond the exact marker block.
+
+## Addendum — 2026-11-14: line-level bot provenance, gate display names, env allowlist (PR #23 revision 10)
+
+Round-9 reviews (GPT R9-01..03, Gemini ADV23R9-01..09) found false negatives in
+revision 9. This addendum implements D-52, D-56, D-61 and D-74 as written and
+adds no decision.
+
+- **D-61 provenance is per line (R9-01, ADV23R9-04).** Revision 9 exempted a
+  whole block when some bot edit first contained that exact block text. A bot
+  edit that changes one line of a block would then launder every line it merely
+  kept, including credit an owner had inserted. Now each line of the PR body has
+  an author: consecutive body versions are diffed (longest common subsequence of
+  lines), a kept line keeps its author, and an added line belongs to the editor
+  of that version. A block is exempt only if every line inside it, markers
+  included, was added by an edit whose actor GitHub reports as a `Bot` with the
+  listed login. The original body is the PR author's: GitHub records it as the
+  oldest edit, at the PR's `createdAt` (verified against PR #23's real history).
+  If that creation record is missing, the earliest known text counts as
+  human-authored, so a bot's first recorded edit cannot claim a block that was
+  already there. Lines added after a deleted (unknown) version count as
+  human-authored too, and the scanned body counts as a further edit of unknown
+  authorship. Restoring, unchanged, a block that was fully bot-written in an
+  earlier version stays exempt; restoring a block that held a human line does
+  not. All thirteen PR #23 body versions that contain the block still pass.
+- **Gate display names (R9-02, ADV23R9-01).** GitHub names a check run after the
+  job's `name:`. `gates.toml` now lists each gate job's published name
+  (`[workflow.names]`; a job without an entry publishes its id). Both the id and
+  the published name of every gate job and aggregator are reserved in every
+  workflow, compared case-insensitively. Only the owning job (same file, same id)
+  may carry them, and it must publish exactly the trusted name. The
+  policy-approval gate uses the same list.
+- **Aggregator integrity (ADV23R9-02).** The aggregator must publish its trusted
+  name (`merge-gates`), may set only `name`, `if`, `needs`, `runs-on`,
+  `timeout-minutes` and `steps`, and its `steps` must equal the aggregator steps
+  of main's copy of the workflow (read from the trusted tree). Those steps
+  evaluate every `needs` result through `toJSON(needs)`, so the `needs` list can
+  grow without a step change. If main's copy is unavailable, the check fails
+  closed. Changing the aggregator's steps therefore lands on main first.
+- **Workflow `env:` is an allowlist (ADV23R9-03).** Every variable name a
+  workflow, job, step or local action sets must be listed in `allowed_env`. In
+  addition, dynamic-loader variables and shell, interpreter and Git start-up
+  variables (`BASH_ENV`, `ENV`, `SHELLOPTS`, `BASHOPTS`, `PROMPT_COMMAND`,
+  exported `BASH_FUNC_*`, `PYTHON*`, `NODE_OPTIONS`, `PERL5LIB`/`PERL5OPT`,
+  `RUBYOPT`, `JAVA_TOOL_OPTIONS`, `GIT_*` and similar) are rejected even if
+  listed.
+- **RDF/XML and solver models (R9-03, ADV23R9-05).** A file is RDF/XML data by
+  content when it is XML in UTF-8, UTF-16 or UTF-32 (with or without BOM or XML
+  declaration) and its root element is `RDF` under any prefix, or its first
+  64 KiB name the RDF syntax, IEC TC57 CIM or ENTSO-E namespaces after character
+  and internal-entity references are expanded. Optimisation instances are data
+  by extension (`.mps`, `.qps`, `.lp`, `.nl`, `.gms`, `.gdx`, `.osil`, `.cbf`) and,
+  for MPS/QPS, CPLEX LP and GAMS, also by content.
+- **Attribution (ADV23R9-06..09)** adds JetBrains AI/Junie, Blackbox AI and Sweep
+  AI, the `blackbox.ai` and `sweep.dev` domains, `jetbrains.com` for assistant
+  addresses only (a human JetBrains co-author passes), optimised/polished/completed
+  verbs, and recommendation, coaching, prompt and instruction nouns.
+
+Risk 12 is refined: the exemption still trusts GitHub's edit history and actor
+type, and a summary's content is not evidence of who wrote the code. Text a bot
+edit merely kept, text in the original body, and text of unknown origin are never
+exempt.

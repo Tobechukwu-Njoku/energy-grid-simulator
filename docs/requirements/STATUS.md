@@ -31,6 +31,22 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
 
+**PR #23 revision 10 (implementation, 2026-11-14):** R9-01..03 (GPT) and
+ADV23R9-01..09 (Gemini) addressed. D-61 provenance is per line: a CodeRabbit block is
+exempt only if every line inside its markers was added by a `coderabbitai` bot edit;
+lines a bot edit only kept, lines of the original body (or of the earliest known text
+when GitHub lacks the creation record) and lines of unknown origin are scanned.
+Gate job ids AND published check names (`[workflow.names]` in `gates.toml`) are
+reserved, case-insensitively; each gate job must publish its trusted name. The
+aggregator must publish `merge-gates` and run exactly main's steps. Workflow `env:`
+names are an allowlist; loader and shell/interpreter/Git start-up variables are
+always rejected. RDF/XML is detected whatever its prefix, declaration, encoding or
+BOM; solver instances (`.mps`, `.lp`, `.qps`, `.nl`, `.gms`, ...) are data, MPS/LP/GAMS
+also by content. New attribution spellings: JetBrains AI, Blackbox AI, Sweep and
+domains, optimised/polished/completed, recommendation/coaching/prompt/instruction
+nouns. ADR 0001 has a revision-10 addendum. Needs exact-head GPT re-review, Gemini
+adversarial re-check and triage before bootstrap attestation.
+
 **PR #23 revision 9 (implementation, 2026-11-14):** R8-01 (GPT) and ADV23R8-01..08
 (Gemini) addressed. D-61 is implemented as written, and CodeRabbit's PR-description
 summary stays. Only the exact marker block is exempt, and only when the PR body's

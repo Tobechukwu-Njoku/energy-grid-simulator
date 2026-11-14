@@ -38,9 +38,13 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    text (F5). Scripts never run Python (D-73). A `shell:` (on a step, or inherited from
    `defaults.run.shell` of a job or the workflow) is one of `bash`, `sh`, `pwsh`,
    `powershell` or `cmd`; any other value, including an `interpreter {0}` template, is
-   rejected (ADV23R3-05). No YAML aliases. No `env:` may set a `CARGO_*`, `RUSTC*`,
-   `RUSTDOC*`, `RUSTUP_*` or `*RUSTFLAGS` variable (flags, wrappers, linkers, lint
-   caps) unless `allowed_env` in the trusted `gates.toml` lists it (ADV23R5-01).
+   rejected (ADV23R3-05). No YAML aliases. Every `env:` name (workflow, job, step or
+   local action) must be listed in `allowed_env` in the trusted `gates.toml`
+   (ADV23R5-01, ADV23R9-03); the Cargo variables listed there change no flags,
+   wrappers, linkers or lint caps. Dynamic-loader (`LD_*`, `DYLD_*`) and shell,
+   interpreter and Git start-up variables (`BASH_ENV`, `ENV`, `PYTHON*`,
+   `NODE_OPTIONS`, `PERL5*`, `RUBYOPT`, `JAVA_TOOL_OPTIONS`, `GIT_*`, ...) are
+   rejected even if listed.
    A `run:` script may name a file-command file (`$GITHUB_ENV`, `$GITHUB_PATH`,
    `$GITHUB_OUTPUT`, `$GITHUB_STATE`, `$GITHUB_STEP_SUMMARY`, compared without case
    or quoting) only on a line `allowed_file_command_lines` lists (none today), and
@@ -78,7 +82,9 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    `agent_account` in `xtask/policy/repository.toml` (D-74); a policy PR opened by the
    owner cannot pass because GitHub forbids self-approval. Because workflow and action
    files are protected, a PR cannot change what its jobs run without that approval,
-   and a PR job reusing a trusted gate name fails the gate. Branch protection should
+   and a PR job reusing a gate's job id or published check name fails the gate. The
+   `merge-gates` aggregator must publish that name and run exactly main's steps,
+   which evaluate every `needs` result (ADV23R9-02). Branch protection should
    require `merge-gates`, `independent-review` and `policy-approval`; the owner
    configures that. Residual risks are listed in ADR 0001's 2026-11-13 addendum.
 
