@@ -102,6 +102,19 @@ Continue, Supermaven. Residual risks 8–10 in the ADR 0001 revision-7 addendum.
 table in the PR body. Needs exact-head GPT re-review, Gemini adversarial re-check and triage
 before bootstrap attestation.
 
+**PR #23 revision-12 review (2026-11-14 UTC):** exact head
+`d996aac5b9d439d9f328d7f7b47a4c75ec540a91` re-reviewed; verdict **must-fix**.
+All eight round-11 original findings are fixed with mapped regressions; all 212
+submitted tests, format, clippy, xtask all and the full build gate pass. Independent
+CLI/hook replay confirms the original fixes. New **CORE** R12-01: a two-byte
+encoding prefix makes the decoder hide an otherwise recognized raw ASCII token;
+provenance and xtask all pass, including after committing the synthetic fixture.
+The rebuilt revision-11 checker rejects that exact file. Do not attest this head
+as the bootstrap seed. **PERIPHERAL** R12-02 (bare-tool verification/gratitude
+footers) is a safe tracked post-merge follow-up after the CORE fix and re-review.
+Reproductions, round-11 mappings/triage and M0 limitation assessment:
+[revision-12 report](reviews/gpt-2026-11-14-pr23-r12.md). PR #23 was not modified.
+
 **PR #23 revision-11 review (2026-11-14 UTC):** exact head
 `d71cf40d1fdae6eb62de28c366ce925ec3108579` re-reviewed; verdict **must-fix**.
 Both GPT round-10 reproductions and five Gemini findings are fixed; bare-tool
