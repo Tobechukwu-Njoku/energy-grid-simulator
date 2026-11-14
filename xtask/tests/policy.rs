@@ -262,12 +262,12 @@ fn r3_04_codeowners_matcher_agrees_with_git() {
 // one canonical name.
 #[test]
 fn adv23r3_07_non_canonical_manifest_is_rejected_end_to_end() {
-    let record = "[[datasets]]\nname = \"r\"\nlicence_status = \"research-only\"\nfile = \"restricted.dat\"\n";
+    let record = "[[datasets]]\nname = \"r\"\nlicence_status = \"research-only\"\nfile = \"restricted.bin\"\n";
     for name in ["provenance.toml", "data-manifest.toml", "manifest.json"] {
         let repo = Repo::new();
         repo.write("data/manifest.toml", MANIFEST);
         repo.write(&format!("spikes/data/{name}"), record);
-        repo.write("spikes/data/restricted.dat", "x\n");
+        repo.write("spikes/data/restricted.bin", "x\n");
         repo.commit("data: restricted");
         let found = repository::provenance(&ctx(&repo)).expect("provenance");
         assert!(
@@ -283,7 +283,7 @@ fn adv23r3_07_non_canonical_manifest_is_rejected_end_to_end() {
     let repo = Repo::new();
     repo.write("data/manifest.toml", MANIFEST);
     repo.write("spikes/data/manifest.toml", record);
-    repo.write("spikes/data/restricted.dat", "x\n");
+    repo.write("spikes/data/restricted.bin", "x\n");
     repo.commit("data: restricted");
     let found = repository::provenance(&ctx(&repo)).expect("provenance");
     assert_eq!(found.len(), 1, "{:?}", files(&found));
@@ -580,4 +580,79 @@ fn r9_03_adv23r9_05_rdf_and_solver_models_end_to_end() {
             .expect("provenance")
             .is_empty()
     );
+}
+
+// R10-01 / ADV23R10-01: the GPT node-root RDF fixture with nested entities
+// and a solver solution file passed provenance at 88148f0. A DTD file listed
+// in the trusted `xml_dtd_allowed` is not data; Markdown quoting it is fine.
+#[test]
+fn r10_01_adv23r10_01_dtd_and_solutions_end_to_end() {
+    let gpt = "<!DOCTYPE r:Description [\n<!ENTITY tail \"rdf-&#x73;yntax-ns#\">\n<!ENTITY ns \"http://www.w3.org/1999/02/22-&tail;\">\n]>\n<r:Description xmlns:r=\"&ns;\" r:about=\"urn:grid:bus:1\">\n  <bus:nominalVoltage xmlns:bus=\"urn:grid:terms:\">400</bus:nominalVoltage>\n</r:Description>\n";
+    for (path, text) in [
+        ("spikes/network-notes.txt", gpt),
+        (
+            "spikes/dispatch.sol",
+            "# Solution for model unit_commitment\ngenerator_1 100.0\n",
+        ),
+        ("spikes/unit_commitment.mst", "generator_1 1\n"),
+    ] {
+        let repo = Repo::new();
+        repo.write("data/manifest.toml", MANIFEST);
+        repo.write(path, text);
+        repo.commit("data: file");
+        let found = repository::provenance(&ctx(&repo)).expect("provenance");
+        assert!(
+            found
+                .iter()
+                .any(|f| f.file.as_deref() == Some(path) && f.message.contains("D-56")),
+            "{path}: {:?}",
+            files(&found)
+        );
+    }
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    repo.write("docs/figure.svg", gpt);
+    repo.write("docs/review.md", &format!("# Review\n\n```xml\n{gpt}```\n"));
+    repo.commit("docs: dtd");
+    let found = repository::provenance(&ctx(&repo)).expect("provenance");
+    assert_eq!(files(&found).len(), 1, "{:?}", files(&found));
+    let policy = Repo::new();
+    let text = std::fs::read_to_string(root().join(repository::POLICY)).expect("policy");
+    policy.write(
+        repository::POLICY,
+        &text.replace(
+            "xml_dtd_allowed = []",
+            "xml_dtd_allowed = [\"docs/figure.svg\"]",
+        ),
+    );
+    let allowed = Ctx {
+        repo: repo.path().to_path_buf(),
+        policy: policy.path().to_path_buf(),
+    };
+    let found = repository::provenance(&allowed).expect("provenance");
+    assert!(found.is_empty(), "{:?}", files(&found));
+}
+
+// ADV23R10-02 (D-73): a Julia script in a crate passed `python` at 88148f0.
+#[test]
+fn adv23r10_02_julia_outside_spikes_end_to_end() {
+    for (path, text) in [
+        ("crates/validator.jl", "println(\"Julia script\")\n"),
+        ("crates/run", "#!/usr/bin/env julia\nprintln(1)\n"),
+        ("ci/run.js", "console.log(1)\n"),
+    ] {
+        let repo = Repo::new();
+        repo.write(path, text);
+        repo.commit("feat: script");
+        let found = repository::python(&ctx(&repo)).expect("python");
+        assert_eq!(found.len(), 1, "{path}: {:?}", files(&found));
+        assert_eq!(found[0].file.as_deref(), Some(path));
+    }
+    let repo = Repo::new();
+    repo.write("spikes/validate.jl", "println(1)\n");
+    repo.write("crates/a/src/lib.rs", "#![forbid(unsafe_code)]\n");
+    repo.write(".githooks/hook", "#!/bin/sh\nexit 0\n");
+    repo.commit("feat: allowed");
+    let found = repository::python(&ctx(&repo)).expect("python");
+    assert!(found.is_empty(), "{:?}", files(&found));
 }

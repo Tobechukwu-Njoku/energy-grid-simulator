@@ -31,6 +31,17 @@ Gemini Flash does checked donkey work. Strict merge gates (D-28).
 
 ## Work state (coordinator: Claude Opus 5.5) — 2026-11-14
 
+**PR #23 revision 11 (implementation, 2026-11-14):** R10-01..02 (GPT) and
+ADV23R10-01..06 (Gemini) addressed (ADR 0001 revision-11 addendum). Markup holding a
+DTD or entity declaration is data unless listed in the trusted `xml_dtd_allowed`
+(entities are no longer expanded). Solver solution, start, basis and infeasibility
+formats are data extensions. D-73 now rejects every non-allow-listed script or source
+language (and non-`sh`/`bash` shebangs) outside `spikes/` and reference validators.
+The LCS diff budget fails closed (unknown lines are human). Attribution adds verbless
+credit phrases, tested/verified/documented/analysed, CodeLlama, StarCoder, and bare
+Blackbox/Sweep as trailer values. Next: round-11 review; the one-time bootstrap seed
+waits for a clean review of the new head.
+
 **PR #23 revision 10 (implementation, 2026-11-14):** R9-01..03 (GPT) and
 ADV23R9-01..09 (Gemini) addressed. D-61 provenance is per line: a CodeRabbit block is
 exempt only if every line inside its markers was added by a `coderabbitai` bot edit;

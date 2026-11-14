@@ -850,14 +850,16 @@ pub fn has_bot_block(body: &str, rules: &[BotBlock]) -> bool {
     !blocks(&lines, rules).is_empty()
 }
 
-/// Largest diff table (old × new changed lines) computed exactly; beyond it
-/// every changed line counts as added by the later editor's side, which only
-/// removes bot authorship (fails closed).
+/// Largest diff table (old × new changed lines) computed exactly. Beyond it
+/// the changed lines' origin is unknown, so they are human (R10-02): never
+/// the editing bot's, which would fail open.
 const MAX_DIFF_CELLS: usize = 4_000_000;
 
 /// For each line of `new`, the index of the `old` line it is kept from, by a
-/// longest-common-subsequence line diff (common prefix and suffix first).
-fn kept_lines(old: &[&str], new: &[&str]) -> Vec<Option<usize>> {
+/// longest-common-subsequence line diff (common prefix and suffix first),
+/// and whether the changed middle exceeded [`MAX_DIFF_CELLS`] and so was not
+/// diffed.
+fn kept_lines(old: &[&str], new: &[&str]) -> (Vec<Option<usize>>, bool) {
     let mut kept = vec![None; new.len()];
     let prefix = old.iter().zip(new).take_while(|(a, b)| a == b).count();
     for (index, slot) in kept.iter_mut().enumerate().take(prefix) {
@@ -874,8 +876,11 @@ fn kept_lines(old: &[&str], new: &[&str]) -> Vec<Option<usize>> {
     }
     let a = &old[prefix..old.len() - suffix];
     let b = &new[prefix..new.len() - suffix];
-    if a.is_empty() || b.is_empty() || a.len().saturating_mul(b.len()) > MAX_DIFF_CELLS {
-        return kept;
+    if a.len().saturating_mul(b.len()) > MAX_DIFF_CELLS {
+        return (kept, true);
+    }
+    if a.is_empty() || b.is_empty() {
+        return (kept, false);
     }
     let width = b.len() + 1;
     let mut table = vec![0_u32; (a.len() + 1) * width];
@@ -900,7 +905,7 @@ fn kept_lines(old: &[&str], new: &[&str]) -> Vec<Option<usize>> {
             j += 1;
         }
     }
-    kept
+    (kept, false)
 }
 
 /// Line-level authorship of a sequence of body texts (R9-01). Lines added by
@@ -959,9 +964,11 @@ impl<'a> Provenance<'a> {
         } else {
             Vec::new()
         };
-        let bot = kept_lines(&old, &new)
+        let (kept, exhausted) = kept_lines(&old, &new);
+        let added = if exhausted { BTreeSet::new() } else { by };
+        let bot = kept
             .into_iter()
-            .map(|kept| kept.map_or_else(|| by.clone(), |index| self.bot[index].clone()))
+            .map(|kept| kept.map_or_else(|| added.clone(), |index| self.bot[index].clone()))
             .collect();
         self.bot = bot;
         for (rule, first, last) in blocks(&new, self.rules) {
@@ -2590,5 +2597,104 @@ mod tests {
         assert!(Patterns::load(b"^{{A y$\n").is_err());
         assert!(Patterns::load(b"define lower = x\n^x$\n").is_err());
         assert!(Patterns::load(b"define A x\n^x$\n").is_err());
+    }
+
+    // R10-02 (D-61): beyond the diff budget, unmatched lines took the editing
+    // bot's authorship, so a bot edit outside the block that pushed the diff
+    // over the bound verified the owner's credit inside it (exit 0 at
+    // 88148f0). Unknown origin is now human. Control: ten padding lines.
+    #[test]
+    fn r10_02_diff_budget_overflow_is_human() {
+        let bot = j(&["code", "rabbitai"]);
+        let rules = rabbit_rules();
+        let credit = j(&["Generated with Cla", "ude"]);
+        let header = j(&["## Summary by Code", "Rabbit"]);
+        let v0 = "Implement checks.";
+        let v1 = format!(
+            "{v0}\n\n{}\n{header}\n\n* Add checks.\n{}",
+            rules[0].start, rules[0].end
+        );
+        let v2 = v1.replace("* Add checks.", &format!("{credit}\n* Add checks."));
+        for lines in [2_100, 10] {
+            let padding: Vec<String> = (0..lines).map(|n| format!("L{n}")).collect();
+            let v2 = format!("{v2}\n{}", padding.join("\n"));
+            let v3 = format!("Added outside header.\n{v2}\nAdded outside footer.");
+            let history: BodyHistory = Ok(vec![
+                version("owner", false, v0),
+                version(&bot, true, &v1),
+                version("owner", false, &v2),
+                version(&bot, true, &v3),
+            ]);
+            let found = body_findings(&v3, Some(&history));
+            assert!(
+                found.iter().any(|f| f.contains("not exempt (D-61)")),
+                "{lines}: {found:?}"
+            );
+        }
+        // Control: a genuine block stays verified across an over-budget bot
+        // edit outside it (exact restoration of a verified block).
+        let padding: Vec<String> = (0..2_100).map(|n| format!("L{n}")).collect();
+        let padded = format!("{v1}\n{}", padding.join("\n"));
+        let v3 = format!("Added outside header.\n{padded}\nAdded outside footer.");
+        let history: BodyHistory = Ok(vec![
+            version("owner", false, v0),
+            version(&bot, true, &v1),
+            version("owner", false, &padded),
+            version(&bot, true, &v3),
+        ]);
+        assert!(body_findings(&v3, Some(&history)).is_empty());
+    }
+
+    // ADV23R10-03..06 (D-52): verbless credit phrases, bare Blackbox/Sweep
+    // trailers, tested/verified/documented/analysed verbs and CodeLlama /
+    // StarCoder passed at 88148f0.
+    #[test]
+    fn adv23r10_03_06_attribution_spellings_are_detected() {
+        let p = patterns();
+        let claude = j(&["Cla", "ude"]);
+        let trailer = j(&["Co-Auth", "ored-By: "]);
+        let lines = [
+            format!("With help from {claude}"),
+            format!("With assistance from {claude}"),
+            format!("With guidance from {claude}"),
+            format!("With input from {claude}"),
+            format!("With suggestions from {claude}"),
+            format!("With the assistance of {claude}"),
+            format!("_With help from {claude}_").replace('_', "**"),
+            format!("{trailer}{}", j(&["Black", "box"])),
+            format!("{trailer}{}", j(&["Swe", "ep"])),
+            format!("{trailer}{} <bot@example.com>", j(&["Swe", "ep"])),
+            format!("Assisted by: {}", j(&["Black", "box"])),
+            format!("Tested by {claude}"),
+            format!("Tested with {claude}"),
+            format!("Verified by {claude}"),
+            format!("Documented by {claude}"),
+            format!("Analyzed by {claude}"),
+            format!("Analysed by {claude}"),
+            j(&["Generated by Code", "Llama"]),
+            j(&["Generated by Code Llama 70B"]),
+            j(&["Generated by Star", "Coder"]),
+            j(&["Generated by Star", "Coder2"]),
+        ];
+        let missed: Vec<&String> = lines.iter().filter(|l| !p.matches_line(l)).collect();
+        assert!(missed.is_empty(), "missed: {missed:#?}");
+        for line in [
+            "With help from Jane Doe",
+            "With assistance from the grid operator",
+            "With input from the owner.",
+            "Co-authored-by: Jane Sweep <jane@example.com>",
+            "Co-authored-by: Ada Lovelace <ada@example.com>",
+            "Tested by the CI matrix",
+            "Verified by hand",
+            "Documented by Jane Doe",
+            "Analyzed by the solver presolve",
+            "Tested with a blackbox harness",
+            "Fixed by sweep",
+            "Generated by the parameter sweep",
+            "Tested with black-box inputs",
+            "Generated by the code generator",
+        ] {
+            assert!(!p.matches_line(line), "false positive: {line}");
+        }
     }
 }

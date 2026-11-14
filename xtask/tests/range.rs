@@ -485,3 +485,41 @@ fn r9_01_adv23r9_04_block_lines_need_bot_authorship() {
     let (code, out) = run_event(&repo, &policy, &clean, Some(&genuine), false);
     assert_eq!(code, 0, "{out}");
 }
+
+// R10-02 (D-61): the GPT replay. A bot edit outside the block whose diff
+// exceeds the budget granted the bot every unmatched line, including the
+// owner's credit inside the block (exit 0 at 88148f0). Control: the same
+// history with ten padding lines also exits 1.
+#[test]
+fn r10_02_diff_budget_overflow_is_human() {
+    let (repo, policy, _) = setup();
+    let bot = j(&["code", "rabbitai"]);
+    let start = j(&[
+        "<!-- This is an auto-generated comment: release notes by code",
+        "rabbit.ai -->",
+    ]);
+    let end = j(&[
+        "<!-- end of auto-generated comment: release notes by code",
+        "rabbit.ai -->",
+    ]);
+    let header = j(&["## Summary by Code", "Rabbit"]);
+    let v0 = "Implement checks.";
+    let v1 = format!("{v0}\n\n{start}\n{header}\n\n* Add checks.\n{end}");
+    let v2 = v1.replace("* Add checks.", &format!("{}\n* Add checks.", footer()));
+    for lines in [2_100, 10] {
+        let padding: Vec<String> = (0..lines).map(|n| format!("L{n}")).collect();
+        let v2 = format!("{v2}\n{}", padding.join("\n"));
+        let v3 = format!("Added outside header.\n{v2}\nAdded outside footer.");
+        let mut replay = history(&[
+            ("owner", false, v0),
+            (&bot, true, &v1),
+            ("owner", false, &v2),
+            (&bot, true, &v3),
+        ]);
+        replay["data"]["repository"]["pullRequest"]["createdAt"] =
+            serde_json::json!("2026-11-14T00:00:00Z");
+        let (code, out) = run_event(&repo, &policy, &v3, Some(&replay), false);
+        assert_eq!(code, 1, "{lines}: {out}");
+        assert!(out.contains("not exempt (D-61)"), "{out}");
+    }
+}

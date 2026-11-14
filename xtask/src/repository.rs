@@ -1,7 +1,9 @@
 //! Repository content policy.
 //!
-//! - `python` (D-73): no Python outside `spikes/` and the allow-listed offline
-//!   reference-validator directories; no tracked bytecode (ADV23-11).
+//! - `python` (D-73): no Python, Julia or other non-allow-listed script or
+//!   source language (by extension or shebang) outside `spikes/` and the
+//!   allow-listed offline reference-validator directories; no tracked
+//!   bytecode (ADV23-11, ADV23R10-02).
 //! - `provenance` (D-56, ADR 0001 `provenance/secrets/data`, ADV23-04): every
 //!   dataset in a provenance manifest is tagged `open-commercial` or
 //!   `research-only`; share-alike data is never used; research-only files are
@@ -34,11 +36,35 @@ pub fn has_component(path: &str, name: &str) -> bool {
         .any(|part| part.to_lowercase() == name.to_lowercase())
 }
 
-/// Python and bytecode check over a list of tracked paths.
+/// Programming and scripting language source extensions (D-20, D-73,
+/// ADV23R10-02). Outside the allowed directories a file with one of these
+/// extensions is rejected unless the trusted policy's
+/// `source_extensions_allowed` lists it; the product language is Rust.
+pub const LANGUAGE_EXTENSIONS: &[&str] = &[
+    ".py", ".pyw", ".pyi", ".pyx", ".pxd", ".ipynb", ".jl", ".r", ".rmd", ".qmd", ".m", ".mlx",
+    ".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx", ".rb", ".pl", ".pm", ".lua",
+    ".php", ".ps1", ".psm1", ".bat", ".cmd", ".vbs", ".vb", ".tcl", ".awk", ".groovy", ".gradle",
+    ".kt", ".kts", ".scala", ".sc", ".java", ".clj", ".cljs", ".cljc", ".cs", ".fs", ".fsx", ".go",
+    ".swift", ".dart", ".ex", ".exs", ".erl", ".hrl", ".hs", ".lhs", ".ml", ".mli", ".nim", ".zig",
+    ".cr", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hxx", ".f", ".for", ".f90", ".f95", ".f03",
+    ".f08", ".coffee", ".elm", ".rkt", ".scm", ".ss", ".lisp", ".lsp", ".el", ".vim", ".fish",
+    ".zsh", ".ksh", ".csh", ".tcsh", ".do", ".ado", ".sas", ".stan", ".wl", ".nb", ".mo", ".d",
+    ".v", ".sv", ".vhd", ".asm", ".s", ".wasm", ".wat", ".sql", ".cu", ".cuh", ".mex", ".octave",
+    ".sage", ".hy", ".raku", ".rakumod", ".p6", ".pl6",
+];
+
+/// Script and source language policy over a list of tracked paths (D-73,
+/// ADV23R10-02). Outside the `allowed` directories, a file is rejected if
+/// its extension is a [`LANGUAGE_EXTENSIONS`] entry not in `extensions`, or
+/// if its first line is a shebang (`#!`, but not a Rust `#![` attribute)
+/// whose interpreter is not in `interpreters`. Python bytecode is rejected
+/// everywhere.
 #[must_use]
-pub fn check_python(
+pub fn check_scripts(
     paths: &[String],
     allowed: &[String],
+    extensions: &[String],
+    interpreters: &[String],
     heads: &dyn Fn(&str) -> Option<String>,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -57,42 +83,89 @@ pub fn check_python(
         if allowed.iter().any(|dir| glob_match(dir, path)) {
             continue;
         }
-        let python_name = [".py", ".pyw", ".pyi", ".ipynb"]
+        let permitted = |ext: &str| extensions.iter().any(|e| e.eq_ignore_ascii_case(ext));
+        if let Some(ext) = LANGUAGE_EXTENSIONS
             .iter()
-            .any(|ext| lower.ends_with(ext));
-        let python_shebang = !name.contains('.')
-            && heads(path).is_some_and(|first| first.starts_with("#!") && first.contains("python"));
-        if python_name || python_shebang {
+            .find(|ext| lower.ends_with(*ext) && !permitted(ext))
+        {
             findings.push(Finding::at(
                 path,
                 None,
-                "Python is allowed only in spikes/ and allow-listed reference validators (D-73)",
+                format!(
+                    "{ext} source is allowed only in spikes/ and allow-listed reference validators; product code, tooling and tests are Rust (D-73)"
+                ),
+            ));
+            continue;
+        }
+        if let Some(interpreter) = heads(path).as_deref().and_then(shebang_interpreter)
+            && !interpreters
+                .iter()
+                .any(|allowed| allowed.eq_ignore_ascii_case(&interpreter))
+        {
+            findings.push(Finding::at(
+                path,
+                None,
+                format!(
+                    "`{interpreter}` script is allowed only in spikes/ and allow-listed reference validators (D-73)"
+                ),
             ));
         }
     }
     findings
 }
 
-/// Runs the Python check.
+/// The interpreter a shebang line names: the program's file name, or for
+/// `env` its first non-option, non-assignment argument. `None` when the line
+/// is not a shebang (a Rust `#![...]` inner attribute is not one).
+#[must_use]
+pub fn shebang_interpreter(first: &str) -> Option<String> {
+    let rest = first.strip_prefix("#!")?;
+    if rest.trim_start().starts_with('[') {
+        return None;
+    }
+    let mut words = rest.split_whitespace();
+    let base = |word: &str| word.rsplit('/').next().unwrap_or(word).to_lowercase();
+    let program = base(words.next().unwrap_or_default());
+    if program != "env" {
+        return Some(program);
+    }
+    Some(
+        words
+            .find(|word| !word.starts_with('-') && !word.contains('='))
+            .map_or(program, base),
+    )
+}
+
+/// Runs the script language check (D-73).
 ///
 /// # Errors
 ///
 /// Fails if Git or the trusted policy fail.
 pub fn python(ctx: &Ctx) -> Result<Vec<Finding>, String> {
+    use std::io::Read as _;
     let document = policy(ctx)?;
     let allowed = string_array(&document["python_allowed"]);
+    let extensions = string_array(&document["source_extensions_allowed"]);
+    let interpreters = string_array(&document["shebang_interpreters_allowed"]);
     let paths = tracked(&ctx.repo)?;
     let heads = |path: &str| {
-        std::fs::read(ctx.repo.join(path)).ok().map(|bytes| {
-            let end = bytes
-                .iter()
-                .position(|b| *b == b'\n')
-                .unwrap_or(bytes.len())
-                .min(200);
-            String::from_utf8_lossy(&bytes[..end]).into_owned()
-        })
+        let mut bytes = Vec::new();
+        std::fs::File::open(ctx.repo.join(path))
+            .and_then(|file| file.take(200).read_to_end(&mut bytes))
+            .ok()?;
+        let end = bytes
+            .iter()
+            .position(|b| *b == b'\n')
+            .unwrap_or(bytes.len());
+        Some(String::from_utf8_lossy(&bytes[..end]).into_owned())
     };
-    Ok(check_python(&paths, &allowed, &heads))
+    Ok(check_scripts(
+        &paths,
+        &allowed,
+        &extensions,
+        &interpreters,
+        &heads,
+    ))
 }
 
 const STATUSES: &[&str] = &["open-commercial", "research-only"];
@@ -709,7 +782,10 @@ pub fn data_signature(bytes: &[u8]) -> Option<&'static str> {
     if is_cim_rdf(bytes) {
         return Some("CIM/RDF XML");
     }
-    solver_model(bytes)
+    if let Some(format) = solver_model(bytes) {
+        return Some(format);
+    }
+    declares_dtd(bytes).then_some(XML_DTD)
 }
 
 /// The first 64 KiB of a file as text, decoded from UTF-8, UTF-16 or UTF-32
@@ -749,26 +825,10 @@ fn decoded_head(bytes: &[u8]) -> String {
     }
 }
 
-/// Expands character references and the internal DTD's general entities
-/// (`<!ENTITY rdf "http://...">`, common in RDF/XML and OWL), once.
+/// Expands numeric character references. General entities are never
+/// expanded: any document with a DTD or entity declaration is data by
+/// itself (R10-01, [`declares_dtd`]).
 fn expand_references(text: &str) -> String {
-    let mut entities: Vec<(String, String)> = Vec::new();
-    let mut rest = text;
-    while let Some(index) = rest.find("<!ENTITY") {
-        rest = &rest[index + 8..];
-        let body = rest.trim_start();
-        let name: String = body
-            .chars()
-            .take_while(|c| !c.is_whitespace() && *c != '"' && *c != '\'')
-            .collect();
-        let after = body[name.len()..].trim_start();
-        if let Some(quote) = after.chars().next().filter(|c| *c == '"' || *c == '\'')
-            && let Some(close) = after[1..].find(quote)
-            && name != "%"
-        {
-            entities.push((format!("&{name};"), after[1..=close].to_owned()));
-        }
-    }
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(index) = rest.find('&') {
@@ -776,28 +836,19 @@ fn expand_references(text: &str) -> String {
         rest = &rest[index..];
         let end = rest.find(';').filter(|end| *end <= 40);
         let decoded = end.and_then(|end| {
-            let reference = &rest[..=end];
-            let number = reference.strip_prefix("&#").map(|n| &n[..n.len() - 1]);
+            let number = rest[..=end].strip_prefix("&#").map(|n| &n[..n.len() - 1])?;
             number
-                .and_then(|n| {
-                    n.strip_prefix(['x', 'X']).map_or_else(
-                        || n.parse::<u32>().ok(),
-                        |hex| u32::from_str_radix(hex, 16).ok(),
-                    )
-                })
+                .strip_prefix(['x', 'X'])
+                .map_or_else(
+                    || number.parse::<u32>().ok(),
+                    |hex| u32::from_str_radix(hex, 16).ok(),
+                )
                 .and_then(char::from_u32)
-                .map(String::from)
-                .or_else(|| {
-                    entities
-                        .iter()
-                        .find(|(name, _)| name == reference)
-                        .map(|(_, value)| value.clone())
-                })
                 .map(|value| (value, end + 1))
         });
         match decoded {
             Some((value, length)) => {
-                out.push_str(&value);
+                out.push(value);
                 rest = &rest[length..];
             }
             None => {
@@ -808,6 +859,24 @@ fn expand_references(text: &str) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// Data format name for markup with a DTD or entity declaration (R10-01).
+pub const XML_DTD: &str = "XML with DTD or entity declarations";
+
+/// Whether a file is markup (its text starts with `<`, in any encoding the
+/// sniffer reads) that holds a `<!DOCTYPE` or `<!ENTITY` declaration
+/// anywhere in its first 64 KiB (R10-01). Entities can rename the namespaces
+/// the RDF check looks for, so such files are data unless the trusted policy
+/// lists them in `xml_dtd_allowed`; the sniffer never expands entities.
+#[must_use]
+pub fn declares_dtd(bytes: &[u8]) -> bool {
+    let text = decoded_head(bytes);
+    if !text.trim_start().starts_with('<') {
+        return false;
+    }
+    let lower = text.to_lowercase();
+    lower.contains("<!doctype") || lower.contains("<!entity")
 }
 
 /// The qualified name of an XML document's root element, after the prolog
@@ -855,7 +924,7 @@ fn xml_root(text: &str) -> Option<String> {
 /// network model, whatever its name (ADV23R8-04, R9-03): it is XML in UTF-8,
 /// UTF-16 or UTF-32 (with or without BOM or XML declaration) and either its
 /// root element is `RDF` under any prefix or none, or its first 64 KiB,
-/// after expanding character and entity references, name the RDF syntax
+/// after expanding character references, name the RDF syntax
 /// namespace or the IEC TC57 CIM or ENTSO-E CGMES namespaces.
 #[must_use]
 pub fn is_cim_rdf(bytes: &[u8]) -> bool {
@@ -1243,12 +1312,15 @@ pub fn provenance(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     let mut manifests = 0;
     let secret_exemptions = load_secret_exemptions(&document)?;
     let metadata = string_array(&document["data_metadata_files"]);
+    let dtd_allowed = string_array(&document["xml_dtd_allowed"]);
     let mut sniffed = BTreeMap::new();
     for path in &paths {
         let name = path.rsplit('/').next().unwrap_or(path);
         let bytes =
             std::fs::read(ctx.repo.join(path)).map_err(|error| format!("{path}: {error}"))?;
-        if let Some(format) = data_signature(&bytes) {
+        if let Some(format) = data_signature(&bytes)
+            && !(format == XML_DTD && dtd_allowed.iter().any(|file| file == path))
+        {
             sniffed.insert(path.clone(), format);
         }
         let text = String::from_utf8_lossy(&bytes);
@@ -1472,7 +1544,7 @@ mod tests {
     fn d73_python_outside_allowed_dirs_is_rejected() {
         let allowed = paths(&["spikes/", "tools/reference-validators/"]);
         let none = |_: &str| None;
-        let found = check_python(
+        let found = check_scripts(
             &paths(&[
                 "ci/check.py",
                 "spikes/x/y.py",
@@ -1481,12 +1553,14 @@ mod tests {
                 "a/notebook.ipynb",
             ]),
             &allowed,
+            &[],
+            &[],
             &none,
         );
         assert_eq!(found.len(), 2);
         let shebang = |_: &str| Some("#!/usr/bin/env python3".to_owned());
         assert_eq!(
-            check_python(&paths(&["ci/check"]), &allowed, &shebang).len(),
+            check_scripts(&paths(&["ci/check"]), &allowed, &[], &[], &shebang).len(),
             1
         );
     }
@@ -1496,12 +1570,14 @@ mod tests {
     fn adv23_11_bytecode_is_rejected() {
         let allowed = paths(&["spikes/"]);
         let none = |_: &str| None;
-        let found = check_python(
+        let found = check_scripts(
             &paths(&[
                 "ci/__pycache__/x.cpython-313.pyc",
                 "spikes/a/__pycache__/b.pyc",
             ]),
             &allowed,
+            &[],
+            &[],
             &none,
         );
         assert_eq!(found.len(), 2);
@@ -1589,7 +1665,11 @@ mod tests {
         assert!(check_paths(&paths(&["spikes/drawing/notes.txt"]), &document, &records).is_empty());
         let none = |_: &str| None;
         for path in ["tools/Gen.PY", "a/__PYCACHE__/m.txt", "b/m.PYC"] {
-            assert_eq!(check_python(&paths(&[path]), &[], &none).len(), 1, "{path}");
+            assert_eq!(
+                check_scripts(&paths(&[path]), &[], &[], &[], &none).len(),
+                1,
+                "{path}"
+            );
         }
         assert!(has_component("a/RAW/b", "raw"));
         assert!(!has_component("a/rawdata/b", "raw"));
@@ -1958,7 +2038,6 @@ mod tests {
             prefixed.as_bytes().to_vec(),
             bare_root.as_bytes().to_vec(),
             node_root.as_bytes().to_vec(),
-            entity.as_bytes().to_vec(),
             charref.as_bytes().to_vec(),
             [b"\xef\xbb\xbf".as_slice(), gpt.as_bytes()].concat(),
             utf16(gpt, false, true),
@@ -1971,6 +2050,10 @@ mod tests {
         for bytes in &samples {
             assert_eq!(data_signature(bytes), Some("CIM/RDF XML"), "{bytes:?}");
         }
+        // Entities are not expanded (R10-01): this one is still data, by the
+        // character reference in its literal text, and by its DTD alone.
+        assert!(data_signature(entity.as_bytes()).is_some());
+        assert!(declares_dtd(entity.as_bytes()));
         let mps = "* unit commitment\nNAME          UC\nROWS\n N  COST\n L  LIM1\nCOLUMNS\n    X1        COST         1.0   LIM1         1.0\nRHS\n    RHS       LIM1         4.0\nENDATA\n";
         let free_mps = "ROWS\n N obj\nCOLUMNS\n x obj 1\nENDATA\n";
         let lp = "\\ Problem name: opf\nMinimize\n obj: x + y\nSubject To\n c1: x + y >= 1\nEnd\n";
@@ -2131,5 +2214,170 @@ mod tests {
                 "{pattern} {path}"
             );
         }
+    }
+
+    fn trusted_policy() -> DocumentMut {
+        std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("policy/repository.toml"),
+        )
+        .expect("policy")
+        .parse()
+        .expect("toml")
+    }
+
+    // R10-01: the GPT node-root fixture hides the RDF namespace behind a
+    // nested entity, which the once-only expansion at 88148f0 missed. Any
+    // markup with a DTD or entity declaration is now data, unexpanded.
+    #[test]
+    fn r10_01_dtd_and_entity_declarations_are_data() {
+        let gpt = "<!DOCTYPE r:Description [\n<!ENTITY tail \"rdf-&#x73;yntax-ns#\">\n<!ENTITY ns \"http://www.w3.org/1999/02/22-&tail;\">\n]>\n<r:Description xmlns:r=\"&ns;\" r:about=\"urn:grid:bus:1\">\n  <bus:nominalVoltage xmlns:bus=\"urn:grid:terms:\">400</bus:nominalVoltage>\n</r:Description>\n";
+        let literal = gpt.replace(
+            "xmlns:r=\"&ns;\"",
+            "xmlns:r=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"",
+        );
+        let cycle = "<!DOCTYPE a [<!ENTITY a \"&b;\"><!ENTITY b \"&a;\">]>\n<a>&a;</a>\n";
+        let lol = format!(
+            "<?xml version=\"1.0\"?>\n<!DOCTYPE x [\n<!ENTITY l0 \"l\">\n{}]>\n<x>&l9;</x>\n",
+            (1..10)
+                .map(|n| format!(
+                    "<!ENTITY l{n} \"{}\">\n",
+                    format!("&l{};", n - 1).repeat(10)
+                ))
+                .collect::<String>()
+        );
+        let external = "<!DOCTYPE x SYSTEM \"http://example.org/x.dtd\">\n<x/>\n";
+        let html = "<!doctype html>\n<html><body>grid</body></html>\n";
+        let entity_only = "<x>\n<!ENTITY ns \"urn:x\">\n</x>\n";
+        let utf16: Vec<u8> = [0xff, 0xfe]
+            .into_iter()
+            .chain(gpt.encode_utf16().flat_map(u16::to_le_bytes))
+            .collect();
+        for bytes in [
+            gpt.as_bytes(),
+            cycle.as_bytes(),
+            lol.as_bytes(),
+            external.as_bytes(),
+            html.as_bytes(),
+            entity_only.as_bytes(),
+            &utf16,
+        ] {
+            assert_eq!(data_signature(bytes), Some(XML_DTD), "{bytes:?}");
+        }
+        assert_eq!(data_signature(literal.as_bytes()), Some("CIM/RDF XML"));
+        let document = trusted_policy();
+        let path = "spikes/network-notes.txt".to_owned();
+        let sniffed = BTreeMap::from([(path.clone(), XML_DTD)]);
+        let found = check_paths_with_content(&[path], &document, &[], &sniffed);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].message.contains("D-56"));
+        // Controls: Markdown and code that quote a DTD, and markup without one.
+        for text in [
+            format!("# Review\n\n```xml\n{gpt}```\n"),
+            "let dtd = \"<!DOCTYPE x [<!ENTITY a \\\"b\\\">]>\";\n".to_owned(),
+            "<?xml version=\"1.0\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n".to_owned(),
+            "<html><body>no doctype</body></html>".to_owned(),
+        ] {
+            assert_eq!(data_signature(text.as_bytes()), None, "{text}");
+        }
+    }
+
+    // ADV23R10-01: solver solution, MIP start, basis, infeasibility and
+    // pseudo-Boolean files passed the data gate at 88148f0.
+    #[test]
+    fn adv23r10_01_solver_solutions_are_data() {
+        let document = trusted_policy();
+        for path in [
+            "spikes/dispatch.sol",
+            "spikes/unit_commitment.mst",
+            "spikes/warm.bas",
+            "spikes/conflict.ilp",
+            "spikes/model.sav",
+            "spikes/instance.opb",
+            "spikes/instance.wbo",
+            "spikes/uc.dat",
+            "spikes/uc.mod",
+            "spikes/DISPATCH.SOL",
+        ] {
+            assert_eq!(
+                check_paths(&paths(&[path]), &document, &[]).len(),
+                1,
+                "{path}"
+            );
+        }
+        // Control: ordinary source and documentation are not data.
+        for path in ["crates/solver/src/solution.rs", "docs/solutions.md"] {
+            assert!(check_paths(&paths(&[path]), &document, &[]).is_empty());
+        }
+    }
+
+    // ADV23R10-02 (D-73): Julia and every other non-Rust script or source
+    // language passed outside spikes/ at 88148f0; only Python was checked.
+    #[test]
+    fn adv23r10_02_script_languages_are_rejected() {
+        let document = trusted_policy();
+        let allowed = string_array(&document["python_allowed"]);
+        let extensions = string_array(&document["source_extensions_allowed"]);
+        let interpreters = string_array(&document["shebang_interpreters_allowed"]);
+        let check = |path: &str, head: Option<&str>| {
+            let head = head.map(str::to_owned);
+            check_scripts(
+                &paths(&[path]),
+                &allowed,
+                &extensions,
+                &interpreters,
+                &|_| head.clone(),
+            )
+        };
+        for path in [
+            "crates/validator.jl",
+            "crates/grid/check.R",
+            "tools/case.m",
+            "ci/run.js",
+            "ci/run.mjs",
+            "ci/run.ts",
+            "ci/run.rb",
+            "ci/run.pl",
+            "ci/run.lua",
+            "ci/run.ps1",
+            "ci/run.php",
+            "ci/run.go",
+            "ci/native.c",
+            "ci/native.cpp",
+            "ci/run.zsh",
+            "ci/check.py",
+        ] {
+            assert_eq!(check(path, None).len(), 1, "{path}");
+        }
+        for (path, head) in [
+            ("ci/run", "#!/usr/bin/env julia"),
+            ("ci/run.txt", "#!/usr/bin/env -S julia --startup-file=no"),
+            ("ci/run", "#!/usr/bin/Rscript"),
+            ("ci/run", "#!/usr/bin/env node"),
+            ("ci/run", "#!/usr/bin/env FOO=1 perl"),
+            ("ci/run.sh", "#! /usr/bin/python3"),
+        ] {
+            assert_eq!(check(path, Some(head)).len(), 1, "{path}: {head}");
+        }
+        // Controls: Rust (including an inner attribute on the first line),
+        // policy files, documentation, sh/bash hooks, and any language in the
+        // allowed directories.
+        for (path, head) in [
+            ("crates/grid/src/lib.rs", Some("#![forbid(unsafe_code)]")),
+            ("Cargo.toml", None),
+            (".github/workflows/ci.yml", None),
+            ("docs/a.md", None),
+            (".githooks/commit-msg", Some("#!/bin/sh")),
+            ("ci/load.sh", Some("#!/usr/bin/env bash")),
+            ("spikes/x/validate.jl", Some("#!/usr/bin/env julia")),
+            ("tools/reference-validators/v.R", None),
+            ("docs/notes.txt", Some("# heading")),
+        ] {
+            assert!(check(path, head).is_empty(), "{path}");
+        }
+        assert_eq!(shebang_interpreter("#![deny(warnings)]"), None);
+        assert_eq!(
+            shebang_interpreter("#!/bin/bash -e").as_deref(),
+            Some("bash")
+        );
     }
 }

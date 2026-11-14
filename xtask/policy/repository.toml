@@ -26,7 +26,18 @@ protected_paths = [
 workspace_licence = "LicenseRef-EGS-Unreleased"
 
 # D-73: Python only in spikes/ and offline reference validators.
+# The directory list also exempts every other script language (ADV23R10-02).
 python_allowed = ["spikes/", "tools/reference-validators/"]
+# Outside those directories, a file whose extension is a programming or
+# scripting language (xtask LANGUAGE_EXTENSIONS: .py, .jl, .r, .m, .js, .ts,
+# .rb, .pl, .lua, C/C++, ...) must have one of these extensions, and a file
+# that starts with a shebang must name one of these interpreters.
+source_extensions_allowed = [".rs", ".toml", ".yml", ".yaml", ".md", ".sh"]
+shebang_interpreters_allowed = ["sh", "bash"]
+
+# R10-01: exact paths of files that may hold an XML DTD or entity declaration
+# without counting as data. Entities are never expanded by the sniffer.
+xml_dtd_allowed = []
 
 # D-56 data gate. A tracked file with one of these extensions must be either an
 # exact path in data_metadata_files (provenance, fixtures, aggregates), or a file
@@ -60,6 +71,11 @@ data_extensions = [
     # AMPL .nl, GAMS models and data, OSiL and conic CBF. MPS, LP and GAMS are
     # also detected by their content.
     ".mps", ".qps", ".lp", ".nl", ".gms", ".gdx", ".osil", ".cbf",
+    # Solver solutions, MIP starts, bases, infeasibility subsystems (.sav,
+    # listed above), pseudo-Boolean instances, AMPL and Gurobi side files
+    # (ADV23R10-01).
+    ".sol", ".mst", ".bas", ".ilp", ".opb", ".wbo", ".pbo", ".dat", ".mod", ".hnt",
+    ".ord", ".attr", ".glp", ".hsol", ".qplib",
 ]
 open_commercial_data = ["spikes/data/samples/*"]
 # Exact paths of provenance records, test fixtures and non-reconstructive

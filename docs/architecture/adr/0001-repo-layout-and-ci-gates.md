@@ -623,3 +623,47 @@ Risk 12 is refined: the exemption still trusts GitHub's edit history and actor
 type, and a summary's content is not evidence of who wrote the code. Text a bot
 edit merely kept, text in the original body, and text of unknown origin are never
 exempt.
+
+## Addendum — 2026-11-14: DTD markup, solver solutions, script languages, diff budget (PR #23 revision 11)
+
+Round-10 reviews (GPT R10-01..02, Gemini ADV23R10-01..06) found false negatives in
+revision 10. This addendum implements D-52, D-56, D-61 and D-73 as written and adds
+no decision. It corrects revision 10's RDF/XML bullet: internal-entity references
+are no longer expanded.
+
+- **Markup with a DTD is data (R10-01).** Nested entities can rebuild the RDF
+  namespace (an entity whose value refers to another entity), and the sniffer
+  expanded only one level. The sniffer no longer expands entities at all. A file
+  whose text (UTF-8, UTF-16 or UTF-32, as above) starts with `<` and holds
+  `<!DOCTYPE` or `<!ENTITY` anywhere in its first 64 KiB is data, unless its exact
+  path is listed in the trusted `xml_dtd_allowed` (empty today). This also covers
+  HTML with a doctype. Character references are still expanded for the RDF
+  namespace check. Markdown and code that quote a DTD are not affected, because
+  they do not start with `<`.
+- **Solver solutions and side files are data (ADV23R10-01).** `.sol`, `.mst`,
+  `.bas`, `.ilp`, `.opb`, `.wbo`, `.pbo`, `.dat`, `.mod`, `.hnt`, `.ord`, `.attr`,
+  `.glp`, `.hsol` and `.qplib` join `data_extensions` (`.sav` was already listed).
+- **D-73 covers every script language (ADV23R10-02).** The `python` check is now
+  a source-language check. Outside `spikes/` and `tools/reference-validators/`, a
+  file is rejected if its extension is a known programming or scripting language
+  (Python, Julia, R, MATLAB, JavaScript/TypeScript, Ruby, Perl, Lua, PowerShell,
+  PHP, Go, Java/Kotlin/Scala, C/C++, Fortran and others) not in the trusted
+  `source_extensions_allowed` (`.rs`, `.toml`, `.yml`, `.yaml`, `.md`, `.sh`).
+  It is also rejected if its first line is a shebang (any file, any extension;
+  a Rust `#![` attribute is not one) whose interpreter, after `env` and its
+  options, is not in `shebang_interpreters_allowed` (`sh`, `bash`). The command
+  keeps its `python` name so workflow and gate names do not change.
+- **The diff budget fails closed (R10-02).** When the changed middle of two body
+  versions exceeds the line-diff budget, its lines are now of unknown origin,
+  hence human. Revision 10 gave them to the editing bot, so a large bot edit
+  outside a block could verify owner credit inside it. A block verified by an
+  earlier, fully bot-written version stays exempt when restored unchanged.
+- **Attribution (ADV23R10-03..06)** adds verbless credit phrases (`With help from
+  <name>`, `With the assistance of <name>`), tested/verified/documented/analysed
+  verbs, and CodeLlama and StarCoder. Bare `Blackbox` and `Sweep` are matched only
+  as trailer values (`Co-Authored-By: Sweep`), because both are ordinary words in
+  footers ("parameter sweep", "black-box testing").
+
+Risk 12 as refined in revision 10 now holds without the diff-budget exception:
+text of unknown origin, including text past the diff budget, is never exempt.
+

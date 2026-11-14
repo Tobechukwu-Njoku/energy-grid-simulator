@@ -1282,5 +1282,82 @@
     "input": "fix: exercise message policy\n\nGenerated with continued fractions\n",
     "exit": 0,
     "expected": "fix: exercise message policy\n\nGenerated with continued fractions\n"
+  },
+  {
+    "name": "r10-strip-1",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a576974682068656c702066726f6d20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-2",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a2053776565700a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-3",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20426c61636b626f780a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-4",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a54657374656420627920436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-5",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a416e616c79736564207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-6",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792053746172436f646572320a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-7",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920436f64654c6c616d610a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-keep-1",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nWith help from Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nWith help from Jane Doe\n"
+  },
+  {
+    "name": "r10-keep-2",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nFixed by sweep\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nFixed by sweep\n"
+  },
+  {
+    "name": "r10-keep-3",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nTested with a blackbox harness\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nTested with a blackbox harness\n"
+  },
+  {
+    "name": "r10-keep-4",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nTested by the CI matrix\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nTested by the CI matrix\n"
   }
 ]
