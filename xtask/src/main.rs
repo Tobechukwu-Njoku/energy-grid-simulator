@@ -17,10 +17,12 @@ usage: cargo xtask [--repo DIR] [--policy DIR] <command> [options]
 commands:
   policy         crate-root forbid over `cargo metadata`, manifests, workflows, Python,
                  CODEOWNERS
-  build-gate     build the whole workspace (default, all, no-default and each single
-                 feature) and run its doctests, with the compiler forbidding unsafe
-                 code outside the reviewed adapters of the trusted policy and a
-                 linker guard accepting only allow-listed libraries
+  build-gate     build the workspace (default, all and no default features) and each
+                 member alone (default, no default and each single feature), as
+                 production targets, all targets and doctests, with the compiler
+                 forbidding unsafe code outside the reviewed adapters of the trusted
+                 policy and a linker guard accepting only allow-listed libraries
+                 resolved from trusted directories
                  [--target-dir DIR] [--jobs N]. Runs the tree's build scripts and
                  doctests: CI runs it only as the last step of an unprivileged job,
                  never in the trusted gates
