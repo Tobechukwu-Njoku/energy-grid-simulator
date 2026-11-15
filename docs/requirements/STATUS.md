@@ -1,11 +1,28 @@
 # STATUS
 
-_Last updated: 2026-11-14_
+_Last updated: 2026-11-15_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-75 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**M1 acceptance specification (2026-11-15 UTC):**
+[m1-acceptance-tests.md](m1-acceptance-tests.md) specifies **34 cases covering
+10 M1 requirement IDs**, with an AC-level coverage matrix, synthetic/open-commercial
+fixtures, independent numeric oracles and explicit light-CI eligibility. Thirty
+cases are small parsing/data/arithmetic checks; four require the actual D-65
+target admission/isolation boundary before heavy B1 activation. No tests were
+executed and no M1, full-network or solver-validation pass is claimed.
+
+Eight items are flagged: two underspecified policy/oracle items (FX; local numeric
+scale/ledger tolerance/duration rounding), one staged-evidence clarification and
+five data/environment blockers. New open Q-P-1–Q-P-3 record proposed defaults as
+ASSUMPTION entries. Dated network/denominators, operational/weather/demand inputs,
+directional losses, proxy rules and actual target provisioning remain unresolved
+as detailed in the inventory and specification. Full FR-2 release evidence stays
+M5; client/runtime obligations stay at their allocated later stages. This session
+changes documentation only and does not alter decisions, requirements or roadmap.
 
 **PR #52 M1 inventory final re-check (2026-11-14 UTC):** exact revised head
 `8af069ca0af0712f29b9645810282070b02e45a4`; verdict **accept-with-corrections**.

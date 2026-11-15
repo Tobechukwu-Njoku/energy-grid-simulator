@@ -84,7 +84,7 @@ ASSUMPTION: For these small data/arithmetic tests, local scale `S` is the maximu
 absolute MW term in the checked balance/recurrence or the applicable branch rating,
 never a whole-grid total. Non-aligned events/durations require an explicit,
 versioned rounding/resampling policy or rejection. These operational definitions
-and accumulated tolerances require Q-P-3 disposition; they do not amend NFR-2 or
+and accumulated/currency-ledger tolerances require Q-P-3 disposition; they do not amend NFR-2 or
 approve an unspecified model rounding rule.
 
 ASSUMPTION: The synthetic reconstruction FX policy uses GBP per EUR, effective at
@@ -129,7 +129,8 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
 - **Preconditions/fixtures:** F-NET/F-TIME synthetic transitions; F-EVIDENCE must
   supply independent effective instants for Brexit regimes, Viking and Greenlink.
   No date is inferred from the first flow observation or a current reference list.
-- **Steps:** Resolve immediately before/at/after commissioning, retirement and rule
+- **Steps:** Resolve at the last admissible interval before, at, and first interval
+  after each commissioning, retirement and rule
   transitions using `[from,to)`; request an earlier holdout with a later-only
   snapshot; repeat against each evidence-backed transition.
 - **Pass/fail:** Exact eligible assets/rules at each instant; no pre-commissioning
@@ -283,7 +284,7 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   ledger; integrate MWh; subtract pumping from ND or embedded generation twice in
   negative variants; supply uncertain estimates and missing Irish components.
 - **Pass/fail:** Gross underlying demand is 115 MW, net 100 MW (50 MWh); the
-  distinct extended system demand is 106 MW (53 MWh), not 96 or 91 MW. All balances
+  distinct extended system demand is 106 MW (53 MWh). All balances
   satisfy epsP/epsE. Double subtraction rejects; uncertain embedded estimates are
   labelled. Missing Irish embedded series remains a gap, never inferred as zero.
   Real TSD/station-load/import/export/loss boundaries need separate sourced
@@ -328,8 +329,9 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   Versioned transformation/spatial weights and monthly fuel-source cadence metadata.
 - **Steps:** Convert renewable MW and SRMC vectors; resample to half-hours;
   omit heat rate, use a currency/unit mismatch and request 2024 MÉRA coverage.
-- **Pass/fail:** Renewable outputs 5/10 MW and two-hour energy 15 MWh; cost
-  85 GBP/MWh-electric within epsC. Source cadence, units, conversion and resampling
+- **Pass/fail:** Renewable outputs 5/10 MW and two-hour energy 15 MWh within
+  accumulated epsE; cost is exactly 85 GBP/MWh-electric for these integer inputs.
+  Source cadence, units, conversion and resampling
   remain visible; projected DESNZ values are not labelled historical spot outturn.
   Missing parameters/currency mismatch reject ready status. MÉRA ends in 2019;
   no fabricated 2024 data or ERA5 acquisition claim is permitted.
@@ -568,8 +570,8 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   original-unit sending/receiving/demand values from AT-M1-5/AT-M1-12.
 - **Steps:** Convert and restore units; recompute endpoint/energy ledgers independently
   in MW/MWh; inject a factor-of-100 percentage error, wrong base and rounded output.
-- **Pass/fail:** Exactly defined expected 50 MW and 0.1 pu within applicable numeric
-  representation precision; original units/base are retained. Physical residuals
+- **Pass/fail:** Expected 50 MW and the independently correctly rounded canonical
+  binary64 value of 0.1 pu compare exactly; original units/base are retained. Physical residuals
   satisfy epsP/epsE per row, not only aggregate cancellation. Every erroneous-base/
   percentage variant fails; unknown bases reject. Test evidence retains unrounded
   numeric values, never derives acceptance from rounded presentation strings.
@@ -581,11 +583,11 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
 - **Preconditions/fixtures:** Synthetic residual checks at local scale 100 MW;
   30-minute interval; exact arithmetic oracle and currency reference 1,000 GBP.
   Q-P-3 scale/aggregation assumption is recorded.
-- **Steps:** Evaluate residuals at 0.99 and 1.01 times each tolerance; check a
+- **Steps:** Evaluate residuals at 0.99, 1.00 and 1.01 times each tolerance; check a
   second row with the opposite sign; evaluate a short-interval energy case with
   dt=1/60 h and a multi-interval ledger including an intentionally missing interval.
 - **Pass/fail:** epsP=0.0011 MW, half-hour epsE=0.00055 MWh and epsC=0.011 GBP;
-  0.99× passes and 1.01× fails for each. Opposite errors cannot cancel row failures.
+  0.99× and exact-threshold residuals pass; 1.01× fails for each. Opposite errors cannot cancel row failures.
   Minute tolerance scales by 1/60, not 0.5. Missing interval prevents complete
   ledger acceptance. Record raw residual, local scale, dt and threshold. No MILP
   integrality/objective certificate or price-method pass is implied (AC4–AC6 later).
@@ -670,7 +672,7 @@ M1 input/foundation evidence from later behaviour. AT references below mean AT-M
 |---|---|---|
 | FR-1 | AT-M1-1–6, AT-M1-13, AT-M1-29 | AC1: 1/2/13/29; AC2/AC5: 3/4; AC3: 5/6/29 arithmetic; AC4: 4/6 policies. Solved market endpoint/economic balances additionally M2. Real dates/losses blocked by gaps 4/6. |
 | FR-2 | AT-M1-7/8/25 | AC1/AC2: 7 plus proxy memberships in 25; AC3/AC4: 8 claim gating and reduced disclosure. Dated real full-inventory release gate is M5; small fixtures cannot satisfy it. Gap 4. |
-| FR-3 | AT-M1-4, AT-M1-9–15, AT-M1-21/22/26 | AC1: 9/10/14/22; AC2: 4/11/15/26; AC3: 12/13; AC4: 4/13/14/15/21. Real inputs still require gap-5 closure; time-vintage gaps cannot be labelled forecast validated. |
+| FR-3 | AT-M1-4, AT-M1-9–15, AT-M1-21/22/26/29 | AC1: 9/10/14/22; AC2: 4/11/15/26; AC3: 12/13/29; AC4: 4/13/14/15/21. Real inputs still require gap-5 closure; time-vintage gaps cannot be labelled forecast validated. |
 | FR-4 | AT-M1-16–18/27 | AC1: 16/17/18/27; AC2: 16 invalid fields, 17 semantic vectors, 18 migration/round-trip contract. Actual CLI/UI round trip at M3/M4; gap 1. |
 | FR-5 | AT-M1-10/14/19–21 | AC1: 19 input-ledger foundation; AC2: 20 physical input scaling; AC3: 10/14/21 labels and rejection. Optimised constant/non-stationary cases at M2; gaps 1/3. |
 | FR-19 | AT-M1-9/22–24 | AC1: 9/22; AC2: 23/24 research/commercial distinction and exclusion; AC3: 23/24 prohibited ancestors/tool-vs-data rights. Real clearance cannot be simulated for production sign-off. |

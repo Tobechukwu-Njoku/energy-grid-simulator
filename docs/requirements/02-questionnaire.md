@@ -320,3 +320,46 @@ Operational protocols remain proposed engineering defaults under D-22.
 Q-O-2 and Q-O-4 are deprecated engineering bundles; never renumber or reuse them.
 Existing Q-C-6/Q-I-6 and Q-H-4/Q-H-6 retain their product scope. Target inventory
 clarification is tracked in Q-H-7; the D-48 planning floor remains an assumption.
+
+## P. M1 acceptance oracles and staged evidence
+
+These are open dispositions from the
+[M1 acceptance specification](m1-acceptance-tests.md), not new owner decisions.
+Existing decisions D-65/D-71/D-72 remain in force; no reduction in network scope,
+new target identity or completed milestone is inferred.
+
+- [ ] **Q-P-1 M1 staged exit boundary (GAP-M1-1).** Does M1 exit require the
+  input/foundation evidence allocated in the roadmap, with actual client/UI
+  round trips (FR-4.AC2), optimised interval/commitment cases (FR-5.AC1/AC2),
+  solver repeatability (NFR-1.AC2) and numerical solver/price certificates
+  (NFR-2.AC1/AC4–AC6) completed at their later milestones?
+  **★ Recommended default:** ASSUMPTION: retain the existing staged allocation;
+  record these obligations as deferred, never claim whole-requirement completion
+  from input tests. Alternative: explicitly bring the necessary runtime/client
+  components and their target execution into M1 and revise milestone allocation.
+  This clarifies sequencing; it does not waive any P1 criterion.
+- [ ] **Q-P-2 Daily FX policy and information availability (GAP-M1-2; relates to
+  Q-N-1/Q-N-2, D-38/D-70).** Which quote, publication/fixing time, UTC-effective
+  rule, non-working-day carry, leading-gap and stale-rate policy should the
+  versioned GBP/EUR input implement?
+  **★ Recommended default:** ASSUMPTION: store GBP per EUR; at 00:00 UTC select
+  the last evidenced published fixing, carry it over weekends/holidays with its
+  age disclosed, and reject a leading gap. Pin any maximum-age rule in the policy;
+  an as-of cut can never see a later publication. Alternative: a separately
+  declared reconstruction-only daily fixing policy, with explicit publication
+  vintage and no as-of claim for periods before publication. AT-M1-6's arbitrary
+  synthetic rates test policy mechanics, not a new approved ECB convention.
+- [ ] **Q-P-3 Local numeric scale, ledger tolerance and duration rounding
+  (GAP-M1-3; relates to Q-N-6).** How should tests operationalise NFR-2's local
+  MW scale, accumulated energy tolerance, application of the currency tolerance
+  to data ledgers, and FR-5's non-aligned duration/event handling?
+  **★ Recommended default:** ASSUMPTION: use the maximum absolute local MW term
+  or relevant branch rating, check every interval in original units, scale MWh
+  tolerance by physical hours, and bound accumulated energy error by the sum of
+  interval tolerances without allowing cancellation to hide failures. Use
+  `0.01 + 1e-6 × abs(reference total)` in the stated currency for synthetic
+  currency ledgers. Preserve physical durations; reject non-aligned events unless
+  an explicit versioned rounding/resampling policy is selected. Alternative:
+  approve another dimensionally consistent, independent oracle and publish
+  boundary vectors before acceptance. Neither option changes the baseline
+  numerical thresholds or permits whole-grid scaling to hide local errors.
