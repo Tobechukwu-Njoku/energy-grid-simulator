@@ -225,8 +225,8 @@ are ingestion/interpretation dependencies unless specifically called a fetch gat
 
 ### SRC-28 — JAO capacity allocation rules
 
-- **URL/evidence:** [Terms page](https://www.jao.eu/terms-conditions), HTTP 200, links border navigation including [IFA/IFA2](https://www.jao.eu/trading-ifa-ifa2) and [Nemo Link](https://www.jao.eu/trading-nemo-link). Those border pages/documents were not read in this check: **UNVERIFIED** as historical rules sources. The terms URL itself is verified, not a dated capacity-allocation document.
-- **Format / cadence / size:** HTML terms and rule PDFs per inventory; exact rule format/bytes **UNVERIFIED**; annual/modification cadence **UNVERIFIED**.
+- **URL/evidence:** Read [terms](https://www.jao.eu/terms-conditions), [IFA/IFA2 trading](https://www.jao.eu/trading-ifa-ifa2) and [Nemo Link trading](https://www.jao.eu/trading-nemo-link), all HTTP 200. IFA page advertises [non-IEM access rules dated 24 September 2019](https://www.jao.eu/sites/default/files/2020-03/IFA%20%20IFA2%20Access%20Rules%20non-IEM%2024%20Sept%202019.pdf); Nemo page points to its operator for rules. **UNVERIFIED:** PDF contents, later modifications, 2024 applicability and complete border-specific rules. Terms alone are not a dated allocation regime.
+- **Format / cadence / size:** HTML terms/trading pages and advertised PDF; PDF response/bytes **UNVERIFIED**; annual/modification cadence **UNVERIFIED**.
 - **Rights / raw commit:** `research-only`, PC-5; **never**. Website terms do not confer a reusable rules database grant.
 - **Manifest / order / requirements:** C+R; **P3 after SRC-15**, before SRC-43 flow-policy interpretation. FR-1.AC2/5, downstream FR-7.AC4. Pin border, product, direction and Brexit-effective regime separately.
 
@@ -278,3 +278,249 @@ are ingestion/interpretation dependencies unless specifically called a fetch gat
 - **Format / cadence / size:** Text timezone rules in tar.gz; **ad hoc** political/clock-rule releases; advertised **472.0 kB** compressed, released 27 October 2026.
 - **Rights / raw commit:** `open-commercial`, public-domain data per inventory; **yes, conditionally**, retaining applicable notices. Release payload/its notices were not inspected here; any different rights discovered at acquisition require review.
 - **Manifest / order / requirements:** C+K; **P1 first**; no source dependency after P0. FR-3.AC1, FR-4, FR-5, NFR-1. Pin both Europe/London and Europe/Dublin, leap-day and 46/50-period clock-change days; preserve repeated civil hours.
+
+### SRC-36a — UK ETS auction clearing prices
+
+- **URL/evidence:** Inventory [UK ETS auction-results route](https://www.gov.uk/government/publications/uk-ets-auction-results) returned **404**. [UK ETS participation guidance](https://www.gov.uk/government/publications/participating-in-the-uk-ets/participating-in-the-uk-ets), HTTP 200, does not identify the required historical auction-results file in the page read. Exact public results endpoint **UNVERIFIED**; do not substitute allowance-reporting templates for prices.
+- **Format / cadence / size:** Auction tables/web downloads expected; precise format/bytes **UNVERIFIED**; periodic auctions (biweekly per inventory, exact calendar **UNVERIFIED**), not daily spot prices.
+- **Rights / raw commit:** `research-only`, PC-5; **never**. ICE's third-party auction data is not cleared by a general GOV.UK OGL footer.
+- **Manifest / order / requirements:** C+E+T; **P7 discovery**, then P4 after SRC-35/46 and verified dated price source. FR-3.AC2/4, downstream FR-7.AC2. Record UKA GBP/tCO2e, auction date and period; resampling cannot invent daily spot evidence.
+
+### SRC-36b — EU ETS auction/spot prices
+
+- **URL/evidence:** [EEX auction-download page](https://www.eex.com/en/market-data/market-data-hub/environmentals/eex-eua-primary-auction-spot-download), HTTP 200 after redirect from the older route, advertises [2012–2025 auction archive ZIP](https://www.eex.com/fileadmin/EEX/Downloads/Markets/Environmentals/EUA_Emission_Spot_Primary_Market_Auction_Report/Archive_Reports/emission-spot-primary-market-auction-report-2012-2025-data.zip) and [2026 XLSX](https://public.eex-group.com/eex/eua-auction-report/emission-spot-primary-market-auction-report-2026-data.xlsx). Separate historical secondary spot-series endpoint **UNVERIFIED**.
+- **Format / cadence / size:** XLSX and archived ZIP; auction-day reports, precise refresh latency **UNVERIFIED**; bytes **UNVERIFIED**, archive content not inspected.
+- **Rights / raw commit:** `research-only`, PC-5; **never**. [EEX disclaimer](https://www.eex.com/en/disclaimer), HTTP 200, permits a personal non-commercial copy and requires written approval for commercial use; no broader project redistribution grant established. Respect the personal-use limit when deciding admission; D-56 does not expand it.
+- **Manifest / order / requirements:** C+E+T; **P4 after SRC-35/46**, fetch gate: document permitted research use under applicable product terms. FR-3.AC2/4, downstream FR-7.AC2. EUA EUR/tCO2e; auction results are not a verified daily spot vector.
+
+### SRC-37a — DESNZ fossil-fuel assumptions
+
+- **URL/evidence:** [Collection](https://www.gov.uk/government/collections/fossil-fuel-price-assumptions) links [2024 publication](https://www.gov.uk/government/publications/fossil-fuel-price-assumptions-2024), both HTTP 200; publication advertises [data XLSX](https://assets.publishing.service.gov.uk/media/66f679a230536cb92748287a/Fossil_Fuel_Price_Assumptions_2024.xlsx) and [method PDF](https://assets.publishing.service.gov.uk/media/66f3e1a8080bdf716392e855/2024-Fossil-Fuel-price-Assumptions-Publication.pdf).
+- **Format / cadence / size:** XLSX/PDF; edition-based assumptions, fixed annual schedule **UNVERIFIED**; page advertises **45 kB + 504 kB**, 19-page PDF, last revised 27 September 2024.
+- **Rights / raw commit:** `open-commercial`, OGL v3.0; **yes, conditionally**.
+- **Manifest / order / requirements:** C+E; **P4 after SRC-46** for common numeraire, alongside SRC-37b. FR-3.AC2, downstream FR-7.AC2. Projections through 2050 are scenario assumptions, not historical 2024 spot outturns; record real/nominal basis and units before conversions.
+
+### SRC-37b — World Bank Pink Sheet
+
+- **URL/evidence:** [Commodity Markets page](https://www.worldbank.org/en/research/commodity-markets), HTTP 200, advertises [historical monthly XLSX](https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx) and [annual XLSX](https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Annual.xlsx). Select monthly for historical cost candidates.
+- **Format / cadence / size:** XLSX, **monthly** Pink Sheet updates with annual aggregates; bytes **UNVERIFIED** (page supplies no verified file size).
+- **Rights / raw commit:** `open-commercial`, [World Bank dataset terms](https://data.worldbank.org/summary-terms-of-use), HTTP 200, CC BY 4.0 subject to additional/third-party terms; **yes, conditionally**, only after resource/series exclusions are checked. Do not presume every quoted third-party price is redistributable.
+- **Manifest / order / requirements:** C+E+T; **P4 after SRC-46/35**, map selected gas/coal/oil benchmarks and physical units to technologies. FR-3.AC2/4, downstream FR-7.AC2. USD prices need a pinned USD-to-objective conversion as applicable; monthly-to-half-hour expansion must be labelled resampled.
+
+### SRC-38a — LCCC CfD strike prices
+
+- **URL/evidence:** [Inventory data-portal URL](https://www.lowcarboncontracts.uk/data-portal) returned **403**. Actual public dataset endpoint, content and access conditions **UNVERIFIED**. HTTP 403 alone does not establish a required account; keep as public discovery candidate, not a credential-free fetch promise.
+- **Format / cadence / size:** CSV/web portal per inventory; contract/amendment/indexation updates, precise cadence/bytes **UNVERIFIED**.
+- **Rights / raw commit:** `research-only`, PC-5; **never**. Dataset terms inaccessible/unverified.
+- **Manifest / order / requirements:** C+E+N+T; **P7 discovery**, then P4 after SRC-17/18/20/46 and dated contract matching. FR-3.AC2, downstream FR-7.AC2. Record base-year/indexed strike, delivery period, market reference price and signed CfD effects; do not equate every strike with a positive lost subsidy.
+
+### SRC-38b — Ofgem RO parameters
+
+- **URL/evidence:** [RO scheme page](https://www.ofgem.gov.uk/environmental-and-social-schemes/renewables-obligation-ro) and [supplier page](https://www.ofgem.gov.uk/environmental-and-social-schemes/renewables-obligation-ro/suppliers), HTTP 200. Supplier HTML contains a buy-out/obligation table through **2023/24**; a verified 2024/25 parameter table or machine-readable download remains **UNVERIFIED**. The obvious guessed 2024/25 notice slug returned 404 and is not recommended as a fetch URL.
+- **Format / cadence / size:** HTML table/administrative notices, annual **1 April–31 March** obligation periods (verified); downloadable dataset bytes **UNVERIFIED**.
+- **Rights / raw commit:** `research-only`, PC-5, preserving inventory classification until the exact resource grant is confirmed; **never**. A general Crown/OGL notice does not resolve unidentified resource rights.
+- **Manifest / order / requirements:** C+E+R+N; **P4 discovery after SRC-18/46**, fetch gate: exact applicable annual notice. FR-3.AC2, downstream FR-7.AC2. Calendar 2024 spans 2023/24 and 2024/25; record GBP/ROC and ROCs/MWh separately. Buy-out is not a spot ROC price.
+
+### SRC-41 — Met Éireann MÉRA public samples
+
+- **URL/evidence:** [MÉRA page](https://www.met.ie/climate/available-data/mera), HTTP 200, explicitly says **1981–August 2019** and advertises one-month GRIB 1 samples: [mean sea-level pressure](https://www.met.ie/downloads/MERA_PRODYEAR_2015_06_1_103_0_0_FC3hr.grb), [2 m temperature](https://www.met.ie/downloads/MERA_PRODYEAR_2015_06_11_105_2_0_FC3hr.grb), [precipitation](https://www.met.ie/downloads/MERA_PRODYEAR_2015_06_61_105_0_4_FC3hr.grb). Bulk archive access without a request/account is **UNVERIFIED**; only these advertised public samples are proposed here.
+- **Format / cadence / size:** GRIB 1; static historical reanalysis/sample, no 2024 refresh; publisher warns samples are **approximately 500 MB** (per-file versus combined size **UNVERIFIED**).
+- **Rights / raw commit:** `research-only`, PC-5, specific open-data grant unverified; **never**.
+- **Manifest / order / requirements:** C+W+T; **P7 optional**, after SRC-35 and weather-variable selection in Q-C-12; no dependency for 2024 acquisition. FR-3.AC1/4 and downstream FR-17 only for supported historical years. Not a replacement for excluded ERA5 2024 or a weather-to-power implementation.
+
+### SRC-43 — Elexon 2024 market/operational streams
+
+- **URL/evidence:** [Publisher OpenAPI](https://data.elexon.co.uk/swagger/v1/swagger.json), HTTP 200, documents all routes in the table below. Use exact API root `https://data.elexon.co.uk/bmrs/api/v1`; braces are caller-supplied parameters, not literal requests. No market data was requested.
+- **Format / cadence / size:** JSON streams/daily batches; observations are settlement-period or event-driven (REMIT/notifications/acceptances), publication/revision timing varies and exact service latency is **UNVERIFIED**. Recorded **4.16 GiB (4,467,563,083 bytes)**, 3,673 files for the 12-stream capture, including SRC-20/30/31. It is not additional volume on top of those three rows.
+- **Rights / raw commit:** `open-commercial`, BMRS licence; **yes, conditionally**. Keep the required data-year and reference-year copyright/database attribution; exclude unlicensed third-party/personal content.
+- **Manifest / order / requirements:** C+N+T+E, including stream/query/provider/BMU/run/revision dimensions and checksum indices; **P5 after SRC-35/15/20**, and SRC-26/27/28 before rule-dependent interpretation. FR-3.AC1/2/4, downstream FR-7.AC2 and FR-12. Acquire scarce rolling-publication histories early where possible, but freeze a comparable holdout only after coverage review.
+
+| Stream (12 total) | Exact documented endpoint under the API root | Batch/filter and recorded size |
+|---|---|---|
+| BM units | `/reference/bmunits/all?format=json` | Reuse SRC-20; 2.17 MB |
+| Demand | `/demand/outturn?settlementDateFrom={d}&settlementDateTo={d}&format=json` | Reuse SRC-30; 3.56 MB |
+| Fuel | `/datasets/FUELHH/stream?settlementDateFrom={d}&settlementDateTo={d}` | Reuse SRC-31; 61.77 MB |
+| System prices | `/balancing/settlement/system-prices/{settlementDate}?format=json` | Settlement date/run; 15.64 MB |
+| Interconnector flows | `/generation/outturn/interconnectors?settlementDateFrom={d}&settlementDateTo={d}&format=json` | Date and link ID; 40.90 MB |
+| Market Index Data | `/datasets/MID/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | Provider/product; 5.63 MB |
+| REMIT | `/datasets/REMIT/stream?publishDateTimeFrom={start}&publishDateTimeTo={end}` | **Publication-time** window, event/revision lineage; 90.17 MB |
+| Acceptances | `/datasets/BOALF/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | BMU/acceptance flags/revisions; 1,389.49 MB |
+| MEL | `/datasets/MELS/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | BMU/effective times; 795.83 MB |
+| MIL | `/datasets/MILS/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | BMU/effective times; 633.42 MB |
+| Physical notifications | `/datasets/PN/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | BMU/level/time profiles; 523.40 MB |
+| Bid/offer pairs | `/datasets/BOD/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | BMU/pair/direction/revision; 905.58 MB |
+
+Use one source settlement day at a time initially; `{start}`/`{end}` are explicit
+ISO 8601 boundaries according to the route's documented filter semantics. Confirm
+inclusive/exclusive endpoints at acquisition, rather than assuming every route
+uses the same convention. Preserve all 46/48/50 source periods. REMIT windows
+must include the pre-year publications needed to establish outages active on
+1 January 2024; an exclusively 2024 publication-window capture cannot prove that
+coverage. Full 2024 interval unions do not prove every BMU/message is complete.
+MID is a volume-weighted reference across exchanges, not a day-ahead auction
+price. Bid/offer data serves historical comparison; it does not change D-59's
+cost-based redispatch design.
+
+### SRC-44 — SEMO/SEMOpx historical prices
+
+- **URL/evidence:** Read [SEMO historical-data page](https://www.sem-o.com/market-data/static-reports/historic-market-data) and [SEMOpx document library](https://www.semopx.com/market-data/document-library), HTTP 200. Exact previously pinned targets are [SEMO imbalance ZIP](https://www.sem-o.com/documents/general-publications/Imbalance_Price_YTD_2020-2024.zip) and [SEMOpx October 2026 lookback ZIP](https://www.semopx.com/sites/semopx/files/2026-11/Lookback_Market%20October2026.zip). These exact archive URLs were **not exposed by the public pages read: current-link/access verification UNVERIFIED**. Use the existing manifest as historical identity evidence, not as a claim of fresh verification.
+- **Format / cadence / size:** ZIP containing Excel/XML/CSV historical price products; monthly lookback/periodic archive revision schedule **UNVERIFIED**; recorded **4.46 MB + 39.17 MB = 43.63 MB**.
+- **Rights / raw commit:** `research-only`, PC-3; **never**. File-specific open-commercial designation unverified.
+- **Manifest / order / requirements:** C+T+E; **P5 after SRC-35/27/46** for product/interval/currency interpretation; fetch gate: resolve public archive availability without logging in. FR-3.AC1/4, downstream FR-12. Record DAM hourly, IDA1/2/3 auction-window coverage, IDC limitations and imbalance products separately. Earlier captures have **61 missing half-hours**, **333 missing five-minute intervals in Jan–Nov**, and **8,928 missing five-minute intervals in December**; never silently impute a validation pass.
+
+### SRC-45 — NESO thermal constraint costs
+
+- **URL/evidence:** [Metadata](https://api.neso.energy/api/3/action/package_show?id=f0055054-c55c-4068-a01c-61da4334e58f), HTTP 200, advertises [2024/25 CSV](https://api.neso.energy/dataset/f0055054-c55c-4068-a01c-61da4334e58f/resource/27df75fd-6233-466c-beed-3e6e2261e6b1/download/outturn-system-costs-2024-2025.csv) and adjacent [2023/24 CSV](https://api.neso.energy/dataset/f0055054-c55c-4068-a01c-61da4334e58f/resource/75c9c564-af38-4421-a461-a612a6921212/download/outturn-system-costs-2023-2024.csv).
+- **Format / cadence / size:** CSV; **weekly** update per metadata, daily cost observations; recorded **48.3 kB**, 2,190 rows for 2024/25. Adjacent financial-year size/content **UNVERIFIED**.
+- **Rights / raw commit:** `open-commercial`, NESO Open Data Licence; **yes, conditionally**.
+- **Manifest / order / requirements:** C+T+E+R; **P5 after SRC-22/35** for group/date mapping. FR-3.AC2, downstream FR-12.AC2/3. Need Jan–Mar from the 2023/24 resource plus Apr–Dec from 2024/25 for calendar 2024; keep constraint-only costs separate from total BM/settlement transfers.
+
+### SRC-46 — ECB FX reference rates
+
+- **URL/evidence:** [Reference-rates page](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html), HTTP 200, advertises [full-history CSV ZIP](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip) and [full-history XML](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml) (page appends cache query strings; stable paths retained here). Select one encoding.
+- **Format / cadence / size:** CSV ZIP/XML; publisher says normally updated **around 16:00 CET each working day**, except TARGET closing days; bytes **UNVERIFIED**.
+- **Rights / raw commit:** `open-commercial`, [ECB reuse disclaimer](https://www.ecb.europa.eu/services/disclaimer/html/index.en.html), HTTP 200; **yes, conditionally**, acknowledge source, disclose modifications and follow sale/third-party conditions.
+- **Manifest / order / requirements:** C+E+T; **P1**, before SRC-36/37/38/44 cost/price normalization. FR-1.AC3/4, FR-3.AC1/4, NFR-2. Record GBP per EUR (and USD per EUR if required), publication time and conversion direction. Carry the last valid pre-2024 working-day rate into the year's start/non-working days under a versioned fill policy; disclose effective-date/as-of differences.
+
+### SRC-47 — Bank of England XUDLSER check
+
+- **URL/evidence:** [Database hub](https://www.bankofengland.co.uk/boeapps/database/) returned **403**. Exact XUDLSER download query, series definition, access and series-specific reuse rights **UNVERIFIED**; do not invent a CSV export URL.
+- **Format / cadence / size:** CSV per inventory; working-day FX publication expected, precise schedule/bytes **UNVERIFIED**.
+- **Rights / raw commit:** `research-only`, PC-5; **never**. General OGL terms have third-party exceptions; selected-series clearance is unverified.
+- **Manifest / order / requirements:** C+E+T; **P7 optional discovery after SRC-46**, not a blocker for the primary ECB route. FR-1.AC4, FR-3.AC1/4. Confirm quote direction before using as an independent FX check.
+
+### SRC-48 — NESO ETYS Appendix G nodal demand
+
+- **URL/evidence:** Verified [ETYS appendices page](https://www.neso.energy/publications/electricity-ten-year-statement-etys/etys-documents-and-appendices) advertises [2025 Appendix G](https://www.neso.energy/document/379136/download); corrects the inventory's missing URL.
+- **Format / cadence / size:** XLSX in previous manifest; annual ETYS editions with revisions, current payload format **UNVERIFIED**; recorded **74.5 kB**. Publication page labels this edition 18 March 2026.
+- **Rights / raw commit:** `research-only`, PC-1; **never**.
+- **Manifest / order / requirements:** C+N+T; **P3 after SRC-01/29**, then SRC-49 for GSP reconciliation. FR-2.AC2, FR-3.AC3/4. Record season/scenario/year and whether figures are FES nodal projections or measured peaks; uninspected Appendix G cannot be presumed to supply historical 2024 demand shapes.
+
+### SRC-49 — Public DNO demand material only (partial family)
+
+- **URL/evidence:** Reuse verified SRC-05 [May 2026 tables](https://data-api.ssen.co.uk/dataset/695078a0-bbd8-420b-8383-ee6bf7fc0045/resource/02c9431f-6126-4384-9f46-9079dbcd7057/download/southern-electric-power-distribution-long-term-development-statement-tables_may-2026.xlsx) as an inspection candidate. NGED's verified [metadata](https://connecteddata.nationalgrid.co.uk/api/3/action/package_show?id=ltds-tabular-model) advertises [Table 3 Demand](https://connecteddata.nationalgrid.co.uk/dataset/5c3c9ca0-5c57-4cdc-99be-f31e38d1e825/resource/0ac103b3-5ee0-44e0-be31-51cea65aac7c/download/table-3-2025.csv). **Correction:** NGED Table 7 is labelled **Planned Work**, not GSP demand. A universal “Table 7 GSP demands” endpoint and complete 14-area coverage are **UNVERIFIED**.
+- **Format / cadence / size:** CSV/XLSX; NGED 12-month metadata, SSEN dated editions; advertised NGED demand **331 kB**, SSEN **731 kB reused from SRC-05**. Per-area GSP subsets/denominators and any different demand payload sizes **UNVERIFIED**.
+- **Rights / raw commit:** `research-only`, PC-5, retaining the unresolved aggregate candidate classification; **never under SRC-49 admission**. The exact reused NGED/SSEN releases retain their independently evidenced open-commercial grants under SRC-03/05; do not downgrade their original manifests or infer the same grant for other DNOs. Any new cleared demand sub-resource needs its own rights record before reclassification.
+- **Manifest / order / requirements:** C+N+T; **P3 after SRC-01/03/05/29/48**, inspect table meaning and attach GSP peaks only with explicit source definitions. FR-2.AC1/2, FR-3.AC3/4. The excluded gated DNO portions are in the appendix; Scottish-area coverage dispositions remain required. Peak snapshots need an explicit temporal-allocation policy and national-energy reconciliation, not unlabelled half-hour observations.
+
+### SRC-50 — Elexon settlement stack TLM candidate
+
+- **URL/evidence:** Verified OpenAPI documents `GET /balancing/settlement/stack/all/{bidOffer}/{settlementDate}/{settlementPeriod}` under `https://data.elexon.co.uk/bmrs/api/v1`; `bidOffer` is `bid` or `offer`, optional `format=json`. Response schema `SettlementStackResponse` has nullable `transmissionLossMultiplier`. No stack payload requested.
+- **Format / cadence / size:** JSON; settlement-period stacks with revisions, publication/run coverage **UNVERIFIED**; per-batch/full-year bytes **UNVERIFIED**. Exhaustive bid+offer scans would involve up to **35,136 period-direction queries** for a 17,568-period year before retries; start with schema/coverage checks, not a blind annual scan.
+- **Rights / raw commit:** `open-commercial`, BMRS licence; **yes, conditionally**.
+- **Manifest / order / requirements:** C+N+T+R; **P6 after SRC-20/26/35**, compare physical-loss interpretation with SRC-32. FR-1.AC3, FR-3.AC2, NFR-2. Candidate accepted-action stacks do not establish a complete delivering/offtaking BMU TLM panel or physical cable losses. Sampling/full-panel suitability is **UNVERIFIED**; the 12 SRC-43 streams do not supply that missing panel.
+
+## Evidence limits and M1 handoff
+
+The public-page checks above establish advertised locations, not live payload
+availability. Previously measured byte counts are traceable to the existing
+[network manifest](../../spikes/data-gathering/network-ie/manifest.toml),
+[Elexon manifest](../../spikes/data-gathering/elexon/manifest.toml),
+[SEMO archive manifest](../../spikes/data-gathering/semo-2024/manifest.toml) and
+[sample manifest](../../spikes/data/samples/download-manifest.json). Preserve those
+captures and their original hashes; a future fetch is a new immutable release.
+Publisher-advertised resource sizes and cadence overrides in this plan are
+metadata evidence, not fresh file measurements.
+
+Specific unresolved fetch/admission items: SRC-13 public row exports; SRC-14
+electrical model; SRC-21 exact working reports; SRC-24/44 exact historical links;
+SRC-26 BSC access; SRC-28 historical border documents; SRC-34 holidays;
+SRC-36a UKA results; SRC-36b project-use terms/secondary spot data;
+SRC-38a CfD access; SRC-38b 2024/25 notice; SRC-47 FX export. SRC-25/27 now have
+working current publication pages, but dated 2024 rules/parameters remain
+UNVERIFIED. SRC-32 still lacks verified dated loss functions for all ten links.
+SRC-49 is a partial inspection candidate, not a resolved 14-area demand source.
+
+Public-only acquisition cannot satisfy FR-2's full-network gate: UKPN/SPEN/NPg/ENWL
+132-kV coverage remains gated, electrical cut-sets and commissioned 2024 asset
+crosswalks remain unresolved, and no in-scope reanalysis supplies 2024 weather.
+ERA5/MIDAS/Ninja are excluded below; MÉRA stops in 2019. Existing Q-C-12/Q-C-13
+track weather selection and network snapshot decisions in the
+[questionnaire](../requirements/02-questionnaire.md). Do not replace those gaps
+with inferred scope decisions, current snapshots or fabricated weather profiles.
+Calendar/rule locks, heat rates, variable O&M, signed subsidy vectors, Irish
+embedded generation and transformation/schema implementation remain M1 work.
+
+## Appendix — excluded credential-gated sources
+
+Access requirements here retain the inventory's evidence; no accounts were
+created and no tokens, approvals or payload access were requested. Public
+catalogue descriptions do not remove the following prerequisites. Future
+credentials/clearance do not belong in this acquisition run or public manifests.
+
+| SRC IDs | Excluded source | What is needed |
+|---|---|---|
+| SRC-06, SRC-07 | UKPN LTDS tables/CIM | UKPN portal registration/login; CIM additionally needs the formal access request/approval and shared-data terms. Permissions and receipt remain unverified. |
+| SRC-08, SRC-09 | SPEN LTDS tables/CIM | SPEN portal registration/login; CIM additionally requires a Data Request/approval under shared-data terms. The precise request form remains unresolved. |
+| SRC-10 | Northern Powergrid LTDS tables/CIM | NPg portal account/login; export/CIM entitlement must be confirmed. |
+| SRC-11 | ENWL LTDS secure area | Secure-area registration/login and approval; restrictive shared-data terms also need PC-5 clearance before commercial use. |
+| SRC-16a, SRC-16b | ENTSO-E physical flows/scheduled exchanges | Transparency Platform account and personal REST API security token requested from ENTSO-E. Keep non-excluded A11 flows distinct from IFA/Nemo A11 and all A09 schedules; a token does not clear their different reuse rights. |
+| SRC-39 | Copernicus CDS ERA5 | Registered CDS account, agreement to dataset terms and personal API key/CDS configuration. No weather bytes acquired in this task. |
+| SRC-40 | CEDA MIDAS Open | Free CEDA registration/login and applicable access/licence acceptance. Open-data copyright status does not remove the account prerequisite. |
+| SRC-42 | Renewables.ninja | Free user account and API token; CC BY-NC 4.0 remains research-only, with separate commercial permission needed. |
+| SRC-49 (gated portions only) | DNO GSP-demand tables | UKPN/SPEN/NPg/ENWL portal accounts and any required data-request approvals as above. Public NGED/SSEN inspection candidates remain in the register; no promise of complete all-area demand coverage. |
+
+## Recommended fetch sequence
+
+This is a proposed operational order, not authorisation to download in this
+docs-only task. Independent raw acquisitions need not wait for unrelated joins;
+dependencies below govern admission and derivation. Every fetch first repeats
+the public metadata/terms check and stops if credentials are required. A 403/404,
+empty error envelope or rights mismatch creates an unresolved manifest entry,
+not a substituted dataset. Keep retry/backoff and batching consistent with each
+publisher's service terms; do not circumvent access controls.
+
+1. **P0 — Prepare admission and immutable storage.** Before any dataset request,
+   establish C/profile manifest records, private raw paths outside git, rights
+   evidence and PC references; reject share-alike ancestors. Keep the 2024 holdout
+   separate from current/forward releases. Do not run databases, heavy ingest or
+   benchmarks in the coding container; M1 heavy work needs the D-65 target and
+   NFR-12.AC1/2 isolation checks. No account setup is part of this sequence.
+2. **P1 — Pin small clocks, currencies and identity inputs.** Fetch **SRC-35**
+   first, then **SRC-33, SRC-46, SRC-15, SRC-20, SRC-17, SRC-18, SRC-19**.
+   Discover **SRC-21** working public filenames in parallel; defer failed reports.
+   Prefer pinned historical registers if available; label current captures as
+   current and retain release/publication evidence. Clock/FX definitions precede
+   all time/currency transformations.
+3. **P2 — Acquire topology and fleet crosswalk inputs.** Fetch **SRC-01, SRC-12,
+   SRC-02, SRC-03, SRC-04, SRC-05**. For NGED, ingest node aliases before circuits
+   and transformers, then reconcile same-edition CIM; map SEPD GSPs and Irish
+   ResourceNames to buses. Add **SRC-21** only if its public fetch gate passes.
+   Inspect **SRC-13** public export metadata; fetch records only when no-account
+   access is established. Record 14 DNO-area coverage dispositions and every
+   absent denominator. A reduced model is not full-network completion.
+4. **P3 — Pin demand, boundaries and dated rules.** Fetch **SRC-29, SRC-30,
+   SRC-31, SRC-48**, and public **SRC-49** candidates without duplicating SRC-05;
+   join GSP peaks only after table definitions are verified. Capture **SRC-22**
+   before rolling history expires; add **SRC-23** as a separately labelled
+   forward horizon and **SRC-24** when its historical URL is resolved. Acquire
+   accessible **SRC-25/26/27/28/32** documents, pin historical effective versions,
+   then derive supported security/loss proxies. Missing cut-sets/rules/losses
+   remain gaps. Keep 2026 strategy/market rules out of a 2024 as-of lock.
+5. **P4 — Build traceable cost candidates.** With FX/units pinned, fetch
+   **SRC-37a/37b**, then **SRC-36b** only within verified permitted research use;
+   resolve **SRC-36a, SRC-38a, SRC-38b** public endpoints before any price/contract
+   batches. Convert units and currencies, preserve auction/monthly/annual
+   resolution, and version resampling. This does not produce a complete SRMC
+   vector without sourced heat rates, emissions, VOM and subsidy mappings.
+6. **P5 — Acquire historical comparison streams in increasing volume.** Reuse
+   SRC-20/30/31 captures, then SRC-43 **system prices, MID, interconnector flows,
+   REMIT**, followed by **PN, MILS, MELS, BOD, BOALF** (daily/publication-window
+   batches; include needed pre-year REMIT history). Acquire **SRC-44** after
+   resolving its public archive links, and **SRC-45** across both financial-year
+   files. Reconcile product/timezone/provider/unit masks, up/down volumes and
+   constraint-only costs; archive gaps are not passes. Fetching observations can
+   proceed before rule interpretation is finished, but validation freeze cannot.
+7. **P6 — Resolve the TLM candidate before scaling.** After BMU/calendar/BSC
+   mapping, inspect a small dated **SRC-50** stack sample in a later acquisition
+   task and check nullability, settlement runs, directional units and whether
+   inactive BMUs are absent. Scale only if it actually serves the required loss
+   quantity; otherwise retain the missing-panel issue. TLM is not a substitute
+   for the physical interconnector loss functions in SRC-32.
+8. **P7 — Resolve public gaps and freeze an honest release.** Follow up
+   **SRC-14/34/36a/38a/38b/47** and unresolved earlier fetch gates; **SRC-41** is
+   optional historical-format research, never a 2024 dependency. Reconcile bytes,
+   hashes, rights ancestry, dates, GSP/BMU aliases and interval/energy masks,
+   explicitly retain every unresolved item above, and freeze input/holdout
+   manifests before calibration (FR-12.AC1). Do not claim forecast validation,
+   commercial clearance or full-network M1 acceptance from this public subset.
