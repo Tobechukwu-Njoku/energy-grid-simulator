@@ -16,7 +16,7 @@ cannot truncate a password to a placeholder. Both exact reviewer fixtures have
 regressions, including the Rust marker control and escaped-opener variant; the
 one/two/three-backtick placeholder controls remain accepted.
 Audited every review report without report exemptions and searched credential
-examples manually. Seven reports now use placeholders for API/runner tokens,
+examples manually. Eight reports now use placeholders for API/runner tokens,
 database passwords, pgpass/netrc values, encoded key data and the two verification
 reproductions. Historical findings and FOLLOW-UP dispositions are preserved;
 exact synthetic regression inputs remain reconstructed in tests. Redacted PuTTY
