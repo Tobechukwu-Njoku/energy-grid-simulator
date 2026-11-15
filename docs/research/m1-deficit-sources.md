@@ -152,3 +152,152 @@ Elexon FUELHH outturn records report transmission-connected generation only and 
   Because EirGrid Smart Grid Dashboard reports only grid-connected utility-scale wind and solar, synthesize half-hourly Irish embedded solar via physical capacity scaling:
   $$P_{\text{embedded\_solar, IE}}(t) = C_{\text{micro\_PV, IE}}(2024) \times \frac{P_{\text{utility\_solar, IE}}(t)}{C_{\text{utility\_solar, IE}}(2024)}$$
   where $C_{\text{micro\_PV, IE}}(2024) \approx 498\text{ MW}$ and $C_{\text{utility\_solar, IE}}(2024) \approx 1,000\text{ MW}$ (from ESB Networks and EirGrid 2024 milestone reports).
+
+---
+
+## 4. Directional Interconnector Losses & TLM Source
+
+### Deficit Description
+Directional physical loss parameters across the 10 cross-border and island interconnectors are missing from standard TSO datasets, resulting in unverified numeric defaults or placeholders. Converter and cable loss separations, asymmetric forward/reverse losses, and sending/receiving metering boundaries require primary regulatory grounding. Furthermore, Elexon Transmission Loss Multipliers (TLMs) are missing from the previously gathered settlement streams.
+
+### Candidate Sources
+
+#### Candidate 4.1: Regulated Interconnector Access Rules & Loss Methodology Filings
+- **URL:** Ofgem & National Regulatory Authority decision libraries:
+  - BritNed Access Rules (Schedule 3): [https://www.britned.com/](https://www.britned.com/) / [https://www.ofgem.gov.uk/](https://www.ofgem.gov.uk/)
+  - Nemo Link Access Rules: [https://www.nemolink.co.uk/](https://www.nemolink.co.uk/)
+  - ElecLink Access Rules: [https://www.eleclink.co.uk/](https://www.eleclink.co.uk/)
+  - Moyle & EWIC Joint Regulatory Decisions: [https://www.semcommittee.com/](https://www.semcommittee.com/) and [https://www.uregni.gov.uk/](https://www.uregni.gov.uk/)
+- **Publisher:** Interconnector Licensees (BritNed Development Ltd, Nemo Link Ltd, ElecLink Ltd, Mutual Energy, EirGrid Interconnector DAC) approved by National Regulatory Authorities (Ofgem, CREG, CRE, CRU, UR).
+- **Licence Text / Link:** Regulatory decision documents published under Open Government Licence (OGL v3.0) / public regulatory transparency; operator schedules under website terms.
+- **Likely D-56 Class:** Mixed (`open-commercial` for Ofgem/UR statutory decision notices; `research-only` for proprietary operator manuals).
+- **Access Method:** Open direct download (PDF filings and schedules)
+- **Coverage:** GB and connected European / Irish markets (France, Netherlands, Belgium, Northern Ireland, Republic of Ireland); 2024 operational baseline.
+- **Evaluation:** Provides approved loss factor schedules:
+  - *BritNed:* Schedule 3 defines a 3.0% end-to-end loss factor (1.5% applied symmetrically from Mid North Sea reference point to shore).
+  - *Nemo Link:* Annex Business Rules specify a mid-point loss factor of 2.372% (symmetrical half-factor of 1.186% to each end) and an explicit market coupling technical loss factor of 2.344% in Euphemia.
+  - *ElecLink:* Deemed Metered Volume Allocation specifies an end-to-end loss factor of 2.9% (1.471% mid-interconnector loss factor).
+  - *Moyle & EWIC:* SEM Committee decisions align loss treatment with annual Transmission Loss Adjustment Factors (TLAFs).
+
+#### Candidate 4.2: Elexon Insights Solution SAA & Settlement Stack REST API (`SRC-50`)
+- **URL:** [https://data.elexon.co.uk/saa/api/v1/i014/party-level/](https://data.elexon.co.uk/saa/api/v1/i014/party-level/) and [https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/system-prices](https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/system-prices)
+- **Publisher:** Elexon Limited
+- **Licence Text / Link:** [Licence to use BMRS open data](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/)
+- **Likely D-56 Class:** `open-commercial`
+- **Access Method:** Open REST API (JSON / SAA-I014 settlement reports; no authentication key required)
+- **Coverage:** Great Britain; all 17,568 settlement periods for 2024 across settlement runs (II, SF, R1–R3, RF).
+- **Evaluation:** Provides verified outturn Transmission Loss Multipliers ($TLM_{ij}$) and Transmission Loss Factors ($TLF_{ij}$) for all registered BM Units and GSP groups. Formally confirms BSC Modification P278 rule: **for all interconnector BM units, $TLM = 1.0$ exactly** in GB imbalance settlement.
+
+#### Candidate 4.3: SEM Committee / EirGrid & SONI Annual TLAF Decision Tables
+- **URL:** [https://www.semcommittee.com/publications/](https://www.semcommittee.com/publications/) and [https://www.eirgrid.ie/customer-and-community/operational-constraints](https://www.eirgrid.ie/customer-and-community/operational-constraints)
+- **Publisher:** Single Electricity Market Committee (CRU & Utility Regulator) and System Operators (EirGrid & SONI)
+- **Licence Text / Link:** SEM Committee public notices / statutory decision disclaimers ([EirGrid Disclaimer](https://www.eirgrid.ie/disclaimer)).
+- **Likely D-56 Class:** `research-only` (PC-2 / PC-3)
+- **Access Method:** Open direct download (annual decision papers and Excel tables)
+- **Coverage:** All-island Ireland (ROI and NI); 2023/24 and 2024/25 tariff years (half-hourly nodal loss multipliers).
+- **Evaluation:** Authoritative source for nodal loss multipliers in the SEM. Confirms that interconnector volumes landing at Woodland (EWIC) and Ballycronan More (Moyle) are scaled by nodal TLAFs in ex-ante market clearing and ex-post imbalance settlement.
+
+### Recommendation & Proxy Formulation
+- **Recommended Candidate:** Use **Elexon Insights SAA API** (`Candidate 4.2`) for GB settlement loss accounting (enforcing $TLM = 1.0$ for interconnector units per BSC P278), combined with primary **Regulated Access Rules** (`Candidate 4.1`) for physical loss percentages across certified links (BritNed 3.0%, Nemo Link 2.372%, ElecLink 2.9%).
+- **HVDC Interconnector Physical Loss Proxy:**
+  For links lacking explicit operator loss filings in 2024 (IFA, IFA2, NSL, Viking Link, Greenlink), adopt the standard CIGRE B4 HVDC converter and cable loss formulation:
+  1. *Converter Losses:* Assume fixed + linear converter station loss of $0.75\%$ per converter station ($1.50\%$ for both AC/DC terminals combined).
+  2. *Cable Ohmic Losses:* Linear ohmic cable loss factor of $0.30\%$ per 100 km of subsea/underground HVDC cable.
+  3. *Directional Formulation:* Let $P_{\text{send}}$ be real power injected at the sending converter bus. Power received at the receiving converter bus is:
+     $$P_{\text{receive}} = P_{\text{send}} \times (1 - L_{\text{converter, send}}) \times (1 - L_{\text{cable}}(d)) \times (1 - L_{\text{converter, receive}})$$
+     where $L_{\text{cable}}(d) = 0.003 \times (d / 100\text{ km})$.
+
+---
+
+## 5. Dated Market Rules
+
+### Deficit Description
+Wholesale market settlement and trading procedures require dated, version-pinned releases reflecting the 2024 calendar baseline, rather than mutable live website hubs. Specifically, BSC Section T cashout calculations and SEMOpx auction rules (DAM, IDA1–3, IDC) must be locked to historical regulatory instruments in force during 2024.
+
+### Candidate Sources
+
+#### Candidate 5.1: Elexon Digital BSC Baseline Releases (Section T, Versions 38.0 & 41.0)
+- **URL:** [https://bsc.elexon.co.uk/](https://bsc.elexon.co.uk/) and [https://www.elexon.co.uk/bsc-and-codes/balancing-settlement-code/bsc-sections/](https://www.elexon.co.uk/bsc-and-codes/balancing-settlement-code/bsc-sections/)
+- **Publisher:** Elexon Limited
+- **Licence Text / Link:** [Licence to use BMRS open data](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/) / BSC statutory documentation.
+- **Likely D-56 Class:** `research-only` (PC-5; statutory code legal text)
+- **Access Method:** Open direct download / web access
+- **Coverage:** Great Britain; historical versions in force across 2024:
+  - *Version 38.0:* Effective 2 April 2024 (Spring 2024 baseline).
+  - *Version 41.0:* Effective 7 November 2024 (Standard November 2024 Release, implementing Modification P415 and P473 regarding Virtual Lead Party deviation volumes and Supplier Compensation Cashflow $SCC_p$).
+- **Evaluation:** Complete algebraic codification of system buy/sell prices, net imbalance volume ($NIV$), Continuous Acceptance Duration Limit ($CADL$), Replacement Price, and cashflow hierarchies.
+
+#### Candidate 5.2: SEMOpx Operating Procedures & Market Rules (2024 Baseline)
+- **URL:** [https://www.semopx.com/rules-monitoring/market-rules/](https://www.semopx.com/rules-monitoring/market-rules/) and [https://www.semopx.com/rules-monitoring/modifications/](https://www.semopx.com/rules-monitoring/modifications/)
+- **Publisher:** SEMOpx (EirGrid / SONI / EPEX SPOT joint exchange operator)
+- **Licence Text / Link:** SEMOpx legal disclaimers; all rights reserved.
+- **Likely D-56 Class:** `research-only` (PC-5)
+- **Access Method:** Open direct download (PDF operating procedures)
+- **Coverage:** All-island Ireland (I-SEM); calendar year 2024.
+- **Evaluation:** Defines formal rules for Day-Ahead Market (DAM, gate closure 11:00 UTC/GMT), Intraday Auctions (IDA1 gate closure 17:45 D-1, IDA2 gate closure 08:00 D, IDA3 gate closure 14:00 D), and Intraday Continuous trading (IDC, up to 30 min before delivery). Specifies order types (simple hourly, block bids, complex orders) and price-cap boundaries (-€500/MWh to +€4,000/MWh).
+
+#### Candidate 5.3: SEM Committee I-SEM Trading and Settlement Code (Part B Dated Baseline)
+- **URL:** [https://www.semcommittee.com/publications/](https://www.semcommittee.com/publications/) and [https://www.sem-o.com/rules-and-governance/rules/](https://www.sem-o.com/rules-and-governance/rules/)
+- **Publisher:** Single Electricity Market Committee (CRU / UR) & SEMO
+- **Licence Text / Link:** Statutory market code disclaimers (all rights reserved).
+- **Likely D-56 Class:** `research-only` (PC-5)
+- **Access Method:** Open direct download
+- **Coverage:** All-island Ireland; balancing market rules, imbalance settlement, capacity market charges, and currency conversion mechanics in force in 2024.
+- **Evaluation:** Governs ex-post imbalance settlement and dispatch redispatch rules. Resolves the previous dead link in `SRC-27` by anchoring to the approved baseline versions published on the SEM Committee publications hub.
+
+### Recommendation & Proxy Formulation
+- **Recommended Candidate:**
+  - For GB: Pin **Elexon BSC Section T Version 38.0** (for Jan–Oct 2024) and **Version 41.0** (for Nov–Dec 2024) (`Candidate 5.1`).
+  - For Ireland: Pin **SEMOpx Operating Procedures (DAM, IDA, IDC) 2024 Edition** (`Candidate 5.2`) and **SEM Committee Part B Baseline** (`Candidate 5.3`).
+- **Standard Market Proxy / Assumptions:**
+  - Where detailed market clearing algorithms (e.g., Euphemia mixed-integer linear programming branch-and-bound) cannot be executed end-to-end due to commercial licensing, implement the standard marginal clearing price proxy: continuous linear dispatch sorted by generator Short-Run Marginal Cost (SRMC), clearing at the intersection of total scheduled demand and offer stacks, bounded by SEMOpx and BSC price caps.
+
+---
+
+## 6. Fuel, Carbon, and Subsidy Vectors
+
+### Deficit Description
+Unit dispatch modelling requires daily/half-hourly Short-Run Marginal Cost (SRMC) vectors. UK ETS auction clearing data has unverified third-party redistribution rights; EU ETS auction series are unacquired; World Bank commodity price indices are monthly; DESNZ fossil fuel assumptions are annual long-term projections; LCCC CfD portal requires authentication; Ofgem Renewables Obligation parameters lack an identified machine-readable API; generator heat rates and variable O&M parameters remain unacquired.
+
+### Candidate Sources
+
+#### Candidate 6.1: ICE End-of-Day UKA/EUA Auction Results & GOV.UK Public Reports
+- **URL:** [https://www.theice.com/emissions/auctions/uk-emission-allowances](https://www.theice.com/emissions/auctions/uk-emission-allowances) and [https://www.gov.uk/government/publications/taking-part-in-the-uk-emissions-trading-scheme-markets](https://www.gov.uk/government/publications/taking-part-in-the-uk-emissions-trading-scheme-markets)
+- **Publisher:** Intercontinental Exchange (ICE Futures Europe) / UK ETS Authority (DESNZ)
+- **Licence Text / Link:** ICE Market Data Terms (proprietary; commercial use restricted); GOV.UK guidance under Open Government Licence (OGL v3.0).
+- **Likely D-56 Class:** `research-only / unverified` (PC-5; exchange redistribution rights unverified)
+- **Access Method:** Open web inspection (clearing price published after each fortnightly auction)
+- **Coverage:** United Kingdom (UKA) and European Union (EUA); calendar year 2024 (fortnightly auctions).
+- **Evaluation:** Primary pricing instrument for UK Allowances (£/tCO2e) and EU Allowances (€/tCO2e). Governed by statutory auction reserve price (£22/tCO2e for UK ETS).
+
+#### Candidate 6.2: DESNZ Electricity Generation Costs 2023 / 2024 (Annex A Assumptions)
+- **URL:** [https://www.gov.uk/government/publications/electricity-generation-costs-2023](https://www.gov.uk/government/publications/electricity-generation-costs-2023)
+- **Publisher:** Department for Energy Security and Net Zero (DESNZ)
+- **Licence Text / Link:** [Open Government Licence v3.0 (OGL v3.0)](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
+- **Likely D-56 Class:** `open-commercial`
+- **Access Method:** Open direct download (Excel spreadsheet `Annex A: Key Data and Assumptions`)
+- **Coverage:** United Kingdom; technology cost and operational performance parameters (CCGT, OCGT, Nuclear, Biomass, Wind, Solar, Battery Storage) commissioning 2025–2040.
+- **Evaluation:** Authoritative public source for plant operating characteristics:
+  - *Net Thermal Efficiency:* CCGT unabated ~50–54% (heat rate ~6,300–6,800 BTU/kWh or 1.85–2.00 MWh_th / MWh_e); OCGT peaker ~35% (heat rate ~9,750 BTU/kWh or 2.85 MWh_th / MWh_e).
+  - *Variable O&M:* CCGT unabated ~£3.50–£5.00/MWh; OCGT ~£5.00–£8.00/MWh; Biomass ~£5.00–£10.00/MWh.
+
+#### Candidate 6.3: Ofgem Renewables Obligation Annual Determinations & LCCC CfD Register
+- **URL:** Ofgem RO Determination: [https://www.ofgem.gov.uk/](https://www.ofgem.gov.uk/) and LCCC Register: [https://www.lowcarboncontracts.uk/cfd-register/](https://www.lowcarboncontracts.uk/cfd-register/)
+- **Publisher:** Office of Gas and Electricity Markets (Ofgem) & Low Carbon Contracts Company (LCCC)
+- **Licence Text / Link:** [Open Government Licence v3.0 (OGL v3.0)](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
+- **Likely D-56 Class:** `open-commercial`
+- **Access Method:** Open direct download (Ofgem notice PDF / LCCC CSV register)
+- **Coverage:** UK; 2024/25 obligation period.
+- **Evaluation:** Authoritative regulatory subsidy values:
+  - *RO Buyout Price (2024–25):* **£64.73 per ROC**. Obligation level: 0.491 ROCs/MWh in England, Wales, and Scotland; 0.192 ROCs/MWh in Northern Ireland.
+  - *CfD Strike Prices:* Technology and allocation round specific strike prices (£/MWh, 2012 indexed).
+
+### Recommendation & Proxy Formulation
+- **Recommended Candidate:**
+  - For operational plant characteristics: **DESNZ Electricity Generation Costs Annex A** (`Candidate 6.2`, `open-commercial`) for thermal efficiencies, heat rates, and variable O&M.
+  - For renewable subsidy values: **Ofgem RO Determinations** (`Candidate 6.3`, `open-commercial`) for £64.73/ROC buyout baseline.
+  - For carbon and commodity vectors: Use **World Bank Commodity Price Data** (`SRC-37b`, `open-commercial`, CC BY 4.0) with cubic spline / forward-fill daily interpolation, paired with official **UK ETS / EU ETS auction results** (`Candidate 6.1`, `research-only`, PC-5).
+- **Generator Short-Run Marginal Cost (SRMC) Proxy Formulation:**
+  For each thermal generator unit $g$ with fuel type $f \in \{\text{Gas}, \text{Coal}, \text{Oil}, \text{Biomass}\}$:
+  $$\text{SRMC}_g(t) = \frac{\text{FuelPrice}_f(t) + \text{EmissionFactor}_f \times \text{CarbonPrice}(t)}{\eta_g} + \text{VOM}_g$$
+  where $\eta_g$ is net thermal efficiency (e.g. 0.52 for CCGT, 0.35 for OCGT from DESNZ Annex A), $\text{FuelPrice}_f(t)$ is daily gas/coal price, $\text{CarbonPrice}(t)$ is daily interpolated UKA/EUA price, and $\text{VOM}_g$ is variable O&M.
