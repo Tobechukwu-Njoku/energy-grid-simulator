@@ -1049,9 +1049,13 @@ mod tests {
                 ["custom+scheme", "://:", "pw@host\n"].concat(),
                 "local-uri-credentials",
             ),
-            // Placeholders are accepted only by a reviewed exemption.
             (
-                ["postgres", "://u:", "${DB_PASSWORD}@db.example.net/x\n"].concat(),
+                [
+                    "postgres",
+                    "://u:",
+                    "${DB_PASSWORD}literal@db.example.net/x\n",
+                ]
+                .concat(),
                 "local-uri-credentials",
             ),
             (

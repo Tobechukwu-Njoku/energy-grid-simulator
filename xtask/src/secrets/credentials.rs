@@ -171,24 +171,21 @@ fn netrc(text: &str, found: &mut Vec<Match>) {
     }
 }
 
-fn markdown_value<'a>(prefix: &str, text: &'a str) -> &'a str {
-    static CREDENTIAL_OPENER: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(
-            r#"(?i)(?:^|[^\\`])(?P<delimiter>`+)(?:[a-z_][a-z0-9_.-]*=[^;`"'\r\n]*;[ \t]*|jdbc:[^\s"'`]*[?&;])*(?:[?&])?$"#,
-        )
-        .expect("credential Markdown opener regex")
-    });
+fn code_span_value<'a>(prefix: &str, text: &'a str) -> &'a str {
     static BACKTICKS: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"`+").expect("Markdown delimiter regex"));
-    if let Some(opener) = CREDENTIAL_OPENER.captures(prefix)
-        && let Some(delimiter) = opener.name("delimiter")
-        && let Some(closing) = BACKTICKS.find_iter(text).find(|matched| {
-            matched.len() == delimiter.len()
-                && text[matched.end()..].chars().next().is_none_or(|next| {
-                    next.is_whitespace()
-                        || [',', '.', ';', ':', ')', ']', '}', '!', '?'].contains(&next)
-                })
-        })
+    let opener = prefix.trim_end_matches('`');
+    let length = prefix.len() - opener.len();
+    let escapes = opener
+        .bytes()
+        .rev()
+        .take_while(|byte| *byte == b'\\')
+        .count();
+    if length > 0
+        && escapes % 2 == 0
+        && let Some(closing) = BACKTICKS
+            .find_iter(text)
+            .find(|matched| matched.len() == length)
     {
         &text[..closing.start()]
     } else {
@@ -197,6 +194,22 @@ fn markdown_value<'a>(prefix: &str, text: &'a str) -> &'a str {
 }
 
 fn assignment_value(text: &str) -> (String, usize) {
+    grammar_value(text, ";")
+}
+
+fn credential_text(text: &str, key_start: usize, value_start: usize) -> &str {
+    let prefix = &text[..key_start];
+    let value = code_span_value(prefix, &text[value_start..]);
+    if let Some(quote @ ('\'' | '"')) = prefix.chars().next_back()
+        && !text[key_start..value_start].contains(quote)
+    {
+        &value[..value.find(quote).unwrap_or(value.len())]
+    } else {
+        value
+    }
+}
+
+fn grammar_value(text: &str, delimiters: &str) -> (String, usize) {
     let mut chars = text.char_indices();
     let Some((_, first)) = chars.next() else {
         return (String::new(), 0);
@@ -219,10 +232,12 @@ fn assignment_value(text: &str) -> (String, usize) {
             }
             value.push(character);
         }
-        (value, text.len())
+        (text.to_owned(), text.len())
     } else {
         let length = text
-            .find(|character: char| ['\r', '\n', ';', '&', '\'', '"'].contains(&character))
+            .find(|character: char| {
+                ['\r', '\n'].contains(&character) || delimiters.contains(character)
+            })
             .unwrap_or(text.len());
         (text[..length].trim().to_owned(), length)
     }
@@ -248,14 +263,21 @@ fn percent_decode(text: &str) -> String {
 
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*["']?(?:basic|bearer)[ \t]+((?:\$?\{\{[^{}\r\n]+\}\}|[^\s"'`])+)"#)
-            .expect("header regex")
+        Regex::new(
+            r#"(?i)\bauthorization["']?[ \t]*:[ \t]*(?P<quote>["']?)(?:basic|bearer)\b[ \t]*"#,
+        )
+        .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\b([a-z_][a-z0-9_.-]*)["']?[ \t]*=[ \t]*"#).expect("assignment regex")
+        Regex::new(r#"(?i)\b([a-z_][a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#).expect("assignment regex")
     });
-    static JDBC: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r#"(?i)\bjdbc:[^\s"'`]+"#).expect("JDBC regex"));
+    static URI: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r#"(?:[A-Za-z][A-Za-z0-9+.-]*|<scheme>)://[^\s:@/?#"'\\]*:"#)
+            .expect("URI userinfo regex")
+    });
+    static AUTHORITY: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r#"(?:^|[\s"'`(<;])(?P<key>[A-Za-z0-9_.-]+):"#).expect("bare authority regex")
+    });
     let mut found = Vec::new();
     if (text.contains("client-key-data") || text.contains("user"))
         && let Ok(documents) = YamlLoader::load_from_str(text)
@@ -290,48 +312,127 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         netrc(text, &mut found);
     }
     for capture in AUTH.captures_iter(text) {
-        let value = capture[1].trim_end_matches(r"\n").trim_end_matches(r"\r");
+        let matched = capture.get(0).expect("whole match");
+        let raw = credential_text(text, matched.start(), matched.end());
+        let quote = &capture["quote"];
+        let raw = if quote.is_empty() {
+            raw
+        } else {
+            &raw[..raw.find(quote).unwrap_or(raw.len())]
+        };
+        let (value, length) = grammar_value(raw, "");
+        let value = value.trim_end_matches(r"\n").trim_end_matches(r"\r");
         if literal(value) {
-            let matched = capture.get(0).expect("whole match");
-            found.push((matched.start(), matched.end(), "local-http-authorization"));
-        }
-    }
-    for matched in JDBC.find_iter(text) {
-        if let Some((_, query)) = matched.as_str().split_once('?') {
-            for parameter in query.split(['&', ';']) {
-                if let Some((key, value)) = parameter.split_once('=')
-                    && ["password", "pwd"]
-                        .iter()
-                        .any(|name| name.eq_ignore_ascii_case(&percent_decode(key)))
-                    && literal(&percent_decode(value))
-                {
-                    found.push((matched.start(), matched.end(), "local-jdbc-password"));
-                }
-            }
+            found.push((
+                matched.start(),
+                matched.end() + length,
+                "local-http-authorization",
+            ));
         }
     }
     for capture in ASSIGNMENT.captures_iter(text) {
-        let key = capture[1].to_ascii_lowercase();
+        let key = percent_decode(&capture[1]).to_ascii_lowercase();
         if ["password", "pwd", "pass", "passphrase"].contains(&key.as_str())
             || ["_pass", "_pwd", "_password", "_passphrase"]
                 .iter()
                 .any(|suffix| key.ends_with(suffix))
         {
             let matched = capture.get(0).expect("whole match");
-            let raw_value = &text[matched.end()..];
-            let value_text = match raw_value.chars().next() {
-                Some('\'' | '"') => raw_value,
-                Some('{') if !raw_value.starts_with("{{") => raw_value,
-                _ => markdown_value(&text[..matched.start()], raw_value),
+            let prefix = &text[..matched.start()];
+            let line = prefix.rsplit(['\r', '\n', '\'', '"']).next().unwrap_or("");
+            let jdbc = ["password", "pwd"].contains(&key.as_str())
+                && line.to_ascii_lowercase().contains("jdbc:")
+                && line.contains('?');
+            let query = jdbc || line.trim_end_matches('`').ends_with(['?', '&']);
+            let connection =
+                line.contains(';') || ["password", "pwd", "pass"].contains(&key.as_str());
+            let value_text = credential_text(text, matched.start(), matched.end());
+            let value_text = if jdbc {
+                let jdbc_start = prefix
+                    .to_ascii_lowercase()
+                    .rfind("jdbc:")
+                    .expect("JDBC prefix");
+                if let Some(quote @ ('\'' | '"')) = prefix[..jdbc_start].chars().next_back() {
+                    &value_text[..value_text.find(quote).unwrap_or(value_text.len())]
+                } else {
+                    value_text
+                }
+            } else {
+                value_text
             };
-            let (value, length) = assignment_value(value_text);
-            if literal(&percent_decode(&value)) {
+            let (value, length) = if query {
+                grammar_value(value_text, "&#")
+            } else if connection {
+                assignment_value(value_text)
+            } else {
+                grammar_value(value_text, "")
+            };
+            let value = if query { percent_decode(&value) } else { value };
+            if literal(&value) {
                 found.push((
                     matched.start(),
                     matched.end() + length,
-                    "local-connection-password",
+                    if jdbc {
+                        "local-jdbc-password"
+                    } else {
+                        "local-connection-password"
+                    },
                 ));
             }
+        }
+    }
+    for (start, end, uri) in URI
+        .find_iter(text)
+        .map(|matched| (matched.start(), matched.end(), true))
+        .chain(AUTHORITY.captures_iter(text).filter_map(|capture| {
+            let key = capture.name("key")?;
+            (key.as_str() != "mailto").then_some((key.start(), capture.get(0)?.end(), false))
+        }))
+    {
+        let raw = credential_text(text, start, end);
+        let raw = raw.split(['\r', '\n']).next().unwrap_or("");
+        if !uri && (raw.starts_with("//") || raw.starts_with(char::is_whitespace)) {
+            continue;
+        }
+        let Some(at) = raw.find('@') else { continue };
+        if !uri && raw[..at].contains(char::is_whitespace) {
+            continue;
+        }
+        if raw[..at].contains(['\r', '\n', '\'', '"', '/', '\\']) {
+            continue;
+        }
+        let host = raw[at + 1..]
+            .split(|character: char| {
+                character.is_whitespace()
+                    || ['/', '?', '#', '\'', '"', '`', ')', '>'].contains(&character)
+            })
+            .next()
+            .unwrap_or("");
+        if !host
+            .starts_with(|character: char| character.is_ascii_alphanumeric() || character == '[')
+        {
+            continue;
+        }
+        let expression = format!("{}{}@{host}", &text[start..end], &raw[..at]);
+        let template = [
+            "scheme://user:password@host",
+            "<scheme>://user:password@host",
+            "user:password@host",
+        ]
+        .contains(&expression.as_str());
+        let decoded = percent_decode(&raw[..at]);
+        let placeholder =
+            !literal(&decoded) && (decoded.starts_with(['<', '$', '%', '{']) || decoded == "...");
+        if !template && !placeholder && !decoded.is_empty() {
+            found.push((
+                start,
+                end + at + 1 + host.len(),
+                if uri {
+                    "local-uri-credentials"
+                } else {
+                    "local-bare-authority-credentials"
+                },
+            ));
         }
     }
     found
@@ -769,13 +870,203 @@ mod tests {
             );
         }
         for delimiter in ["`", "``", "```"] {
-            for attribute in ["Pwd", "&password", "?password", "Server=...;Pwd"] {
+            for attribute in ["Pwd", "password"] {
                 check(
                     &format!("Use {delimiter}{attribute}=...{delimiter} in examples."),
                     None,
                 );
             }
+            for attribute in ["&password", "?password", "Server=...;Pwd"] {
+                check(
+                    &format!("Use {delimiter}{attribute}=...{delimiter} in examples."),
+                    Some("local-connection-password"),
+                );
+            }
         }
+    }
+
+    #[test]
+    fn r15v4_01_backtick_in_earlier_connection_attribute() {
+        let value = ["secret", "` meadow2026"].concat();
+        let connection = format!("Server=database.internal;Uid=`x=y;{}={value};", "Pwd");
+        let source = format!(
+            "fn main() {{ let connection = \"{connection}\"; assert!(connection.ends_with(\"{value};\")); }}\n"
+        );
+        for text in [
+            source.clone(),
+            format!("{connection}\n"),
+            source.replace("Uid=`x=y;", "Uid=operator;"),
+            source.replace(&format!("={value};"), &format!("={{{value}}};")),
+        ] {
+            check(&text, Some("local-connection-password"));
+        }
+    }
+
+    #[test]
+    fn backtick_positions_across_credential_grammars() {
+        for (key, prefix, suffix, rule) in [
+            (
+                ["Pwd", "="].concat(),
+                "Server=host;Uid=operator;",
+                ";Database=grid",
+                "local-connection-password",
+            ),
+            (
+                ["password", "="].concat(),
+                "jdbc:postgresql://host/db?user=operator&",
+                "&ssl=true#fragment",
+                "local-jdbc-password",
+            ),
+            (
+                ["DB_PASS", "="].concat(),
+                "export ",
+                "\n",
+                "local-connection-password",
+            ),
+            (
+                ["Authorization", ": Bearer "].concat(),
+                "",
+                "\n",
+                "local-http-authorization",
+            ),
+            (
+                ["postgres", "://user:"].concat(),
+                "",
+                "@host/db\n",
+                "local-uri-credentials",
+            ),
+            (
+                ["user", ":"].concat(),
+                "",
+                "@host\n",
+                "local-bare-authority-credentials",
+            ),
+        ] {
+            for value in ["s3cr3t!", "${VAR}"] {
+                let expected = (value != "${VAR}").then_some(rule);
+                for position in [
+                    "before-key",
+                    "earlier-attribute",
+                    "inside-value",
+                    "after-value",
+                ] {
+                    let text = match position {
+                        "before-key" if key.ends_with(':') => {
+                            format!("{prefix}`{key}{value}{}`\n", suffix.trim_end())
+                        }
+                        "before-key" => format!("{prefix}`{key}{value}`{suffix}"),
+                        "earlier-attribute" => format!("{prefix}earlier=`x=y;{key}{value}{suffix}"),
+                        "inside-value" => {
+                            format!("{prefix}{key}{}`{}{suffix}", &value[..1], &value[1..])
+                        }
+                        _ => format!("{prefix}{key}{value}`{suffix}"),
+                    };
+                    let result = if ["inside-value", "after-value"].contains(&position) {
+                        Some(rule)
+                    } else {
+                        expected
+                    };
+                    check(&text, result);
+                }
+                for delimiter in ["`", "``", "```"] {
+                    let (inside_suffix, outside_suffix) = if key.ends_with(':') {
+                        (suffix.trim_end(), "\n")
+                    } else {
+                        ("", suffix)
+                    };
+                    check(
+                        &format!(
+                            "{prefix}{delimiter}{key}{value}{inside_suffix}{delimiter}{outside_suffix}"
+                        ),
+                        expected,
+                    );
+                    let internal = "`".repeat(delimiter.len() + 1);
+                    check(
+                        &format!(
+                            "{prefix}{delimiter}{key}{value}{internal}literal{inside_suffix}{delimiter}{outside_suffix}"
+                        ),
+                        Some(rule),
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn code_spans_require_an_immediate_key_and_exact_run_length() {
+        let key = "Pwd";
+        for text in [
+            format!("Use ` {key}=<secret>` in examples."),
+            format!("Use `Server=host;{key}=<secret>` in examples."),
+            format!(r"Use \`{key}=<secret>` in examples."),
+            format!("Use ``{key}=<secret>`literal`` in examples."),
+            format!("Use `{key}=<secret>``literal` in examples."),
+            format!("{key}=<secret>`"),
+        ] {
+            check(&text, Some("local-connection-password"));
+        }
+        check(&format!("Use `{key}=<secret>`arbitrary prose."), None);
+        check(&format!("Use ``{key}=<secret>``arbitrary prose."), None);
+    }
+
+    #[test]
+    fn credential_formats_keep_their_own_delimiters_and_encoding() {
+        let connection_key = "Pwd";
+        let env_key = "DB_PASS";
+        let query = "jdbc:postgresql://host/db?password";
+        let header = "Authorization";
+        let uri = "postgres://user";
+        for quote in ['\'', '"'] {
+            check(
+                &format!(
+                    "Server=host;Uid=oper{quote}ator;{connection_key}=<secret>{quote}literal;"
+                ),
+                Some("local-connection-password"),
+            );
+        }
+        for suffix in ["&literal", "#literal", "'literal", "\"literal", "`literal"] {
+            check(
+                &format!("{connection_key}=<secret>{suffix};"),
+                Some("local-connection-password"),
+            );
+        }
+        for suffix in [";literal", "`literal"] {
+            check(
+                &format!("{query}=<secret>{suffix}"),
+                Some("local-jdbc-password"),
+            );
+            check(
+                &format!("{env_key}=<secret>{suffix}"),
+                Some("local-connection-password"),
+            );
+            check(
+                &format!("{header}: Bearer <secret>{suffix}"),
+                Some("local-http-authorization"),
+            );
+        }
+        for suffix in ["&ssl=true", "#fragment"] {
+            check(&format!("{query}=<secret>{suffix}"), None);
+        }
+        for template in ["<secret>", "${VAR}", "$VAR", "%VAR%", "..."] {
+            check(&format!("{env_key}={template}\n"), None);
+            check(&format!("{env_key}=\"{template}\"\n"), None);
+            check(&format!("{uri}:{template}@host/db"), None);
+        }
+        check(&format!("{query}=%3Csecret%3E"), None);
+        check(&format!("url = \"{query}=<secret>\""), None);
+        check(&format!("{uri}:%3Csecret%3E@host/db"), None);
+        check(
+            &format!("{env_key}=%3Csecret%3E"),
+            Some("local-connection-password"),
+        );
+        check(
+            &format!("{header}: Bearer %3Csecret%3E"),
+            Some("local-http-authorization"),
+        );
+        check(
+            &format!("{uri}:%253Csecret%253E@host/db"),
+            Some("local-uri-credentials"),
+        );
     }
 
     #[test]
@@ -808,7 +1099,10 @@ mod tests {
             );
         }
         check("`Authorization: Bearer` and `Authorization: Basic`", None);
-        check("Authorization: Bearer\nordinary prose\n", None);
+        check(
+            &["Authorization", ": Bearer\nordinary prose\n"].concat(),
+            None,
+        );
         let header = "Authorization";
         check(
             &format!("`{header}: Bearer <token>`; `{header}: Bearer s3cr3t!`"),
@@ -864,10 +1158,10 @@ mod tests {
             "...",
             "%2E%2E%2E",
         ] {
-            check(&format!("Use `{url}?{key}={value}` in examples."), None);
+            check(&format!("Use {url}?`{key}={value}` in examples."), None);
         }
         check(
-            &format!("`jdbc:<driver>://<host>:<port>/<database>?user=<user>&{key}=<password>`"),
+            &format!("jdbc:<driver>://<host>:<port>/<database>?user=<user>&`{key}=<password>`"),
             None,
         );
         check(

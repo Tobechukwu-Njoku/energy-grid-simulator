@@ -7,6 +7,31 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 R15V4-01 extraction redesign (2026-11-15 UTC):** supersedes the
+R15V3 Markdown inference below. Credential extraction uses connection semicolons,
+query ampersands/fragments, userinfo `@`, line endings and matching quotes/braces;
+only URL formats percent-decode values, once. The sole Markdown exception is an
+unescaped backtick run immediately before the credential's own key, closed by
+the first later run of exactly the same length. Earlier attributes and mismatched
+backticks cannot shorten a value. Classification then requires a whole-value
+placeholder or an exact documented template. Removed the old opener inference
+and regex-only URI/authority paths. Unterminated quoted/braced values fail closed.
+Added the exact recovered R15V4-01 source/plain-text fixture, ordinary-username
+and braced controls, a six-format backtick-position table, direct-key/run-length
+checks, and format delimiter/encoding tests. Existing R15V2/R15V3 literal fixtures
+and standalone/quoted placeholder controls remain.
+
+Markdown control changes: the three R15V3 forms opening before `&password`,
+`?password`, or `Server=...;Pwd` now expect findings; their opener is not before
+the credential key. JDBC documentation controls put the opener directly before
+`password` (including the driver/host template). The round-14 report's full JDBC
+template now terminates the placeholder with `&ssl=true`, and its standalone
+`&password` example quotes the ellipsis. No findings or review dispositions are
+removed. The old URI negative fixture now appends a literal suffix to its variable
+placeholder: whole-variable URI placeholders are exempt under the requested
+design, and explicit positive/negative controls cover both forms. No exemption
+or allowlist is added. Validation results will be recorded after the full gates.
+
 **PR #23 R15V3 blocking repairs (2026-11-15 UTC):** R15V3-01 is a literal
 synthetic authority, not a classifier false positive: redacted it to the existing
 `user:password@host` template without changing bare-authority detection. R15V3-02
