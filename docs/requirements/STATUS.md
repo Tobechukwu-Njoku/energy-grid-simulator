@@ -79,6 +79,22 @@ coverage and documented bounded follow-ups need not block independently.
 Evidence, regressions, adversarial triage and M0 assessment:
 [revision-13 report](reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
 
+**PR #23 revision 15 second verification (2026-11-15 UTC):** exact head
+`e993dfec5c5d0ca73ac765f6fc74897f2f1d7636`; verdict **NOT ATTEST**.
+All seven original CORE reproductions still reject; all three previously failing
+Markdown placeholder controls now pass. The complete workspace suite passes
+243 tests; clean-head `xtask all`, repository self-policy and explicit provenance
+from main `4599e10` through the requested head pass. New **CORE R15V2-01**:
+the placeholder repair truncates unquoted connection-password values at internal
+whitespace/backticks, allowing a placeholder prefix to conceal the remaining
+literal password. The previous checker rejects the same fixture; the candidate
+accepts it even in a full clone's `all` gate and committed historical range.
+Do not attest this head until that repair regression is fixed and verified.
+Bare scheme-less authority text is accepted at both heads, a pre-existing
+coverage limit rather than a new repair regression. PR #23 and bootstrap records
+are unchanged. Evidence, item table and constrained validation:
+[second verification report](reviews/gpt-2026-11-15-pr23-r15-verify-2.md).
+
 **PR #23 revision-15 final verification (2026-11-15 UTC, D-75):** exact head
 `60bef0d07bc41882d24be7de4c98e7d97deac302`; verdict **NOT ATTEST**.
 PR #23 subsequently advanced to `786e636986a259032fd974de3dd092ecc49d7ad3`;
