@@ -11,14 +11,14 @@ Current task status board for the energy grid simulator project across active th
 | T-1 | M0 CI merge gates & Cargo workspace: revision 15 fixes | Claude Opus 5.5 (fixes) / Coordinator (verification & merge) | blocked | [#23](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/23) (`t3/m0-cargo-workspace-ci`) | Revision 15 is PAUSED by the owner. After unpause: address open round-14 findings, verify against reviewer reproductions, commit bootstrap seed, and merge per D-75. | 2026-11-15 |
 | T-2 | Cumulative triage record of PR #23 review findings | GPT 6.1 Sol | in review | [#53](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/53) (`t3/pr23-review-triage-record`) | Waiting on owner decision: merge now, or hold for Claude Opus review (D-54). Merge conflict against main to resolve. | 2026-11-15 |
 | T-3 | M1 open-data acquisition plan (43 public-scope entries) | GPT 6.1 Sol | in review | [#60](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/60) (`docs/m1-acquisition-plan`) | Under D-54 needs Claude review; Claude work is paused by the owner. | 2026-11-15 |
-| T-4 | Candidate sources for the 9 M1 data deficits | Gemini Flash 3.8 | in review | [#58](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/58) (`docs/m1-deficit-sources`) | — | 2026-11-15 |
+| T-4 | Candidate sources for the 9 M1 data deficits | Gemini Flash 3.8 | done | [#58](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/58) (merged `1734f39`) | Six round-3 corrections applied; merged. | 2026-11-15 |
 | T-5 | M1 acceptance test spec (34 tests, 10 requirements covered, 8 flagged items) | GPT 6.1 Sol | in review | [#59](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/59) (`docs/m1-acceptance-tests`) | Under D-54 needs Claude review; Claude work is paused by the owner. | 2026-11-15 |
 | T-6 | Follow-up issues for deferred PR #23 findings | GPT 6.1 Sol / Coordinator | todo | — | Blocked on completion and merge of T-1 (PR #23). | 2026-11-15 |
 | T-7 | GPT fact-check of PR #58 | GPT 6.1 Sol | done | [#61](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/61) (merged) | Reject verdict with 16 findings; review report merged. | 2026-11-15 |
 | T-8 | Revise PR #58 against 16 review findings | Gemini (Homelab) | done | [#58](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/58) (head `67a9d3d`) | Addressed 16 review findings from PR #61. | 2026-11-15 |
 | T-9 | GPT re-check of PR #58 | GPT 6.1 Sol | done | [#62](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/62) (merged) | Reject verdict with 7 findings; review report merged. | 2026-11-15 |
 | T-10 | Gemini (Personal) revises PR #58 for round 2 | Gemini (Personal) | done | [#58](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/58) (head `739bb70`) | Addressed 7 round-2 findings; added Section P to questionnaire. | 2026-11-15 |
-| T-11 | GPT round-3 re-check of PR #58 | GPT 6.1 Sol | running | Branch `review/pr58-gpt-r3` | — | 2026-11-15 |
+| T-11 | GPT round-3 re-check of PR #58 | GPT 6.1 Sol | done | [#63](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/63) (merged) | Accept-with-corrections verdict; review report merged. | 2026-11-15 |
 
 ## Waiting on the owner
 
@@ -27,6 +27,16 @@ Current task status board for the energy grid simulator project across active th
 - **T-2 (PR #53)**: Owner decision needed whether to merge the cumulative triage record now or hold for Claude Opus cross-provider review per D-54 (with merge conflict resolution against main).
 - **T-3 (PR #60)**: Requires Claude Opus cross-provider review under D-54, but Claude work is currently paused by the owner.
 - **T-5 (PR #59)**: Requires Claude Opus cross-provider review under D-54, but Claude work is currently paused by the owner.
+
+### Open Questionnaire Items (Section P — M1 Deficit Methodologies)
+- **Q-P-01**: Post-fault to continuous thermal rating proxy (M1 Deficit 1: universal 0.88 multiplier vs asset-class proxies vs explicit continuous ratings under D-71).
+- **Q-P-02**: ROI micro-PV capacity interpolation and rooftop scaling (M1 Deficit 3: linear interpolation between annual endpoints with utility profile scaling vs monthly steps vs independent model).
+- **Q-P-03**: HVDC interconnector loss formulation and parameters (M1 Deficit 4: calibrated three-term power-loss model vs constant exploratory proxy vs commercial deemed factors).
+- **Q-P-04**: Wholesale market clearing proxy vs unit commitment (M1 Deficit 5: baseline MILP unit commitment per D-26 / FR-7 vs exploratory continuous SRMC merit-order proxy).
+- **Q-P-05**: Thermal generation efficiency and variable O&M defaults (M1 Deficit 6: author-proposed technology proxies from DESNZ projections vs calibrated plant-specific heat rates).
+- **Q-P-06**: Wind speed hub-height scaling shear exponent (M1 Deficit 7: multi-level ERA5 fields vs constant power-law shear exponents alpha=0.143 onshore / 0.11 offshore).
+- **Q-P-07**: Solar PV temperature derating coefficient (M1 Deficit 7: constant gamma = 0.004 / deg C default vs manufacturer-specific coefficients).
+- **Q-P-08**: Fuel/carbon price resampling (M1 Deficit 6: two-sided interpolation in reconstruction vs release-time step-holding for as-of vs deferral).
 
 ### Owner To-Dos
 - **Bot account creation (D-74)**: Create the GitHub machine account `egs-bot` and generate its personal access token (PAT) for automated PR pushes and opening.
