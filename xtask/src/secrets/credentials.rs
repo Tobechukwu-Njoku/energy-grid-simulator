@@ -271,7 +271,8 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         netrc(text, &mut found);
     }
     for capture in AUTH.captures_iter(text) {
-        if literal(&capture[1]) {
+        let value = capture[1].trim_end_matches(r"\n").trim_end_matches(r"\r");
+        if literal(value) {
             let matched = capture.get(0).expect("whole match");
             found.push((matched.start(), matched.end(), "local-http-authorization"));
         }
@@ -545,6 +546,12 @@ mod tests {
         for scheme in ["Basic", "Bearer"] {
             for value in ["<token>", "<EXAMPLE_TOKEN>", "<EXAMPLE_BASE64>", "..."] {
                 check(&format!("Use `Authorization: {scheme} {value}`."), None);
+                for newline in [r"\n", r"\r\n"] {
+                    check(
+                        &format!("printf 'Authorization: {scheme} {value}{newline}'"),
+                        None,
+                    );
+                }
             }
             check(
                 &format!("Rule descriptions mention `Authorization: {scheme}` headers."),
@@ -556,6 +563,10 @@ mod tests {
             );
             check(
                 &format!("Use `Authorization: {scheme} <token>s3cr3t!` instead."),
+                Some("local-http-authorization"),
+            );
+            check(
+                &format!(r"printf 'Authorization: {scheme} s3cr3t!\n'"),
                 Some("local-http-authorization"),
             );
         }

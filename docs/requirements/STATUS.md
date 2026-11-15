@@ -14,7 +14,8 @@ being consumed as credential values, ellipses, or the bare URI authority templat
 Literal examples at lines 76, 77, 80, 81, 116, 119, 154, 155, 156, 157, 160 and 165
 are replaced with angle-bracket placeholders; no report content is deleted.
 Parser value boundaries now respect inline-code delimiters and unquoted whitespace,
-and Authorization headers cannot consume a value from the following line. URI
+and Authorization headers cannot consume a value from the following line. Escaped
+LF/CRLF suffixes in shell printf examples are removed before literal classification. URI
 exceptions are scoped to the exact documentation authority and an ellipsis
 password, not arbitrary literal passwords or environment references. Four new
 regression tests cover placeholders, descriptions, literals and mixed lines;
