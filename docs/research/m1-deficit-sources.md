@@ -245,41 +245,49 @@ Wholesale market settlement and trading procedures require dated, version-pinned
 
 ### Candidate Sources
 
-#### Candidate 5.1: Elexon Digital BSC Baseline Releases (Section T, Versions 38.0 & 41.0)
-- **URL:** [https://bsc.elexon.co.uk/](https://bsc.elexon.co.uk/) and [https://www.elexon.co.uk/bsc-and-codes/balancing-settlement-code/bsc-sections/](https://www.elexon.co.uk/bsc-and-codes/balancing-settlement-code/bsc-sections/)
+#### Candidate 5.1: Elexon Digital BSC Baseline Releases (Section T)
+- **URL:** [Elexon 2024 Change Releases Register](https://www.elexon.co.uk/bsc/release/list-of-change-releases-for-2024/) and [BSC Sections Index](https://www.elexon.co.uk/bsc-and-codes/balancing-settlement-code/bsc-sections/)
 - **Publisher:** Elexon Limited
 - **Licence Text / Link:** [Licence to use BMRS open data](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/) / BSC statutory documentation.
-- **Likely D-56 Class:** `research-only` (PC-5; statutory code legal text)
-- **Access Method:** Open direct download / web access
-- **Coverage:** Great Britain; historical versions in force across 2024:
-  - *Version 38.0:* Effective 2 April 2024 (Spring 2024 baseline).
-  - *Version 41.0:* Effective 7 November 2024 (Standard November 2024 Release, implementing Modification P415 and P473 regarding Virtual Lead Party deviation volumes and Supplier Compensation Cashflow $SCC_p$).
-- **Evaluation:** Complete algebraic codification of system buy/sell prices, net imbalance volume ($NIV$), Continuous Acceptance Duration Limit ($CADL$), Replacement Price, and cashflow hierarchies.
+- **Likely D-56 Class:** `research-only` (PC-5; statutory code legal text).
+- **Access Method:** Open direct download / web access (`bsc.elexon.co.uk` failed DNS; `bscdocs.elexon.co.uk` returned 403 during review).
+- **Coverage:** Great Britain; 2024 calendar baseline.
+- **Evaluation:** Elexon's 2024 release register confirms approved releases on 2 April 2024 (including Modification P451) and 7 November 2024 (including Modifications P415 and P473 regarding Virtual Lead Party deviation volumes and Supplier Compensation Cashflow $SCC_p$), alongside other 2024 releases.
+  - *Version Mapping Caveat:* The specific assignment of Section T to **v38.0** (for Jan–Oct) and **v41.0** (for Nov–Dec) is **`UNVERIFIED`** as neither Section T change tables nor impacted-document matrices were inspected to establish exact section versions. A full BSC release date does not establish that Section T was re-versioned on that exact day.
+  - Section T provides the algebraic formulation for system buy/sell prices, net imbalance volume ($NIV$), Continuous Acceptance Duration Limit ($CADL$), Replacement Price, and cashflow hierarchies.
 
 #### Candidate 5.2: SEMOpx Operating Procedures & Market Rules (2024 Baseline)
-- **URL:** [https://www.semopx.com/rules-monitoring/market-rules/](https://www.semopx.com/rules-monitoring/market-rules/) and [https://www.semopx.com/rules-monitoring/modifications/](https://www.semopx.com/rules-monitoring/modifications/)
+- **URL:** [SEMOpx Intraday Market](https://www.semopx.com/markets/intraday-market) and [SEMOpx Day-Ahead Market](https://www.semopx.com/markets/day-ahead-market)
 - **Publisher:** SEMOpx (EirGrid / SONI / EPEX SPOT joint exchange operator)
-- **Licence Text / Link:** SEMOpx legal disclaimers; all rights reserved.
-- **Likely D-56 Class:** `research-only` (PC-5)
-- **Access Method:** Open direct download (PDF operating procedures)
+- **Licence Text / Link:** SEMOpx legal disclaimers (all rights reserved).
+- **Likely D-56 Class:** `research-only` (PC-5).
+- **Access Method:** Open direct download (PDF operating procedures).
 - **Coverage:** All-island Ireland (I-SEM); calendar year 2024.
-- **Evaluation:** Defines formal rules for Day-Ahead Market (DAM, gate closure 11:00 UTC/GMT), Intraday Auctions (IDA1 gate closure 17:45 D-1, IDA2 gate closure 08:00 D, IDA3 gate closure 14:00 D), and Intraday Continuous trading (IDC, up to 30 min before delivery). Specifies order types (simple hourly, block bids, complex orders) and price-cap boundaries (-€500/MWh to +€4,000/MWh).
+- **Evaluation:** Primary publisher schedules define trading milestones:
+  - *Day-Ahead Market (DAM):* Order book gate closure at **11:00** (auction run daily). Clock convention and DST handling must be verified from dated operating procedures before hardcoding UTC vs local time.
+  - *Intraday Auctions (IDA):*
+    - **IDA1:** Order book gate closure at **17:30 D-1** (publisher-verified; correcting the previously cited 17:45).
+    - **IDA2:** Order book gate closure at **08:00 D**.
+    - **IDA3:** Order book gate closure at **14:00 D**.
+  - *Intraday Continuous (IDC):* Continuous trading up to 30 minutes prior to delivery.
+  - *Price Boundaries:* Technical price limits (e.g. -€500/MWh to +€4,000/MWh) must not be uniformly assigned across all DAM, IDA, and continuous products without inspecting product-specific 2024 rules; historical parameter limits remain `UNVERIFIED`.
 
 #### Candidate 5.3: SEM Committee I-SEM Trading and Settlement Code (Part B Dated Baseline)
-- **URL:** [https://www.semcommittee.com/publications/](https://www.semcommittee.com/publications/) and [https://www.sem-o.com/rules-and-governance/rules/](https://www.sem-o.com/rules-and-governance/rules/)
+- **URL:** [SEM Committee Publications](https://www.semcommittee.com/publications/) and [SEMO Market Rules](https://www.sem-o.com/rules-and-governance/rules/)
 - **Publisher:** Single Electricity Market Committee (CRU / UR) & SEMO
 - **Licence Text / Link:** Statutory market code disclaimers (all rights reserved).
-- **Likely D-56 Class:** `research-only` (PC-5)
-- **Access Method:** Open direct download
+- **Likely D-56 Class:** `research-only` (PC-5).
+- **Access Method:** Open direct download.
 - **Coverage:** All-island Ireland; balancing market rules, imbalance settlement, capacity market charges, and currency conversion mechanics in force in 2024.
-- **Evaluation:** Governs ex-post imbalance settlement and dispatch redispatch rules. Resolves the previous dead link in `SRC-27` by anchoring to the approved baseline versions published on the SEM Committee publications hub.
+- **Evaluation:** Governs ex-post imbalance settlement and dispatch rules. Provides the legal baseline for Part B settlement, but the specific dated 2024 baseline document version remains to be verified during pipeline ingestion.
 
 ### Recommendation & Proxy Formulation
 - **Recommended Candidate:**
-  - For GB: Pin **Elexon BSC Section T Version 38.0** (for Jan–Oct 2024) and **Version 41.0** (for Nov–Dec 2024) (`Candidate 5.1`).
-  - For Ireland: Pin **SEMOpx Operating Procedures (DAM, IDA, IDC) 2024 Edition** (`Candidate 5.2`) and **SEM Committee Part B Baseline** (`Candidate 5.3`).
+  - For GB: Retain confirmed 2024 BSC release milestones (2 April and 7 November 2024, Candidate 5.1), leaving specific Section T version numbers marked `UNVERIFIED`.
+  - For Ireland: Pin SEMOpx 2024 operating schedules with corrected IDA1 gate closure (17:30 D-1, Candidate 5.2) and SEM Committee Part B baseline (`Candidate 5.3`).
 - **Standard Market Proxy / Assumptions:**
-  - Where detailed market clearing algorithms (e.g., Euphemia mixed-integer linear programming branch-and-bound) cannot be executed end-to-end due to commercial licensing, implement the standard marginal clearing price proxy: continuous linear dispatch sorted by generator Short-Run Marginal Cost (SRMC), clearing at the intersection of total scheduled demand and offer stacks, bounded by SEMOpx and BSC price caps.
+  - **ASSUMPTION:** [Q-P-04] Where commercial market clearing software (e.g. Euphemia MILP solver) cannot be run due to proprietary licensing, an author-proposed continuous merit-order clearing proxy (linear dispatch sorted by generator SRMC) is adopted as an exploratory proxy.
+  - *Unit Commitment Caveat:* This continuous dispatch simplification is **NOT** an accepted replacement for D-26 / FR-7 unit-commitment requirements (which mandate integer on/off decisions, minimum up/down times, start-up costs, and ramp limits). It is strictly an exploratory proxy until full unit-commitment dispatch is solved.
 
 ---
 
@@ -291,45 +299,51 @@ Unit dispatch modelling requires daily/half-hourly Short-Run Marginal Cost (SRMC
 ### Candidate Sources
 
 #### Candidate 6.1: ICE End-of-Day UKA/EUA Auction Results & GOV.UK Public Reports
-- **URL:** [https://www.theice.com/emissions/auctions/uk-emission-allowances](https://www.theice.com/emissions/auctions/uk-emission-allowances) and [https://www.gov.uk/government/publications/taking-part-in-the-uk-emissions-trading-scheme-markets](https://www.gov.uk/government/publications/taking-part-in-the-uk-emissions-trading-scheme-markets)
+- **URL:** [ICE UKA Auctions](https://www.theice.com/emissions/auctions/uk-emission-allowances) and [GOV.UK UK ETS Markets Guidance](https://www.gov.uk/government/publications/taking-part-in-the-uk-emissions-trading-scheme-markets)
 - **Publisher:** Intercontinental Exchange (ICE Futures Europe) / UK ETS Authority (DESNZ)
-- **Licence Text / Link:** ICE Market Data Terms (proprietary; commercial use restricted); GOV.UK guidance under Open Government Licence (OGL v3.0).
-- **Likely D-56 Class:** `research-only / unverified` (PC-5; exchange redistribution rights unverified)
-- **Access Method:** Open web inspection (clearing price published after each fortnightly auction)
-- **Coverage:** United Kingdom (UKA) and European Union (EUA); calendar year 2024 (fortnightly auctions).
-- **Evaluation:** Primary pricing instrument for UK Allowances (£/tCO2e) and EU Allowances (€/tCO2e). Governed by statutory auction reserve price (£22/tCO2e for UK ETS).
+- **Licence Text / Link:** ICE Market Data Terms (proprietary; commercial redistribution restricted); GOV.UK guidance under Open Government Licence (OGL v3.0).
+- **Likely D-56 Class:** `research-only / unverified` (PC-5; exchange redistribution rights unverified).
+- **Access Method:** Open web inspection (clearing price published after each fortnightly auction).
+- **Coverage:** United Kingdom (UKA) and European Union (EUA; note that EU ETS auctions are hosted by EEX, not ICE); calendar year 2024.
+- **Evaluation:** Primary pricing instrument for UK Allowances (£/tCO2e). Governed by statutory auction reserve price (£22/tCO2e for UK ETS). Redistribution of raw exchange price series for commercial purposes is restricted without an exchange data licence.
 
-#### Candidate 6.2: DESNZ Electricity Generation Costs 2023 / 2024 (Annex A Assumptions)
-- **URL:** [https://www.gov.uk/government/publications/electricity-generation-costs-2023](https://www.gov.uk/government/publications/electricity-generation-costs-2023)
+#### Candidate 6.2: DESNZ Electricity Generation Costs 2023 / 2024 (Assumptions Report)
+- **URL:** [DESNZ Electricity Generation Costs 2023](https://www.gov.uk/government/publications/electricity-generation-costs-2023) and [Main Report PDF](https://assets.publishing.service.gov.uk/media/6556027d046ed400148b99fe/electricity-generation-costs-2023.pdf)
 - **Publisher:** Department for Energy Security and Net Zero (DESNZ)
 - **Licence Text / Link:** [Open Government Licence v3.0 (OGL v3.0)](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
 - **Likely D-56 Class:** `open-commercial`
-- **Access Method:** Open direct download (Excel spreadsheet `Annex A: Key Data and Assumptions`)
-- **Coverage:** United Kingdom; technology cost and operational performance parameters (CCGT, OCGT, Nuclear, Biomass, Wind, Solar, Battery Storage) commissioning 2025–2040.
-- **Evaluation:** Authoritative public source for plant operating characteristics:
-  - *Net Thermal Efficiency:* CCGT unabated ~50–54% (heat rate ~6,300–6,800 BTU/kWh or 1.85–2.00 MWh_th / MWh_e); OCGT peaker ~35% (heat rate ~9,750 BTU/kWh or 2.85 MWh_th / MWh_e).
-  - *Variable O&M:* CCGT unabated ~£3.50–£5.00/MWh; OCGT ~£5.00–£8.00/MWh; Biomass ~£5.00–£10.00/MWh.
+- **Access Method:** Open direct download (report PDF and Annex A assumptions table).
+- **Coverage:** United Kingdom; technology-level cost and operational assumptions for future commissioning vintages (2025–2040).
+- **Evaluation:** DESNZ publication is a valid OGL source for generic technology cost benchmarks. However:
+  - It provides broad generation-cost assumptions for future build, NOT observed heat rates or efficiencies for the existing 2024 operating generator fleet.
+  - No specific sheet, row, or cell was cited for existing CCGT 52% or OCGT 35% efficiencies or exact variable O&M ranges.
+  - The exact numerical defaults for existing thermal plant efficiencies must be treated as modeling assumptions rather than verified measured attributes.
 
 #### Candidate 6.3: Ofgem Renewables Obligation Annual Determinations & LCCC CfD Register
-- **URL:** Ofgem RO Determination: [https://www.ofgem.gov.uk/](https://www.ofgem.gov.uk/) and LCCC Register: [https://www.lowcarboncontracts.uk/cfd-register/](https://www.lowcarboncontracts.uk/cfd-register/)
+- **URL:** [Ofgem 2024/25 RO Buyout Notice](https://www.ofgem.gov.uk/publications/renewables-obligation-ro-buy-out-price-mutualisation-threshold-and-mutualisation-ceilings-2024-2025) and [LCCC CfD Register](https://www.lowcarboncontracts.uk/cfd-register/)
 - **Publisher:** Office of Gas and Electricity Markets (Ofgem) & Low Carbon Contracts Company (LCCC)
-- **Licence Text / Link:** [Open Government Licence v3.0 (OGL v3.0)](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
-- **Likely D-56 Class:** `open-commercial`
-- **Access Method:** Open direct download (Ofgem notice PDF / LCCC CSV register)
-- **Coverage:** UK; 2024/25 obligation period.
-- **Evaluation:** Authoritative regulatory subsidy values:
-  - *RO Buyout Price (2024–25):* **£64.73 per ROC**. Obligation level: 0.491 ROCs/MWh in England, Wales, and Scotland; 0.192 ROCs/MWh in Northern Ireland.
-  - *CfD Strike Prices:* Technology and allocation round specific strike prices (£/MWh, 2012 indexed).
+- **Licence Text / Link:** Ofgem notices published under Crown copyright / Open Government Licence (OGL v3.0, excluding third-party content); LCCC register terms unverified (returned HTTP 403 in review).
+- **Likely D-56 Class:** Split: `open-commercial` for Ofgem RO determinations; `research-only / unverified` for LCCC CfD register.
+- **Access Method:** Open direct download (Ofgem notice PDF) / Gated portal (LCCC register).
+- **Coverage:** UK; calendar year 2024 across two distinct obligation years:
+  - *2023/24 Obligation Year (1 January 2024 – 31 March 2024):* Buyout price was **£59.01 per ROC**; obligation level was 0.469 ROCs/MWh in GB and 0.184 ROCs/MWh in NI.
+  - *2024/25 Obligation Year (1 April 2024 – 31 December 2024):* Buyout price is **£64.73 per ROC**; obligation level was announced as 0.491 ROCs/MWh in GB (revised from 0.487 on 26 March 2024) and 0.192 ROCs/MWh in NI.
+- **Evaluation:** Ofgem notice establishes statutory buyout benchmarks. However:
+  - A calendar 2024 simulation must implement the obligation-year transition on 1 April 2024 (£59.01 $\to$ £64.73).
+  - The supplier buyout price is an administrative compliance benchmark, not the net generator ROC subsidy (which depends on ROC market recycle values and technology banding from 0.5 to 2.0 ROCs/MWh).
+  - LCCC register access was blocked in review, so CfD strike price availability remains unverified.
 
 ### Recommendation & Proxy Formulation
 - **Recommended Candidate:**
-  - For operational plant characteristics: **DESNZ Electricity Generation Costs Annex A** (`Candidate 6.2`, `open-commercial`) for thermal efficiencies, heat rates, and variable O&M.
-  - For renewable subsidy values: **Ofgem RO Determinations** (`Candidate 6.3`, `open-commercial`) for £64.73/ROC buyout baseline.
-  - For carbon and commodity vectors: Use **World Bank Commodity Price Data** (`SRC-37b`, `open-commercial`, CC BY 4.0) with cubic spline / forward-fill daily interpolation, paired with official **UK ETS / EU ETS auction results** (`Candidate 6.1`, `research-only`, PC-5).
+  - For renewable subsidy benchmarks: **Ofgem RO Determinations** (`Candidate 6.3`, `open-commercial`), incorporating the 1 April 2024 obligation-year transition (£59.01 $\to$ £64.73).
+  - For commodity vectors: Use **World Bank Commodity Price Data** (`SRC-37b`, `open-commercial`, CC BY 4.0 for Bank-produced Pink Sheet data) with daily interpolation, paired with fortnightly **UK ETS auction results** (`Candidate 6.1`, `research-only / unverified`, PC-5).
+  - For existing plant operating parameters: Treat technology parameters as explicit assumptions (`Candidate 6.2`).
 - **Generator Short-Run Marginal Cost (SRMC) Proxy Formulation:**
   For each thermal generator unit $g$ with fuel type $f \in \{\text{Gas}, \text{Coal}, \text{Oil}, \text{Biomass}\}$:
   $$\text{SRMC}_g(t) = \frac{\text{FuelPrice}_f(t) + \text{EmissionFactor}_f \times \text{CarbonPrice}(t)}{\eta_g} + \text{VOM}_g$$
-  where $\eta_g$ is net thermal efficiency (e.g. 0.52 for CCGT, 0.35 for OCGT from DESNZ Annex A), $\text{FuelPrice}_f(t)$ is daily gas/coal price, $\text{CarbonPrice}(t)$ is daily interpolated UKA/EUA price, and $\text{VOM}_g$ is variable O&M.
+  where:
+  - **ASSUMPTION:** [Q-P-05] Net thermal efficiency defaults $\eta_g$ (e.g. 0.52 for CCGT, 0.35 for OCGT) and variable O&M defaults ($\text{VOM}_g \approx \text{£3.50–£5.00/MWh}$ for CCGT, $\text{£5.00–£8.00/MWh}$ for OCGT) are author-proposed technology proxies, NOT observed existing-plant heat rates.
+  - Fuel units (e.g. $/MMBtu or $/therm to £/MWh_th), carbon emissions basis ($t\text{CO}_2/\text{MWh}_{\text{th}}$), and GBP/EUR exchange rates must be explicitly converted before evaluating the SRMC equation.
 
 ---
 
