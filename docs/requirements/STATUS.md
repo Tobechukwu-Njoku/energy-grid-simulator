@@ -43,6 +43,88 @@ coverage and documented bounded follow-ups need not block independently.
 Evidence, regressions, adversarial triage and M0 assessment:
 [revision-13 report](reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
 
+**PR #58 M1 deficit-sources revision 2 (2026-11-15 UTC):**
+Revised `docs/research/m1-deficit-sources.md` and `docs/requirements/02-questionnaire.md` to address R2-01–R2-07; round-3 corrections C-01–C-06 (GPT final re-check) applied from GPT's R2 review (`reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md`). Added questions Q-P-01..Q-P-07 to questionnaire Section P; repaired all broken publisher and licence URLs (ETYS archive, MIDAS Open collection UUID with v202407 coverage caveat, ERA5 CDS API CC-BY-4.0 licence, ENTSO-E CGMES library); reconciled summary licence classes with body (rows 3, 7, 8); registered explicit price interpolation and as-of policy under D-70/ADR 0002; qualified live SEMOpx trading schedule as current reference pending historical 2024 pinning; harmonised HVDC loss proxy description as constant fractional exploratory proxy with omitted standby losses; and fixed repository relative links to ADR 0002 and earlier reviews.
+
+**PR #58 M1 deficit-sources final re-check (2026-11-15 UTC):** exact head
+`739bb70d0e1bb772ceae49f3afe99353a054b10c`; verdict **accept-with-corrections**.
+Repaired publisher pages read without dataset downloads. R2-02/R2-03/R2-05/R2-06
+and repository reference paths are satisfactory; R2-01/R2-04 still need question
+anchors and price-resampling registration. Section P follows the existing format
+and introduces no ID clashes. STATUS conflicts with main; preserve review history.
+GitHub has three current unresolved threads (partial 132 kV coverage, IDC closure,
+input hash exclusion), plus fourteen outdated unresolved threads. Six bounded
+corrections recorded; PR #58 unchanged, no acquisition or baseline approval.
+[Round-3 report](reviews/gpt-2026-11-15-pr58-deficit-sources-r3.md).
+
+**PR #58 M1 deficit-sources round-2 re-check (2026-11-15 UTC):** exact head
+`67a9d3d84091dd329ae212f8f2333e59dca4cdbb`; verdict **reject**.
+All sixteen original findings mapped; six requested publisher spot-checks supported.
+Seven remaining findings cover missing Q-P-01–Q-P-07 questionnaire entries,
+unrepaired source links, restricted/unverified rights omitted from summary rows,
+price interpolation/as-of policy, unpinned 2024 SEMOpx schedules, inconsistent
+HVDC proxy wording and broken repository references. No datasets downloaded;
+PR #58 unchanged. No deficit closure, modelling-default approval or commercial
+clearance claimed. Evidence and suggested fixes:
+[round-2 report](reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md).
+
+**PR #58 M1 deficit-sources review (2026-11-15 UTC):** exact head
+`db59b5b44adec4835fdd1d82d9ba8b94ebfec861`; verdict **reject**.
+Publisher pages, catalogue/API metadata and reference reports checked without
+downloading datasets. Sixteen findings distinguish confirmed licence/rule facts
+from unsupported proxies, historical coverage and implementation claims. The
+Irish seven-unit enduring-policy date is 7 April 2024, contradicting 17 July;
+0.88 rating and CIGRE loss defaults have no established provenance. TLM API
+coverage, BSC version mapping, plant parameters and exact fleet figures remain
+unverified or need correction. Item 9 is internal implementation, not an external
+dataset. PR #58 unchanged; no deficit closure or commercial clearance claimed.
+Evidence and suggested corrections:
+[review report](reviews/gpt-2026-11-15-pr58-deficit-sources.md).
+
+**PR #52 M1 inventory final re-check (2026-11-14 UTC):** exact revised head
+`8af069ca0af0712f29b9645810282070b02e45a4`; verdict **accept-with-corrections**.
+Six round-2 findings applied; R2-05 substantially applied but still partial:
+54 external rows and the 29 open-commercial / 25 research-only split reconcile,
+but the publisher mapping lists 32 groups while claiming 31 distinct publishers.
+Correct that count/grouping and the all-applied summary; abbreviated TSD and
+metering-response wording are non-blocking. NESO's ND/TSD definitions support
+the corrected ND-plus-embedded starting identity without another pumping
+subtraction. New/split candidate classes checked; no identified share-alike
+source admitted. Inventory unchanged; no acquisition, commercial clearance or
+M1 acceptance claimed. Evidence:
+[round-3 final re-check](reviews/gpt-2026-11-14-pr52-m1-inventory-r3.md).
+
+**PR #52 M1 inventory re-check (2026-11-14 UTC):** exact revised head
+`e5ec7171e2d1b57ec9c89bee6343cbbbcd7264f2`; verdict **must-fix**.
+All 18 original findings mapped: nine applied at inventory level, nine partial.
+Remaining defects include unsupported UK ETS OGL clearance, a new demand equation
+that double-subtracts pumping, unsourced per-link loss percentages, unsupported
+evidence/access claims, inconsistent Greenlink interpretations and unreconciled
+source counts. Changed public endpoints and weather/licence terms spot-checked;
+corrected demand CSV and both cached SEMO archives match committed hashes.
+Inventory unchanged; no M1 acceptance or heavy work claimed. Evidence:
+[round-2 re-check](reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md).
+
+**PR #52 M1 inventory review (2026-11-14 UTC):** exact head
+`e7e992e3f213a8d8645bb5e58ea1d7592c55a908` independently checked under D-51;
+verdict **must-fix**. All 77 external link URLs and 15 repository-relative
+targets checked; 30 network/Irish captures and two SEMO archives match their
+committed hashes. Unsupported commercial-clearance labels, broken/misdirected
+dataset links, incorrect FUELHH/TLM claims and overstated M1 completeness must
+be corrected before reliance. Gated sources and missing dated rules/losses/
+decomposition remain explicit gaps. No inventory edits or M1 acceptance claimed.
+Evidence and corrections: [review report](reviews/gpt-2026-11-14-pr52-m1-inventory.md).
+
+**PR #23 revision-14 review:** exact head `112de8d2b7452ecfcb45b79f91d96841add16954`
+re-reviewed; verdict **must-fix**. Original round-13 CORE and adversarial
+reproductions are addressed, but three CORE gaps remain: historical research-only
+records can disappear or be superseded before the range scan, YAML block-scalar
+kubeconfig private keys pass, and valid pgpass/netrc record variants pass. Do not
+attest this head as the one-time bootstrap seed. The retained lowercase attribution
+gap and bounded ADR wording/decoder disclosures are PERIPHERAL follow-ups.
+Evidence, mapped regressions, adversarial triage and M0 assessment:
+[revision-14 report](reviews/gpt-2026-11-14-pr23-r14.md). PR #23 was not modified.
+
 ## Snapshot of what's decided
 
 Research + market-forecasting simulator (short-term and seasonal, D-25) of **GB + all-island
