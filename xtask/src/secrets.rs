@@ -3,7 +3,8 @@
 //! Secret formats are not maintained here (ADV23R12-01/02): they come from
 //! the gitleaks default ruleset, vendored unchanged and pinned in trusted
 //! policy ([`LOCAL_RULES`] names the copy, its version and its blob id),
-//! plus a few local rules in the same schema. This module evaluates that
+//! plus local rules in the same schema and parser-backed credential formats
+//! in `credentials`. This module evaluates that
 //! schema in Rust: `regex`, `secretGroup`, `entropy`, `keywords`, `path` and
 //! per-rule `allowlists` (`regexes` with `regexTarget`, `stopwords`, `paths`,
 //! `condition`). The global allowlist's `regexes` and `stopwords` apply to
@@ -33,6 +34,8 @@ use regex::bytes::{Regex, RegexBuilder};
 use toml_edit::{DocumentMut, Item, TableLike};
 
 use crate::util::Ctx;
+
+mod credentials;
 
 /// Trusted local rules and the pin of the vendored gitleaks ruleset.
 pub const LOCAL_RULES: &str = "xtask/policy/secret-rules.toml";
@@ -671,6 +674,16 @@ impl Ruleset {
                     .join("\n");
                 hits.push((line + 1, block, rule.id.clone()));
             }
+        }
+        let parsed = std::str::from_utf8(text)
+            .map(credentials::scan)
+            .unwrap_or_default();
+        for (from, to, id) in parsed {
+            let line = newlines.partition_point(|newline| *newline < from);
+            let end_line = newlines.partition_point(|newline| *newline < to).max(line);
+            let (start, end) = block_range(text, &lower, &newlines, line, end_line);
+            let block = String::from_utf8_lossy(&text[start..end]).replace("\r\n", "\n");
+            hits.push((line + 1, block, id.to_owned()));
         }
         hits
     }

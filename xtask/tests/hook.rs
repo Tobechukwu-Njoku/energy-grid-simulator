@@ -254,5 +254,64 @@ fn hook_and_ci_parity() {
     );
 }
 
+#[test]
+fn r15_attribution_names_derivation_and_input_trailers() {
+    let patterns =
+        Patterns::load(&std::fs::read(root().join(PATTERNS)).expect("patterns")).expect("load");
+    let dir = TempDir::new("r15 hook");
+    let hooks = dir.path().join("hooks");
+    copy_hooks(&hooks);
+    let message = dir.path().join("message");
+    for name in [["Stable", "Code"].concat(), ["Stability", " AI"].concat()] {
+        let text = ["Written", " by ", &name].concat();
+        assert!(patterns.matches_line(&text), "{text}");
+        std::fs::write(&message, format!("fix: subject\n\n{text}\n")).expect("write");
+        assert!(run_hook(&hooks, &message).status.success());
+        assert_eq!(
+            std::fs::read_to_string(&message).expect("read"),
+            "fix: subject\n\n"
+        );
+    }
+    for prefix in [
+        "Based on",
+        "Derived from",
+        "Based on suggestions from",
+        "Prompt:",
+        "Consultation:",
+        "Discussion:",
+        "Conversation:",
+        "Guidance:",
+        "Feedback:",
+        "Review:",
+    ] {
+        let text = [prefix, " ", "Clau", "de"].concat();
+        assert!(patterns.matches_line(&text), "{text}");
+        std::fs::write(&message, format!("fix: subject\n\n{text}\n")).expect("write");
+        assert!(run_hook(&hooks, &message).status.success());
+        assert_eq!(
+            std::fs::read_to_string(&message).expect("read"),
+            "fix: subject\n\n"
+        );
+        let human = format!("{prefix} Jane Doe");
+        assert!(!patterns.matches_line(&human), "{human}");
+        std::fs::write(&message, format!("fix: subject\n\n{human}\n")).expect("write");
+        assert!(run_hook(&hooks, &message).status.success());
+        assert!(
+            std::fs::read_to_string(&message)
+                .expect("read")
+                .contains(&human)
+        );
+    }
+    for text in [
+        "Stable code paths are deterministic",
+        "Based on grid measurements",
+        "Derived from stability analysis",
+        "Review: stability of the grid",
+        "Prompt: enter a password",
+    ] {
+        assert!(!patterns.matches_line(text), "{text}");
+    }
+}
+
 // "scissors": stored messages are scanned past a scissors line (R4).
 const EXPECTED_STRICTER: &[&str] = &["scissors"];
