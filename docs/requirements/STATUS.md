@@ -22,9 +22,15 @@ reproductions. Historical findings and FOLLOW-UP dispositions are preserved;
 exact synthetic regression inputs remain reconstructed in tests. Redacted PuTTY
 header examples retain exact whole-block hash exemptions; obsolete literal-example
 exemptions are removed (no new format or path allowlist). The existing
-changed-private-body rejection test uses the redacted fixture. Validation results
-will be recorded after the complete gates run. No
-independent-review, bootstrap-attestation or merge approval is claimed.
+changed-private-body rejection test uses the redacted fixture. Validation passes
+at `64c1ec8`: `cargo test -j 2` (252 tests, zero failures), `cargo xtask all`,
+`cargo xtask provenance --base origin/main --head HEAD`, formatting and
+workspace/all-target clippy with warnings denied. Builds use this worktree's
+`target/`, `/var/tmp/pr23-r15-repair` as the space-free TMPDIR, and two workers.
+Hosted trusted-policy jobs still fail closed because main has no xtask policy
+and the new head has no bootstrap-seed attestation; this repair does not change
+that authority. No independent-review, bootstrap-attestation or merge approval
+is claimed.
 
 **PR #23 R15V2-01 completion (2026-11-15 UTC):** reviewed the complete-value
 credential fix at `652f15d` against the second revision-15 verification fixture.
