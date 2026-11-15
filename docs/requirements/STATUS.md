@@ -7,6 +7,17 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #58 M1 deficit-sources final re-check (2026-11-15 UTC):** exact head
+`739bb70d0e1bb772ceae49f3afe99353a054b10c`; verdict **accept-with-corrections**.
+Repaired publisher pages read without dataset downloads. R2-02/R2-03/R2-05/R2-06
+and repository reference paths are satisfactory; R2-01/R2-04 still need question
+anchors and price-resampling registration. Section P follows the existing format
+and introduces no ID clashes. STATUS conflicts with main; preserve review history.
+GitHub has three current unresolved threads (partial 132 kV coverage, IDC closure,
+input hash exclusion), plus fourteen outdated unresolved threads. Six bounded
+corrections recorded; PR #58 unchanged, no acquisition or baseline approval.
+[Round-3 report](reviews/gpt-2026-11-15-pr58-deficit-sources-r3.md).
+
 **PR #58 M1 deficit-sources round-2 re-check (2026-11-15 UTC):** exact head
 `67a9d3d84091dd329ae212f8f2333e59dca4cdbb`; verdict **reject**.
 All sixteen original findings mapped; six requested publisher spot-checks supported.
