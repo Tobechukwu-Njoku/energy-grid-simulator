@@ -104,6 +104,24 @@ coverage and documented bounded follow-ups need not block independently.
 Evidence, regressions, adversarial triage and M0 assessment:
 [revision-13 report](reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
 
+**PR #23 revision 15 fourth verification (2026-11-15 UTC):** exact head
+`f666c598ac157fec464923ead444873af29524d0`; verdict **NOT ATTEST**.
+Both original R15V3 blockers are repaired; all seven round-14 CORE reproductions
+and 48 original R15V2-01 variants reject, while the original Markdown controls
+pass. All 252 workspace tests, clean-head `xtask all` and explicit range
+provenance pass. The 22 substitutions across eight reports are credential-only
+redactions; obsolete literal exemptions are removed without weakening detection.
+One **BLOCKING** obvious repair bypass remains: **R15V4-01**, a backtick inside
+an earlier connection attribute is inferred as a Markdown opener and hides the
+literal password suffix. The source compiles, and staged `all`, committed
+provenance and added-then-deleted range scans incorrectly pass in a full clone.
+Seventeen bounded old/new comparisons show no regression versus `112de8d`;
+the blocker directly restores the fixed truncation mechanism, while distinct
+format limitations remain **FOLLOW-UP** under D-75. The new report independently
+passes the candidate scanner; exact synthetic fixtures remain only in ignored
+scratch files. PR #23 and the bootstrap seed are unchanged.
+[Fourth-verification report](reviews/gpt-2026-11-15-pr23-r15-verify-4.md).
+
 **PR #23 revision 15 third verification (2026-11-15 UTC):** exact head
 `6ed8bc713ef531110f92c392ac1d66a816d7f9c4`; verdict **NOT ATTEST**.
 All seven original round-14 CORE reproductions still reject; all 48 original
