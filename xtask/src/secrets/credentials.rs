@@ -32,6 +32,7 @@ fn literal(value: &str) -> bool {
             "your-password",
             "xxxxx",
             "*****",
+            "...",
         ]
         .contains(&lower.as_str())
 }
@@ -200,7 +201,9 @@ fn assignment_value(text: &str) -> (String, usize) {
         (value, text.len())
     } else {
         let length = text
-            .find([';', '&', '\r', '\n', '\'', '"'])
+            .find(|character: char| {
+                character.is_whitespace() || [';', '&', '\'', '"', '`'].contains(&character)
+            })
             .unwrap_or(text.len());
         (text[..length].trim().to_owned(), length)
     }
@@ -226,14 +229,14 @@ fn percent_decode(text: &str) -> String {
 
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization["']?\s*:\s*["']?(?:basic|bearer)[ \t]+([^\s"']+)"#)
+        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*["']?(?:basic|bearer)[ \t]+(<[^>\r\n]*>|[^\s"'`]+)"#)
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r#"(?i)\b([a-z_][a-z0-9_.-]*)["']?[ \t]*=[ \t]*"#).expect("assignment regex")
     });
     static JDBC: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r#"(?i)\bjdbc:[^\s"']+"#).expect("JDBC regex"));
+        LazyLock::new(|| Regex::new(r#"(?i)\bjdbc:[^\s"'`]+"#).expect("JDBC regex"));
     let mut found = Vec::new();
     if (text.contains("client-key-data") || text.contains("user"))
         && let Ok(documents) = YamlLoader::load_from_str(text)
@@ -534,6 +537,129 @@ mod tests {
         check(
             "Server=localhost;Database=grid;Integrated Security=true\n",
             None,
+        );
+    }
+
+    #[test]
+    fn documentation_authorization_placeholders_and_descriptions() {
+        for scheme in ["Basic", "Bearer"] {
+            for value in ["<token>", "<EXAMPLE_TOKEN>", "<EXAMPLE_BASE64>", "..."] {
+                check(&format!("Use `Authorization: {scheme} {value}`."), None);
+            }
+            check(
+                &format!("Rule descriptions mention `Authorization: {scheme}` headers."),
+                None,
+            );
+            check(
+                &format!("Use `Authorization: {scheme} s3cr3t!` instead."),
+                Some("local-http-authorization"),
+            );
+        }
+        check("`Authorization: Bearer` and `Authorization: Basic`", None);
+        check("Authorization: Bearer\nordinary prose\n", None);
+        let header = "Authorization";
+        check(
+            &format!("`{header}: Bearer <token>`; `{header}: Bearer s3cr3t!`"),
+            Some("local-http-authorization"),
+        );
+    }
+
+    #[test]
+    fn documentation_connection_placeholders_and_descriptions() {
+        for key in ["Password", "Pwd", "DB_PASS", "DB_PWD", "PASSPHRASE"] {
+            for value in ["<secret>", "<EXAMPLE_PASSWORD>", "...", "\"...\"", "{...}"] {
+                check(
+                    &format!("The `{key}={value}` attribute is documented."),
+                    None,
+                );
+            }
+            check(&format!("Describe `{key}=` without a value."), None);
+            check(
+                &format!("A literal `{key}=s3cr3t!` remains forbidden."),
+                Some("local-connection-password"),
+            );
+            check(
+                &format!("`{key}=<secret>` and `{key}=s3cr3t!`"),
+                Some("local-connection-password"),
+            );
+        }
+        let key = "Password";
+        let abbreviation = "Pwd";
+        check(
+            &format!("Parameters `{key}=...`, `{abbreviation}=...` are examples."),
+            None,
+        );
+        check(
+            &format!("`{key}=`, `{abbreviation}=` name the attributes."),
+            None,
+        );
+        check(
+            &format!(
+                "`{key}=<secret>` or `{abbreviation}=<secret>` (e.g., `Server=...;{abbreviation}=...;`)."
+            ),
+            None,
+        );
+    }
+
+    #[test]
+    fn documentation_jdbc_placeholders_and_literals() {
+        let url = "jdbc:postgresql://host/db";
+        let key = "password";
+        for value in [
+            "<password>",
+            "<EXAMPLE_PASSWORD>",
+            "%3Cpassword%3E",
+            "...",
+            "%2E%2E%2E",
+        ] {
+            check(&format!("Use `{url}?{key}={value}` in examples."), None);
+        }
+        check(
+            &format!("`jdbc:<driver>://<host>:<port>/<database>?user=<user>&{key}=<password>`"),
+            None,
+        );
+        check(
+            &format!("Use `{url}?{key}=s3cr3t!` in a fixture."),
+            Some("local-jdbc-password"),
+        );
+        check(
+            &format!("`{url}?{key}=<password>` and `{}=s3cr3t!`", "DB_PASS"),
+            Some("local-connection-password"),
+        );
+    }
+
+    #[test]
+    fn documentation_uri_templates_are_narrowly_exempted() {
+        let separator = "://";
+        for template in [
+            format!("scheme{separator}user:password@host"),
+            format!("<scheme>{separator}user:password@host"),
+            format!("postgres{separator}<user>:<password>@host/db"),
+            format!("postgres{separator}user:...@host/db"),
+        ] {
+            check(
+                &format!("The `{template}` template describes URI credentials."),
+                None,
+            );
+        }
+        for literal in [
+            format!("scheme{separator}user:s3cr3t!@host"),
+            format!("scheme{separator}user:password@production.example"),
+            format!("postgres{separator}user:password@host"),
+            format!("scheme{separator}other:password@host"),
+            format!("scheme{separator}user:password@host.example"),
+            format!("postgres{separator}user:...s3cr3t!@host/db"),
+        ] {
+            check(
+                &format!("A literal `{literal}` is forbidden."),
+                Some("local-uri-credentials"),
+            );
+        }
+        check(
+            &format!(
+                "`scheme{separator}user:password@host` and `postgres{separator}user:s3cr3t!@host/db`"
+            ),
+            Some("local-uri-credentials"),
         );
     }
 }
