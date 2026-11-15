@@ -1,11 +1,24 @@
 # STATUS
 
-_Last updated: 2026-11-14_
+_Last updated: 2026-11-15_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-75 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**PR #58 M1 deficit-sources review (2026-11-15 UTC):** exact head
+`db59b5b44adec4835fdd1d82d9ba8b94ebfec861`; verdict **reject**.
+Publisher pages, catalogue/API metadata and reference reports checked without
+downloading datasets. Sixteen findings distinguish confirmed licence/rule facts
+from unsupported proxies, historical coverage and implementation claims. The
+Irish seven-unit enduring-policy date is 7 April 2024, contradicting 17 July;
+0.88 rating and CIGRE loss defaults have no established provenance. TLM API
+coverage, BSC version mapping, plant parameters and exact fleet figures remain
+unverified or need correction. Item 9 is internal implementation, not an external
+dataset. PR #58 unchanged; no deficit closure or commercial clearance claimed.
+Evidence and suggested corrections:
+[review report](reviews/gpt-2026-11-15-pr58-deficit-sources.md).
 
 **PR #52 M1 inventory final re-check (2026-11-14 UTC):** exact revised head
 `8af069ca0af0712f29b9645810282070b02e45a4`; verdict **accept-with-corrections**.
