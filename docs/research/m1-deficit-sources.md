@@ -14,7 +14,7 @@ ETYS 2025/26 and DNO 2025/26 releases represent forward-looking planning snapsho
 ### Candidate Sources
 
 #### Candidate 1.1: NESO ETYS 2024 Appendix B (System Technical Data Archive)
-- **URL:** [https://www.neso.energy/etys-documents-and-appendices](https://www.neso.energy/etys-documents-and-appendices)
+- **URL:** [NESO ETYS Documents and Appendices Archive](https://www.neso.energy/publications/electricity-ten-year-statement-etys/etys-documents-and-appendices) (direct download: [ETYS 2024 Appendix-B V1.xlsx](https://www.neso.energy/document/351916/download))
 - **Publisher:** National Energy System Operator (NESO)
 - **Licence Text / Link:** Governed by general [NESO Terms and Conditions](https://www.neso.energy/terms-and-conditions) (all rights reserved; commercial exploitation restricted without written consent).
 - **Likely D-56 Class:** `research-only` (PC-1)
@@ -51,7 +51,7 @@ ETYS 2025/26 and DNO 2025/26 releases represent forward-looking planning snapsho
 - **Standard Engineering Proxy / Assumptions:**
   1. *Unit Base Harmonisation:* Convert all branch impedances to standard per-unit on a 100 MVA system base ($S_b = 100\text{ MVA}$). For branches given in physical ohms at nominal voltage $V_b = 132\text{ kV}$, base impedance is $Z_{\text{base}} = V_b^2 / S_b = (132^2) / 100 = 174.24\ \Omega$. For branches given in percentage on 100 MVA, divide by 100.
   2. *Continuous vs Post-Fault Rating Proxy:* Continuous operational thermal ratings remain missing where DNO tables report only a single post-fault or emergency rating (e.g. 1-hour or 3-minute overload rating). ENA Engineering Recommendation P27 does not prescribe a universal 0.88 conversion factor across overhead lines, cables, and transformers; overload duration, conductor types, and ambient conditions govern actual thermal envelopes.
-     - **ASSUMPTION:** Continuous rating is estimated as $0.88 \times \text{Post-Fault Rating}$ as an unverified author-proposed proxy (logged as open question in questionnaire). This proxy is not a commissioned-asset rating and requires sensitivity testing and replacement with asset-specific manufacturer or DNO ratings before baseline acceptance.
+     - **ASSUMPTION:** [Q-P-01] Continuous rating is estimated as $0.88 \times \text{Post-Fault Rating}$ as an unverified author-proposed proxy (see [Q-P-01 in 02-questionnaire.md](../requirements/02-questionnaire.md#q-p-01)). This proxy is not a commissioned-asset rating and requires sensitivity testing and replacement with asset-specific manufacturer or DNO ratings before baseline acceptance.
 
 ---
 
@@ -159,7 +159,7 @@ Elexon FUELHH outturn records report transmission-connected generation only and 
 ### Recommendation & Proxy Formulation
 - **Recommended Candidate:**
   - For GB: Use **NESO Historic Demand Data 2024** (`Candidate 3.2`) as primary demand identity inputs, verified against **Sheffield Solar PV_Live** (`Candidate 3.1`) for embedded solar profiles.
-  - For Ireland: Use **ESB Networks reported annual endpoints** (~300 MW to ~500 MW, `Candidate 3.3`), with Northern Ireland microgeneration tracked as an open deficit.
+  - For Ireland: Use **ESB Networks reported annual endpoints** (~300 MW to ~500 MW, `Candidate 3.3`; classified `research-only`, so the derived ROI micro-PV capacity trajectory inherits `research-only` lineage under D-56 / PC-3), with Northern Ireland microgeneration tracked as an open deficit.
 - **Demand Accounting Identity Formulation:**
   As verified from NESO settlement documentation, National Demand ($ND$) already excludes station load, interconnector exports, and pumped storage pumping (which Transmission System Demand, $TSD$, adds back):
   $$ND = TSD - \text{Interconnector Exports} - \text{Pumped Storage Pumping} - \text{Station Load}$$
@@ -168,11 +168,11 @@ Elexon FUELHH outturn records report transmission-connected generation only and 
   Because $ND$ already excludes pumped storage pumping, pumping must **not** be subtracted from $ND$ again. Pumping is tracked as a separate flexible storage demand asset. Station load and metering adjustments must be reconciled during data ingestion.
 - **Irish Embedded Generation Proxy / Assumptions:**
   Because half-hourly metered microgeneration is absent in Ireland, synthesize hourly Irish embedded solar profiles using an explicit assumption:
-  - **ASSUMPTION:** [Q-P-02] Linear interpolation between end-2023 (~300 MW) and end-2024 (~500 MW) is assumed for ROI micro-PV capacity:
+  - **ASSUMPTION:** [Q-P-02] Linear interpolation between end-2023 (~300 MW) and end-2024 (~500 MW) is assumed for ROI micro-PV capacity (see [Q-P-02 in 02-questionnaire.md](../requirements/02-questionnaire.md#q-p-02)):
     $$C_{\text{micro\_PV, ROI}}(t) \approx 300\text{ MW} + (500\text{ MW} - 300\text{ MW}) \times \frac{t - t_0}{t_{\text{end}} - t_0}$$
     Scaled generation is estimated by applying utility solar capacity factors:
     $$P_{\text{embedded\_solar, ROI}}(t) = C_{\text{micro\_PV, ROI}}(t) \times \frac{P_{\text{utility\_solar, IE}}(t)}{C_{\text{utility\_solar, IE}}(t)}$$
-    This scaling carries significant uncertainty (differing tilt, orientation, inverter clipping, and geographic distribution between rooftop and utility solar) and is marked as an unvalidated working proxy. Northern Ireland embedded solar remains an open gap.
+    This scaling carries significant uncertainty (differing tilt, orientation, inverter clipping, and geographic distribution between rooftop and utility solar) and is marked as an unvalidated working proxy. Under D-56, because the endpoint capacity data derives from ESB's statutory reports (`Candidate 3.3`, `research-only`), this derived ROI micro-PV series carries `research-only` lineage (`PC-3`) and cannot inherit blanket open-commercial clearance. Northern Ireland embedded solar remains an open gap.
 
 ---
 
@@ -229,12 +229,12 @@ Directional physical loss parameters across the 10 cross-border and island inter
   Commercial deemed-loss factors must strictly be kept separate from physical electrical loss models:
   - Commercial factors dictate billing and nomination reconciliation at the border.
   - Physical losses represent thermal dissipation across AC/DC converters and subsea/underground cables.
-  - **ASSUMPTION:** [Q-P-03] For interconnectors lacking publisher-certified physical loss curves (e.g. IFA, IFA2, NSL, Viking Link, Greenlink), the following author-proposed heuristic proxy is adopted as an unvalidated working assumption:
-    1. *Converter Losses:* Fixed plus linear converter loss approximated as $0.75\%$ per converter station ($1.50\%$ for both terminals combined).
-    2. *Cable Ohmic Losses:* Linear cable loss approximated as $0.30\%$ per 100 km cable length: $L_{\text{cable}}(d) = 0.003 \times (d / 100\text{ km})$.
+  - **ASSUMPTION:** [Q-P-03] For interconnectors lacking publisher-certified physical loss curves (e.g. IFA, IFA2, NSL, Viking Link, Greenlink), the following author-proposed heuristic proxy is adopted as an unvalidated working assumption (see [Q-P-03 in 02-questionnaire.md](../requirements/02-questionnaire.md#q-p-03)):
+    1. *Converter Losses:* Modelled as a **constant fractional exploratory proxy with omitted standby losses**, approximated as a constant $0.75\%$ of transmitted real power per converter station ($1.50\%$ for both converter terminals combined).
+    2. *Cable Ohmic Losses:* Linearised cable loss approximated as a constant fraction $0.30\%$ of transmitted real power per $100\text{ km}$ cable length: $L_{\text{cable}}(d) = 0.003 \times (d / 100\text{ km})$.
     3. *Physical Formulation:* For real power $P_{\text{send}}$ injected at the sending converter bus:
        $$P_{\text{receive}} = P_{\text{send}} \times (1 - L_{\text{converter, send}}) \times (1 - L_{\text{cable}}(d)) \times (1 - L_{\text{converter, receive}})$$
-    - *Disclosures:* This formulation is an author-proposed proxy and is **NOT** an established or certified CIGRE standard. CIGRE Study Committee B4 publishes general technical literature but does not prescribe this universal coefficient pair. True physical cable losses follow quadratic resistive heating ($I^2 R$), depending on operating voltage, conductor cross-section, and temperature; converter stations have no-load and standby losses. This proxy is labeled `ASSUMPTION` and requires sensitivity evaluation before baseline reliance.
+    - *Disclosures:* This formulation is strictly a **constant fractional exploratory proxy with omitted standby losses** and is **NOT** an established or certified engineering standard. **No applicable CIGRE source has been identified** prescribing this universal coefficient pair. True physical cable losses follow quadratic resistive heating ($I^2 R$), depending on operating voltage, conductor cross-section, and temperature; converter stations exhibit fixed no-load and standby losses at zero transfer as well as linear and quadratic operating loss terms. This proxy is labeled `ASSUMPTION: [Q-P-03]` and requires sensitivity evaluation or calibration against asset-specific manufacturer data before baseline reliance.
 
 ---
 
@@ -256,21 +256,21 @@ Wholesale market settlement and trading procedures require dated, version-pinned
   - *Version Mapping Caveat:* The specific assignment of Section T to **v38.0** (for Jan–Oct) and **v41.0** (for Nov–Dec) is **`UNVERIFIED`** as neither Section T change tables nor impacted-document matrices were inspected to establish exact section versions. A full BSC release date does not establish that Section T was re-versioned on that exact day.
   - Section T provides the algebraic formulation for system buy/sell prices, net imbalance volume ($NIV$), Continuous Acceptance Duration Limit ($CADL$), Replacement Price, and cashflow hierarchies.
 
-#### Candidate 5.2: SEMOpx Operating Procedures & Market Rules (2024 Baseline)
+#### Candidate 5.2: SEMOpx Operating Procedures & Market Rules (Current Publisher Reference; 2024 Historical Applicability UNVERIFIED)
 - **URL:** [SEMOpx Intraday Market](https://www.semopx.com/markets/intraday-market) and [SEMOpx Day-Ahead Market](https://www.semopx.com/markets/day-ahead-market)
 - **Publisher:** SEMOpx (EirGrid / SONI / EPEX SPOT joint exchange operator)
 - **Licence Text / Link:** SEMOpx legal disclaimers (all rights reserved).
 - **Likely D-56 Class:** `research-only` (PC-5).
 - **Access Method:** Open direct download (PDF operating procedures).
-- **Coverage:** All-island Ireland (I-SEM); calendar year 2024.
-- **Evaluation:** Primary publisher schedules define trading milestones:
+- **Coverage:** All-island Ireland (I-SEM); current publisher operational specifications (historical 2024 product, interval, and rule applicability marked **UNVERIFIED** pending dated operating-procedure identification).
+- **Evaluation:** Primary publisher web pages define current market schedules:
   - *Day-Ahead Market (DAM):* Order book gate closure at **11:00** (auction run daily). Clock convention and DST handling must be verified from dated operating procedures before hardcoding UTC vs local time.
   - *Intraday Auctions (IDA):*
-    - **IDA1:** Order book gate closure at **17:30 D-1** (publisher-verified; correcting the previously cited 17:45).
+    - **IDA1:** Order book gate closure at **17:30 D-1** (verified on live SEMOpx web page).
     - **IDA2:** Order book gate closure at **08:00 D**.
     - **IDA3:** Order book gate closure at **14:00 D**.
   - *Intraday Continuous (IDC):* Continuous trading up to 30 minutes prior to delivery.
-  - *Price Boundaries:* Technical price limits (e.g. -€500/MWh to +€4,000/MWh) must not be uniformly assigned across all DAM, IDA, and continuous products without inspecting product-specific 2024 rules; historical parameter limits remain `UNVERIFIED`.
+  - *Historical Pinning Caveat:* While the order book timings for IDA1–IDA3 are confirmed on the live publisher portal, the [current SEMOpx rules hub](https://www.semopx.com/rules-and-monitoring/market-rules) contains 2026-dated material, and the live intraday page links procedures under a `2025-04` path. Neither establishes the exact historical gates, continuous-trading horizon, timezone/DST conventions, price limits (-€500/MWh to +€4,000/MWh), or effective intervals for every product throughout calendar year 2024. Therefore, the schedule is treated strictly as a **current publisher reference**, and historical 2024 applicability (including IDC and gate timings) is designated **`UNVERIFIED`** pending identification of dated operating procedures in force in 2024.
 
 #### Candidate 5.3: SEM Committee I-SEM Trading and Settlement Code (Part B Dated Baseline)
 - **URL:** [SEM Committee Publications](https://www.semcommittee.com/publications/) and [SEMO Market Rules](https://www.sem-o.com/rules-and-governance/rules/)
@@ -284,9 +284,9 @@ Wholesale market settlement and trading procedures require dated, version-pinned
 ### Recommendation & Proxy Formulation
 - **Recommended Candidate:**
   - For GB: Retain confirmed 2024 BSC release milestones (2 April and 7 November 2024, Candidate 5.1), leaving specific Section T version numbers marked `UNVERIFIED`.
-  - For Ireland: Pin SEMOpx 2024 operating schedules with corrected IDA1 gate closure (17:30 D-1, Candidate 5.2) and SEM Committee Part B baseline (`Candidate 5.3`).
+  - For Ireland: Treat the verified SEMOpx schedule as a **current publisher reference**, with 2024 historical gate and trading horizon applicability marked `UNVERIFIED / pending historical pinning` alongside SEM Committee Part B baseline (`Candidate 5.3`).
 - **Standard Market Proxy / Assumptions:**
-  - **ASSUMPTION:** [Q-P-04] Where commercial market clearing software (e.g. Euphemia MILP solver) cannot be run due to proprietary licensing, an author-proposed continuous merit-order clearing proxy (linear dispatch sorted by generator SRMC) is adopted as an exploratory proxy.
+  - **ASSUMPTION:** [Q-P-04] Where commercial market clearing software (e.g. Euphemia MILP solver) cannot be run due to proprietary licensing, an author-proposed continuous merit-order clearing proxy (linear dispatch sorted by generator SRMC) is adopted as an exploratory proxy (see [Q-P-04 in 02-questionnaire.md](../requirements/02-questionnaire.md#q-p-04)).
   - *Unit Commitment Caveat:* This continuous dispatch simplification is **NOT** an accepted replacement for D-26 / FR-7 unit-commitment requirements (which mandate integer on/off decisions, minimum up/down times, start-up costs, and ramp limits). It is strictly an exploratory proxy until full unit-commitment dispatch is solved.
 
 ---
@@ -298,14 +298,15 @@ Unit dispatch modelling requires daily/half-hourly Short-Run Marginal Cost (SRMC
 
 ### Candidate Sources
 
-#### Candidate 6.1: ICE End-of-Day UKA/EUA Auction Results & GOV.UK Public Reports
+#### Candidate 6.1: ICE End-of-Day UKA Auction Results & GOV.UK Public Reports
 - **URL:** [ICE UKA Auctions](https://www.theice.com/emissions/auctions/uk-emission-allowances) and [GOV.UK UK ETS Markets Guidance](https://www.gov.uk/government/publications/taking-part-in-the-uk-emissions-trading-scheme-markets)
 - **Publisher:** Intercontinental Exchange (ICE Futures Europe) / UK ETS Authority (DESNZ)
 - **Licence Text / Link:** ICE Market Data Terms (proprietary; commercial redistribution restricted); GOV.UK guidance under Open Government Licence (OGL v3.0).
 - **Likely D-56 Class:** `research-only / unverified` (PC-5; exchange redistribution rights unverified).
 - **Access Method:** Open web inspection (clearing price published after each fortnightly auction).
-- **Coverage:** United Kingdom (UKA) and European Union (EUA; note that EU ETS auctions are hosted by EEX, not ICE); calendar year 2024.
+- **Coverage:** United Kingdom (UKA only); calendar year 2024.
 - **Evaluation:** Primary pricing instrument for UK Allowances (£/tCO2e). Governed by statutory auction reserve price (£22/tCO2e for UK ETS). Redistribution of raw exchange price series for commercial purposes is restricted without an exchange data licence.
+- **EU ETS (EUA) Auction Separation:** EU ETS auctions are operated by the European Energy Exchange (EEX) as the Common Auction Platform, not ICE. Specific 2024 EUA auction resources, clearing calendars, and data redistribution rights remain **unresolved** (`research-only / unverified`); the ICE link applies strictly to UKA.
 
 #### Candidate 6.2: DESNZ Electricity Generation Costs 2023 / 2024 (Assumptions Report)
 - **URL:** [DESNZ Electricity Generation Costs 2023](https://www.gov.uk/government/publications/electricity-generation-costs-2023) and [Main Report PDF](https://assets.publishing.service.gov.uk/media/6556027d046ed400148b99fe/electricity-generation-costs-2023.pdf)
@@ -336,13 +337,20 @@ Unit dispatch modelling requires daily/half-hourly Short-Run Marginal Cost (SRMC
 ### Recommendation & Proxy Formulation
 - **Recommended Candidate:**
   - For renewable subsidy benchmarks: **Ofgem RO Determinations** (`Candidate 6.3`, `open-commercial`), incorporating the 1 April 2024 obligation-year transition (£59.01 $\to$ £64.73).
-  - For commodity vectors: Use **World Bank Commodity Price Data** (`SRC-37b`, `open-commercial`, CC BY 4.0 for Bank-produced Pink Sheet data) with daily interpolation, paired with fortnightly **UK ETS auction results** (`Candidate 6.1`, `research-only / unverified`, PC-5).
+  - For commodity vectors: Use **World Bank Commodity Price Data** (`SRC-37b`, `open-commercial`, CC BY 4.0 for Bank-produced Pink Sheet data) with registered interpolation/as-of policy, paired with fortnightly **UK ETS auction results** (`Candidate 6.1`, `research-only / unverified`, PC-5). EU ETS (EUA) auction acquisition from EEX remains unresolved.
   - For existing plant operating parameters: Treat technology parameters as explicit assumptions (`Candidate 6.2`).
+- **Resampling, Cadence, and As-Of Policy (ASSUMPTION):**
+  - Monthly World Bank Pink Sheet commodity averages and fortnightly UK ETS auction clearings are not observed daily or half-hourly spot prices.
+  - Converting monthly averages to daily fuel inputs via interpolation or forward-holding is an author-proposed assumption:
+    - **Reconstruction Mode (D-70):** Linear interpolation between month $m$ and month $m+1$ uses information published after simulated delivery day $t$. All runs using two-sided linear interpolation must be declared and logged as **reconstruction** (D-70).
+    - **As-Of / Forecast Backtest Mode (D-70 / ADR 0002):** In backtest mode, only prices published before simulated knowledge cut $t_{\text{cut}}$ may be ingested. Monthly Pink Sheet updates (typically released by the World Bank between the 3rd and 5th business day of month $m+1$) must be step-held forward strictly from their verified publication date; prior to publication, the preceding month's price is held constant.
+    - **Cadence & Mask Preservation:** The data pipeline must preserve original publication cadence and persist an explicit boolean `is_imputed` / `observed_mask` for every timestamp, preventing synthetic daily prices from masquerading as observed spot pricing.
+  - Fortnightly UK ETS auction clearings are similarly step-held forward between auction dates with `is_imputed = true` on non-auction days.
 - **Generator Short-Run Marginal Cost (SRMC) Proxy Formulation:**
   For each thermal generator unit $g$ with fuel type $f \in \{\text{Gas}, \text{Coal}, \text{Oil}, \text{Biomass}\}$:
   $$\text{SRMC}_g(t) = \frac{\text{FuelPrice}_f(t) + \text{EmissionFactor}_f \times \text{CarbonPrice}(t)}{\eta_g} + \text{VOM}_g$$
   where:
-  - **ASSUMPTION:** [Q-P-05] Net thermal efficiency defaults $\eta_g$ (e.g. 0.52 for CCGT, 0.35 for OCGT) and variable O&M defaults ($\text{VOM}_g \approx \text{£3.50–£5.00/MWh}$ for CCGT, $\text{£5.00–£8.00/MWh}$ for OCGT) are author-proposed technology proxies, NOT observed existing-plant heat rates.
+  - **ASSUMPTION:** [Q-P-05] Net thermal efficiency defaults $\eta_g$ (e.g. 0.52 for CCGT, 0.35 for OCGT) and variable O&M defaults ($\text{VOM}_g \approx \text{£3.50–£5.00/MWh}$ for CCGT, $\text{£5.00–£8.00/MWh}$ for OCGT) are author-proposed technology proxies, NOT observed existing-plant heat rates (see [Q-P-05 in 02-questionnaire.md](../requirements/02-questionnaire.md#q-p-05)).
   - Fuel units (e.g. $/MMBtu or $/therm to £/MWh_th), carbon emissions basis ($t\text{CO}_2/\text{MWh}_{\text{th}}$), and GBP/EUR exchange rates must be explicitly converted before evaluating the SRMC equation.
 
 ---
@@ -357,7 +365,7 @@ Physical renewable generation profiles require gridded meteorological variables 
 #### Candidate 7.1: Copernicus Climate Data Store (CDS) ERA5 Hourly Single Levels
 - **URL:** [Copernicus CDS ERA5 Reanalysis](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels)
 - **Publisher:** European Centre for Medium-Range Weather Forecasts (ECMWF) / Copernicus Climate Change Service (C3S)
-- **Licence Text / Link:** [Licence to use Copernicus Products](https://cds.climate.copernicus.eu/api/v2/terms/static/licence-to-use-copernicus-products.pdf) (incorporates Creative Commons Attribution 4.0 International, CC BY 4.0).
+- **Licence Text / Link:** [ERA5 Catalogue API Collection Metadata](https://cds.climate.copernicus.eu/api/catalogue/v1/collections/reanalysis-era5-single-levels) (specifies licence `CC-BY-4.0` via [SPDX CC-BY-4.0](https://spdx.org/licenses/CC-BY-4.0); free user account and interactive web acceptance of Copernicus terms required).
 - **Likely D-56 Class:** `open-commercial`
 - **Access Method:** Programmatic API via `cdsapi` client library (requires creating a free user account, accepting licence terms via the web interface on first access, and configuring user API credentials in `~/.cdsapirc`).
 - **Coverage:** Global regular lat/lon grid at $0.25^\circ \times 0.25^\circ$ resolution (~31 km), covering GB, Northern Ireland, and the Republic of Ireland. All 8,784 hours of calendar year 2024.
@@ -365,33 +373,34 @@ Physical renewable generation profiles require gridded meteorological variables 
 - **Evaluation:** Industry benchmark meteorological reanalysis for energy systems modeling. Open-commercial under CC BY 4.0, but requires initial interactive terms acceptance before automated headless retrieval.
 
 #### Candidate 7.2: UK Met Office / CEDA MIDAS Open Hourly Surface Weather Observations
-- **URL:** [CEDA MIDAS Open Catalogue Record](https://catalogue.ceda.ac.uk/uuid/220a6561521f4bd42e93099438613f31)
+- **URL:** [CEDA MIDAS Open Collection](https://catalogue.ceda.ac.uk/uuid/dbd451271eb04662beade68da43546e1/)
 - **Publisher:** UK Met Office / Centre for Environmental Data Analysis (CEDA)
 - **Licence Text / Link:** [Open Government Licence v3.0 (OGL v3.0)](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
 - **Likely D-56 Class:** `open-commercial`
 - **Access Method:** Free CEDA user registration required for automated bulk HTTP/FTP downloads.
-- **Coverage:** Great Britain and Northern Ireland; hourly observations across ~250 terrestrial synoptic weather stations throughout 2024.
-- **Evaluation:** Provides empirical ground-truth weather station observations (measured wind speed, direction, ambient dry-bulb temperature, global horizontal irradiance where equipped). Essential for statistical validation and empirical bias correction of downscaled ERA5 grid cells. Record-level completeness across all stations requires empirical verification during ingestion.
+- **Coverage:** Great Britain and Northern Ireland; hourly observations across ~250 terrestrial synoptic weather stations.
+- **Evaluation:** Provides empirical ground-truth weather station observations (measured wind speed, direction, ambient dry-bulb temperature, global horizontal irradiance where equipped). Essential for statistical validation and empirical bias correction of downscaled ERA5 grid cells.
+  - *Coverage & Version Caveat:* CEDA MIDAS Open is updated in delayed mode; the catalogue entry confirms that version v202407 includes data only up until the end of 2023. Full calendar year 2024 observations require pinning a release covering 2024 (e.g. v202507) or using Met Office API feeds; a 2024 station panel cannot be assumed from the collection title.
 
 #### Candidate 7.3: Met Éireann Historical Weather Station Hourly Records
 - **URL:** [Met Éireann Historical Data](https://www.met.ie/climate/available-data/historical-data) and [Data.gov.ie Met Éireann Portal](https://data.gov.ie/organization/met-eireann)
 - **Publisher:** Met Éireann (National Meteorological Service of Ireland)
-- **Licence Text / Link:** Open Data Licence Ireland (CC BY 4.0) via data.gov.ie extracts; general website terms apply to direct `met.ie` bulk scraping.
-- **Likely D-56 Class:** Mixed (`open-commercial` via data.gov.ie extracts; `research-only / unverified` via direct scraping).
+- **Licence Text / Link:** Met Éireann's [Open Data Policy](https://www.met.ie/about-us/specialised-services/open-data) states that most datasets are CC BY 4.0 while some carry custom terms. A general listing on data.gov.ie does not identify the specific station resource or its exact reuse grant.
+- **Likely D-56 Class:** `Mixed / UNVERIFIED` (open-commercial for confirmed CC BY 4.0 sets; custom/restricted for unverified station extracts).
 - **Access Method:** Open direct download (CSV files per synoptic station; no credentials required).
 - **Coverage:** Republic of Ireland; hourly records across 25 primary synoptic stations (e.g., Dublin Airport, Cork Airport, Shannon Airport, Athenry, Valentia Observatory, Malin Head) for 2024.
-- **Evaluation:** Directly circumvents the limitation that MÉRA reanalysis ended in 2019. Delivers 2024 hourly wind speed, temperature, relative humidity, and solar radiation observations across Ireland. Uninterrupted completeness for all 8,784 hours requires verification per station.
+- **Evaluation:** Directly circumvents the limitation that MÉRA reanalysis ended in 2019. Delivers 2024 hourly wind speed, temperature, relative humidity, and solar radiation observations across Ireland. Uninterrupted completeness for all 8,784 hours and resource-specific licence grants require verification per station.
 
 ### Recommendation & Proxy Formulation
-- **Recommended Candidate:** Primary spatial weather driver: **Copernicus CDS ERA5** (`Candidate 7.1`, `open-commercial`), paired with **Met Office MIDAS Open** (`Candidate 7.2`) and **Met Éireann Hourly Station Records** (`Candidate 7.3`) for ground-truth validation.
+- **Recommended Candidate:** Primary spatial weather driver: **Copernicus CDS ERA5** (`Candidate 7.1`, `open-commercial`), paired with **Met Office MIDAS Open** (`Candidate 7.2`) and **Met Éireann Hourly Station Records** (`Candidate 7.3`) for ground-truth validation (rights `Mixed / UNVERIFIED` pending station-level terms verification).
 - **Power Curve Conversion & Fallback Proxy:**
   1. *Wind Turbine Conversion:* Use standard IEC 61400-1 Class I/II/III references. Note that IEC classes specify design envelopes, NOT a unique manufacturer power curve; dated manufacturer/library power curves (e.g. from windpowerlib) must be calibrated.
      - **ASSUMPTION:** [Q-P-06] Scaling wind speed to hub height using the power-law profile:
        $$v(t) = v_{\text{ref}}(t) \cdot \left(\frac{h_{\text{hub}}}{h_{\text{ref}}}\right)^\alpha$$
-       with assumed shear exponents $\alpha \approx 0.143$ onshore and $\alpha \approx 0.11$ offshore is an unvalidated author-proposed default.
+       with assumed shear exponents $\alpha \approx 0.143$ onshore and $\alpha \approx 0.11$ offshore is an unvalidated author-proposed default (see [Q-P-06 in 02-questionnaire.md](../requirements/02-questionnaire.md#q-p-06)).
   2. *Solar PV Conversion:* Convert Surface Solar Radiation Downwards ($G_{\text{horiz}}$ in $\text{W}/\text{m}^2$) to cell temperature and power output:
      $$CF_{\text{solar}}(t) = \frac{G_{\text{POA}}(t)}{1000\text{ W}/\text{m}^2} \times \left[1 - \gamma \cdot (T_{\text{cell}}(t) - 25^\circ\text{C})\right]$$
-     - **ASSUMPTION:** [Q-P-07] Temperature derating coefficient $\gamma \approx 0.004 / ^\circ\text{C}$ is an unvalidated modeling default.
+     - **ASSUMPTION:** [Q-P-07] Temperature derating coefficient $\gamma \approx 0.004 / ^\circ\text{C}$ is an unvalidated modeling default (see [Q-P-07 in 02-questionnaire.md](../requirements/02-questionnaire.md#q-p-07)).
   3. *Zero-Download Synthetic Fallback Limitations:* If CDS credentials are not configured, synthesizing hourly renewable series by scaling national aggregate outturns from Elexon FUELHH (`SRC-31`) and SEMO Smart Grid Dashboard (`SRC-24`) is strictly an emergency reconstruction fallback.
      - **Honest Spatial Assessment:** Inverse-distance weighting of national outturns **CANNOT recover lost spatial detail**, local wind speed gradients, site-specific capacity factors, or microclimate weather variation without geographically dispersed donor observations.
      - **Circularity Disclosure:** Reusing target outturn generation to reconstruct input series creates circular validation unless an explicit independent holdout partition is strictly enforced.
@@ -408,8 +417,8 @@ Civil bank holidays, market trading calendars, clock transitions (DST), and inte
 #### Candidate 8.1: Workplace Relations Commission & GOV.IE Statutory Public Holiday Register
 - **URL:** [WRC Public Holidays Guide](https://www.workplacerelations.ie/en/what_you_should_know/public-holidays/) and [GOV.IE](https://www.gov.ie/)
 - **Publisher:** Workplace Relations Commission & Government of Ireland
-- **Licence Text / Link:** [Irish Public Sector Information / Open Data Licence](https://data.gov.ie/licence) (CC BY 4.0 / OGL equivalent).
-- **Likely D-56 Class:** `open-commercial`
+- **Licence Text / Link:** [WRC Disclaimer](https://www.workplacerelations.ie/en/disclaimer/) (all rights reserved; generic data.gov.ie open-data terms do not attach to unlisted WRC guidance pages).
+- **Likely D-56 Class:** `research-only / unverified` (pending resource-specific open reuse grant).
 - **Access Method:** Open web access / tabular documentation.
 - **Coverage:** Republic of Ireland; all 10 statutory public holidays for 2024 enacted under the *Organisation of Working Time Act 1997* (as amended):
   1. *1 January 2024:* New Year's Day
@@ -422,7 +431,9 @@ Civil bank holidays, market trading calendars, clock transitions (DST), and inte
   8. *28 October 2024:* October Bank Holiday (last Monday in October)
   9. *25 December 2024:* Christmas Day
   10. *26 December 2024:* St. Stephen's Day
-- **Evaluation:** Provides verified legal baseline for Irish public holidays. Note the legal distinction: the WRC specifies employee statutory benefit entitlements (e.g. paid day off within a month, additional annual leave, or an extra day's pay when a holiday falls on a Sunday); it does not automatically close all commercial operations or shift the statutory holiday date. Actual transmission demand profiles must account for this civil vs commercial distinction. Resolves jurisdiction splits (e.g. Good Friday is observed in GB/NI but not statutory in ROI; St. Brigid's Day is observed in ROI only).
+- **Evaluation:** Provides verified legal baseline for Irish public holidays under the *Organisation of Working Time Act 1997*.
+  - *Rights Lineage:* The cited WRC guide and website disclaimer do not grant open commercial reuse, and an organisation listing on data.gov.ie does not establish a resource-specific open grant. Acquired WRC content must therefore be held as `research-only / unverified` under D-56, separate from the verified `open-commercial` status of GOV.UK (`Candidate 8.2`) and public domain status of IANA (`Candidate 8.3`).
+  - *Statutory vs Commercial Entitlement:* The WRC specifies employee statutory benefit entitlements (e.g. paid day off within a month, additional annual leave, or an extra day's pay when a holiday falls on a Sunday); it does not automatically close all commercial operations or shift the statutory holiday date. Actual transmission demand profiles must account for this civil vs commercial distinction. Resolves jurisdiction splits (e.g. Good Friday is observed in GB/NI but not statutory in ROI; St. Brigid's Day is observed in ROI only).
 
 #### Candidate 8.2: UK Government Cabinet Office Bank Holidays API (`SRC-33`)
 - **URL:** [https://www.gov.uk/bank-holidays.json](https://www.gov.uk/bank-holidays.json)
@@ -447,7 +458,7 @@ Civil bank holidays, market trading calendars, clock transitions (DST), and inte
   - Statutory nuance: In GB, standard time is GMT and daylight saving is BST (UTC+1). In Ireland, under the *Standard Time (Amendment) Act 1971*, standard time is Irish Standard Time (IST, UTC+1 in summer) with winter time adjustment (UTC in winter).
 
 ### Recommendation & Proxy Formulation
-- **Recommended Candidate:** Bundle **GOV.UK Bank Holidays JSON** (`Candidate 8.2`) and **WRC Irish Public Holidays Register** (`Candidate 8.1`) into a single version-pinned repository calendar JSON fixture (`fixtures/calendars/2024-statutory-calendars.json`), driven by **IANA tzdata 2024b** (`Candidate 8.3`).
+- **Recommended Candidate:** Bundle **GOV.UK Bank Holidays JSON** (`Candidate 8.2`, `open-commercial`) and statutory Irish holiday dates from **WRC / Organisation of Working Time Act 1997** (`Candidate 8.1`, acquired text `research-only / unverified`, factual calendar dates encoded into schema fixtures) into a single version-pinned repository calendar JSON fixture (`fixtures/calendars/2024-statutory-calendars.json`), driven by **IANA tzdata 2024b** (`Candidate 8.3`, public domain).
 - **Clock Transition Handling Rule:**
   All simulator engine intervals operate natively in continuous monotonic UTC timestamps ($[t_{\text{start}}, t_{\text{end}})$ with 1800-second step duration).
   For local settlement reporting, map UTC to local settlement periods:
@@ -469,12 +480,12 @@ The canonical scenario data model currently exists only as an architectural spec
 ### Design References & Internal Implementation
 
 #### Candidate 9.1: ENTSO-E Common Grid Model Exchange Standard (CGMES v3.0 / IEC 61970) [Design Reference]
-- **URL:** [ENTSO-E CIM for Grid Models](https://www.entsoe.eu/data/cim/cim-for-grid-models/) and [IEC Standards](https://iec.ch/)
+- **URL:** [ENTSO-E CGMES Library](https://www.entsoe.eu/data/cim/cim-for-grid-models-exchange/) and [IEC Standards](https://iec.ch/)
 - **Publisher:** European Network of Transmission System Operators for Electricity (ENTSO-E) / International Electrotechnical Commission (IEC)
 - **Licence Text / Link:** IEC standards documentation copyright (statutory purchase/membership required; publicly accessible profiles do not grant open commercial redistribution of standard text).
 - **Likely D-56 Class:** N/A (External Standard / Design Reference)
 - **Access Method:** Open profile download (UML profiles and XSD schemas).
-- **Evaluation:** Serves strictly as an architectural reference profile for entity naming and topological typing. CGMES uses persistent Master Resource Identifiers (mRIDs). ADR 0002 adopts this principle by specifying opaque UUIDs for domain entities, while preserving CIM mRIDs as external aliases.
+- **Evaluation:** Serves strictly as an architectural reference profile for entity naming and topological typing across CGMES releases (v2.4.15 and v3.0 / IEC 61970-600-1 & IEC 61970-600-2). CGMES uses persistent Master Resource Identifiers (mRIDs). ADR 0002 adopts this principle by specifying opaque UUIDs for domain entities, while preserving CIM mRIDs as external aliases. Note that this reference is the specification standard; no CGMES grid model instance dataset has been acquired or rights-cleared.
 
 #### Candidate 9.2: Frictionless Data Package Specification [Design Reference]
 - **URL:** [Frictionless Data Package](https://specs.frictionlessdata.io/data-package/) and [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12/schema)
@@ -485,7 +496,7 @@ The canonical scenario data model currently exists only as an architectural spec
 - **Evaluation:** Architectural pattern for content-addressed dataset release manifests, column-level typing, and SHA-256 integrity verification.
 
 #### Candidate 9.3: Internal Repository Implementation (`INT-01` / ADR 0002 Data Model)
-- **URL:** [ADR 0002: Network and Scenario Data Model](../../architecture/adr/0002-network-and-scenario-data-model.md)
+- **URL:** [ADR 0002: Network and Scenario Data Model](../architecture/adr/0002-network-and-scenario-data-model.md)
 - **Publisher:** Internal Repository Implementation
 - **Licence Text / Link:** Repository license (MIT / Apache-2.0 dual license).
 - **Likely D-56 Class:** **N/A** (Internal Code / Schema Deliverable; Status: **PENDING**)
@@ -511,27 +522,29 @@ In accordance with ADR 0002, the pending internal implementation (`INT-01`) must
 
 | Deficit # | Deficit Category | Primary Recommended Candidate Source | D-56 Licence Class | Access Requirement | Primary Recommended Proxy / Mitigation |
 |:---:|---|---|:---:|:---:|---|
-| **1** | Commissioned 2024 Network Fleet | NESO ETYS 2024 Appendix B (metadata inspected) + Elexon BMRS BMU / MDD API | `research-only` (PC-1) / `open-commercial` | Open download / Open REST API | Convert branch impedances to 100 MVA base; continuous ratings proxy marked as `ASSUMPTION: 0.88 × post-fault rating (author proxy, unverified)`. |
+| **1** | Commissioned 2024 Network Fleet | NESO ETYS 2024 Appendix B (metadata inspected) + Elexon BMRS BMU / MDD API | `research-only` (PC-1) / `open-commercial` | Open download / Open REST API | Convert branch impedances to 100 MVA base; continuous ratings proxy marked as `ASSUMPTION: [Q-P-01] 0.88 × post-fault rating (author proxy, unverified)`. |
 | **2** | Proxy Rule Parameters & Cut-Sets | EirGrid/SONI Joint 2024 Report (§3.3) & NESO Day-Ahead Constraints | `research-only` (PC-2) / `open-commercial` | Open PDF / Open CKAN API | Model verified SNSP (75%), enduring 4 ROI / 3 NI min units effective **7 April 2024** (pre-April trial marked `UNVERIFIED`), and GB inertia 140 $\to$ 120 GVA·s (intermediate dates marked `UNVERIFIED`); signed cut-sets from bus partition sets. |
-| **3** | Embedded Generation Decomposition | NESO Historic Demand 2024 + Sheffield Solar PV_Live | `open-commercial` | Open CKAN API / Open REST API | Starting identity: $ND + \text{Embedded Solar} + \text{Embedded Wind}$ (pumping not subtracted from $ND$); Irish micro-PV capacity from ESB reported endpoints (~300 MW to ~500 MW), intra-year linear interpolation marked `ASSUMPTION: [Q-P-02]`. |
-| **4** | Directional Interconnector Losses & TLM | Elexon Insights OpenAPI (`SRC-50`) + Regulatory Access Rules | `open-commercial` / Mixed | Open REST API / Open PDF filings | Apply $TLM = 1.0$ for interconnector BMUs in GB settlement (BSC P278 legal rule); apply certified commercial loss factors (BritNed 3.0%, ElecLink 2.9%, Nemo unverified operator factor); HVDC physical losses marked `ASSUMPTION: 0.75% per converter + 0.3%/100 km cable (author proxy, not CIGRE standard)`. |
-| **5** | Dated Market Rules | Elexon BSC 2024 Releases & SEMOpx Procedures 2024 | `research-only` (PC-5) | Open web / Open PDF download | Pin confirmed 2024 BSC release dates (Section T versions marked `UNVERIFIED`); pin SEMOpx operating procedures with corrected IDA1 gate closure (**17:30 D-1**); continuous SRMC dispatch marked `ASSUMPTION: exploratory proxy (not an accepted replacement for D-26 / FR-7 unit commitment)`. |
-| **6** | Fuel, Carbon & Subsidy Vectors | Ofgem RO Determinations + DESNZ Assumptions Report + World Bank Pink Sheet | `Mixed / UNVERIFIED` | Open direct download / Web inspection | Apply RO buyout with 1 April 2024 transition (£59.01 $\to$ £64.73/ROC, `open-commercial`); DESNZ CCGT 52% and OCGT 35% efficiencies marked `ASSUMPTION: technology proxies (not measured heat rates)`; carbon auction series `research-only / unverified`. |
-| **7** | Weather Reanalysis Acquisition | Copernicus CDS ERA5 Hourly Single Levels + MIDAS / Met Éireann Stations | `open-commercial` | Free CDS account (web terms acceptance) / Free CEDA account | Downscale ERA5 wind/solar/temp; validate against Met Office & Met Éireann synoptic stations; fallback outturn scaling explicitly marked as a synthetic reconstruction fallback that **cannot recover lost spatial detail** and requires holdout validation. |
-| **8** | Statutory & Market Calendars | WRC Irish Public Holidays Register + GOV.UK Bank Holidays JSON + IANA tzdata 2024b | `open-commercial` | Open web / Open JSON API / Public domain | Harmonise ROI (10 holidays; statutory entitlement vs market calendar) and UK calendars in JSON fixture; IANA tzdata 2024b (4 Sept 2024); **46 half-hour periods (spring forward) / 50 periods (autumn fold)**. |
+| **3** | Embedded Generation Decomposition | NESO Historic Demand 2024 + Sheffield Solar PV_Live + ESB Reports | `Mixed (open-commercial GB / research-only ROI lineage (PC-3))` | Open CKAN API / Open REST API / Direct PDF | Starting identity: $ND + \text{Embedded Solar} + \text{Embedded Wind}$ (pumping not subtracted from $ND$); Irish micro-PV capacity from ESB reported endpoints (~300 MW to ~500 MW), intra-year linear interpolation marked `ASSUMPTION: [Q-P-02]` (retaining PC-3 research-only lineage under D-56). |
+| **4** | Directional Interconnector Losses & TLM | Elexon Insights OpenAPI (`SRC-50`) + Regulatory Access Rules | `open-commercial` / Mixed | Open REST API / Open PDF filings | Apply $TLM = 1.0$ for interconnector BMUs in GB settlement (BSC P278 legal rule); apply certified commercial loss factors (BritNed 3.0%, ElecLink 2.9%, Nemo unverified operator factor); HVDC physical losses marked as constant fractional exploratory proxy with omitted standby losses (0.75% per converter, 0.30%/100 km cable; author proxy, no applicable CIGRE source identified, `ASSUMPTION: [Q-P-03]`). |
+| **5** | Dated Market Rules | Elexon BSC 2024 Releases & SEMOpx Procedures (pending historical pinning) | `research-only` (PC-5) | Open web / Open PDF download | Pin confirmed 2024 BSC release dates (Section T versions marked `UNVERIFIED`); treat SEMOpx schedule as current publisher reference with historical 2024 gates marked `UNVERIFIED / pending historical pinning`; continuous SRMC dispatch marked `ASSUMPTION: [Q-P-04]` exploratory proxy (not an accepted replacement for D-26 / FR-7 unit commitment). |
+| **6** | Fuel, Carbon & Subsidy Vectors | Ofgem RO Determinations + DESNZ Assumptions Report + World Bank Pink Sheet | `Mixed / UNVERIFIED` | Open direct download / Web inspection | Apply RO buyout with 1 April 2024 transition (£59.01 $\to$ £64.73/ROC, `open-commercial`); DESNZ CCGT 52% and OCGT 35% efficiencies marked `ASSUMPTION: [Q-P-05]` technology proxies; commodity monthly & auction fortnightly interpolation registered under explicit reconstruction vs as-of policy (observed/imputed mask); carbon auction series `research-only / unverified` (EEX EUA unresolved). |
+| **7** | Weather Reanalysis Acquisition | Copernicus CDS ERA5 Hourly Single Levels + MIDAS / Met Éireann Stations | `Mixed / UNVERIFIED (open-commercial ERA5 & MIDAS; unverified Met Éireann terms)` | Free CDS account (web terms acceptance) / Free CEDA account / Open direct download | Downscale ERA5 wind/solar/temp; validate against Met Office (MIDAS Open v202407 ends 2023; 2024 panel requires pinning v202507+) & Met Éireann synoptic stations; shear and PV temperature defaults marked `ASSUMPTION: [Q-P-06, Q-P-07]`; fallback outturn scaling explicitly marked as a synthetic reconstruction fallback that **cannot recover lost spatial detail** and requires holdout validation. |
+| **8** | Statutory & Market Calendars | GOV.UK Bank Holidays JSON + IANA tzdata 2024b + WRC Irish Public Holidays | `Mixed / unverified ROI (open-commercial GOV.UK / public domain IANA / unverified WRC)` | Open JSON API / Public domain / Open web | Harmonise ROI (10 holidays; statutory entitlement vs market calendar) and UK calendars in JSON fixture; IANA tzdata 2024b (4 Sept 2024); **46 half-hour periods (spring forward) / 50 periods (autumn fold)**. |
 | **9** | Internal Schema, Identity & Fixtures (`INT-01`) | Internal ADR 0002 Implementation + Frictionless / CGMES Design References | **N/A** (Internal Code / Schema) | Internal repository implementation (Status: **PENDING**) | Implement tri-temporal intervals $[t_{\text{from}}, t_{\text{to}})$, opaque entity UUIDs, separate input vs execution SHA-256 hashes, PC-1–PC-7 clearance tags, and TOML test fixtures in proposed scenario crate. |
 
 ---
 
 ## 11. Changes in Response to Review
 
-This revision directly resolves all 16 findings raised in the GPT review ([gpt-2026-11-15-pr58-deficit-sources.md](../../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources.md)):
+This section documents revisions made to resolve reviewer findings across Round 1 ([gpt-2026-11-15-pr58-deficit-sources.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources.md)) and Round 2 ([gpt-2026-11-15-pr58-deficit-sources-r2.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md)).
+
+### Round 1 Review Corrections (F-01 through F-16)
 
 | Finding ID | Severity | Finding Summary | Action Taken / Fix in This Revision |
 |:---:|:---:|---|---|
 | **F-01** | High | Incorrect effective date for Irish minimum units (cited 17 July instead of 7 April) | Corrected enduring policy date to **7 April 2024** citing §3.3 of the joint *Annual Renewable Constraint and Curtailment Report 2024* (V1.0). Marked pre-7 April trial operational schedule as `UNVERIFIED`. Updated Section 2 and Summary Row 2. |
 | **F-02** | High | Universal 0.88 thermal-rating factor had no engineering derivation from P27 | Removed claim that P27 establishes a universal 0.88 factor across asset classes. Reclassified 0.88 continuous-to-emergency conversion as an unverified author-proposed `ASSUMPTION: [Q-P-01]` requiring sensitivity testing and asset-specific ratings. |
-| **F-03** | High | HVDC converter/cable proxy attributed to unidentified "CIGRE B4" standard | Removed attribution to CIGRE B4. Reclassified 0.75% per converter and 0.30%/100 km cable as author-proposed `ASSUMPTION: [Q-P-03]`. Disclosed physics of quadratic $I^2 R$ cable losses and converter standby losses. |
+| **F-03** | High | HVDC converter/cable proxy attributed to unidentified "CIGRE B4" standard | Removed attribution to CIGRE B4. Reclassified 0.75% per converter and 0.30%/100 km cable as constant fractional exploratory proxy with omitted standby losses (`ASSUMPTION: [Q-P-03]`). Disclosed physics of quadratic $I^2 R$ cable losses and converter standby losses. |
 | **F-04** | High | Commercial nomination loss factors conflated with physical loss models | Separated commercial deemed-volume nomination rules (BritNed 3.0%, ElecLink 2.9%, Nemo unverified operator factor) from physical converter/cable losses. Added mathematical note on midpoint vs sending-end denominators ($\frac{1 - LF/2}{1 + LF/2} \approx 0.9704 \neq 0.97$). Marked Nemo Link factors `UNVERIFIED` pending direct operator access. |
 | **F-05** | High | Elexon TLM endpoints returned 404; acceptance stack coverage unverified | Replaced dead URLs with official Elexon OpenAPI specification (`/swagger/v1/swagger.json`). Marked acceptance stack annual coverage `UNVERIFIED`. Cited primary statutory legal sources for BSC Modification P278 establishing administrative $TLM = 1.0$ for interconnector BMUs. |
 | **F-06** | High | BSC Section T version mapping (v38.0 / v41.0) unevidenced | Marked specific Section T version numbers as `UNVERIFIED`. Retained confirmed 2024 BSC release milestones (2 April and 7 November 2024) and approved modification names (P415, P473, P451). |
@@ -544,4 +557,18 @@ This revision directly resolves all 16 findings raised in the GPT review ([gpt-2
 | **F-13** | Medium | Item 9 misclassified as acquired dataset instead of internal implementation | Reclassified Deficit 9 as internal software/schema engineering (`INT-01`, D-56 class **N/A**, status **PENDING**). Moved into dedicated internal engineering note. Noted crate does not yet exist. Maintained CGMES and Frictionless strictly as external design references. |
 | **F-14** | High | Weather fallback claimed to recover spatial detail from national outturns | Clarified that aggregate-outturn inverse-distance weighting is an emergency reconstruction fallback that **cannot recover lost spatial detail** or local weather patterns. Required located donor stations and explicit holdout validation split to prevent circularity. Marked power-law shear and PV temperature derating defaults as `ASSUMPTION: [Q-P-06, Q-P-07]`. |
 | **F-15** | Medium | Summary interval count had erroneous period count; tzdata pin needed date | Corrected summary interval count to **46 periods** for spring forward and **50 periods** for autumn fall back. Documented IANA tzdata 2024b release date (4 September 2024, public domain). Clarified WRC employee statutory entitlements vs transmission demand calendar. |
-| **F-16** | Medium | Licence/access conclusions lacked resource-specific evidence and consistent summaries | Provided resource-specific licence classifications across all candidates. Noted interactive terms acceptance required for Copernicus CDS. Reflected mixed and unverified rights accurately in Summary Rows 1, 4, 6, and 7. Corrected Row 9 to D-56 N/A. |
+| **F-16** | Medium | Licence/access conclusions lacked resource-specific evidence and consistent summaries | Provided resource-specific licence classifications across all candidates. Noted interactive terms acceptance required for Copernicus CDS. Reflected mixed and unverified rights accurately in Summary Rows 1, 3, 4, 6, 7, and 8. Corrected Row 9 to D-56 N/A. |
+
+### Round 2 Review Corrections (R2-01 through R2-07)
+
+This revision directly resolves all seven findings raised in the second GPT review ([gpt-2026-11-15-pr58-deficit-sources-r2.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md)):
+
+| Finding ID | Severity | Finding Summary | Action Taken / Fix in This Revision |
+|:---:|:---:|---|---|
+| **R2-01** | High | All seven claimed assumption questions were missing from questionnaire | Added open questions `Q-P-01` through `Q-P-07` to `docs/requirements/02-questionnaire.md` under new Section P, complete with rationale, options, and recommended engineering defaults. Linked each assumption in `m1-deficit-sources.md` to its respective questionnaire anchor (`#q-p-01` through `#q-p-07`). Tagged line 54 with explicit `[Q-P-01]`. |
+| **R2-02** | Medium | Broken source links (ETYS, MIDAS Open UUID, CDS licence PDF, ENTSO-E CIM) | Repaired all four broken links: (1) updated NESO ETYS URL to working archive page (`/publications/electricity-ten-year-statement-etys/etys-documents-and-appendices`) and direct Appendix B workbook link (`/document/351916/download`); (2) replaced broken MIDAS UUID with collection record (`/uuid/dbd451271eb04662beade68da43546e1/`) and disclosed that v202407 ends in 2023; (3) cited current ERA5 dataset licence via CDS catalogue API (`CC-BY-4.0` via SPDX), keeping account/acceptance prerequisites separate; (4) replaced 404 ENTSO-E link with working CGMES library (`/data/cim/cim-for-grid-models-exchange/`) and noted standard-only status without acquired network model artifacts. |
+| **R2-03** | High | Summary rights matrix omitted restricted/unverified inputs (Rows 3, 7, 8) | Reconciled summary rows with body: (1) updated Row 3 to `Mixed (open-commercial GB / research-only ROI lineage (PC-3))` because Irish micro-PV derives from ESB statutory reports (`Candidate 3.3`); (2) updated Row 7 to `Mixed / UNVERIFIED` because Met Éireann station-level grants remain unverified under generic portal listings; (3) reclassified Candidate 8.1 / Row 8 to `Mixed / unverified ROI (open-commercial GOV.UK / public domain IANA / unverified WRC)` because WRC website disclaimer does not grant open commercial reuse. Updated response row F-16. |
+| **R2-04** | Medium | Interpolated price inputs lacked provenance, cadence masks, and as-of policy | Registered explicit resampling, cadence, and as-of policy under Section 6: declared two-sided linear interpolation between monthly/fortnightly points as an assumption valid strictly in `reconstruction` mode (D-70); required forward step-holding from verified release timestamp in `as-of` backtest mode (D-70 / ADR 0002); mandated boolean `is_imputed` / `observed_mask` flag in schema; explicitly separated UKA (ICE) from EUA (EEX) and marked EUA auction series unacquired / unresolved. |
+| **R2-05** | Medium | Live SEMOpx schedule presented as pinned 2024 baseline without dated procedure | Reclassified SEMOpx schedule (IDA1 17:30 D-1, IDA2 08:00 D, IDA3 14:00 D) as a **current publisher reference**; marked historical 2024 applicability (including IDC horizon, clock convention, and price boundaries) as `UNVERIFIED / pending historical pinning` due to presence of post-2024 material on live portal; updated Section 5 recommendation and Summary Row 5 accordingly. |
+| **R2-06** | Medium | HVDC loss formula had no fixed term while text claimed "fixed plus linear" | Replaced contradictory wording with exact description: "constant fractional exploratory proxy with omitted standby losses" ($0.75\%$ per converter station, $0.30\%/100\text{ km}$ cable); stated that **no applicable CIGRE source has been identified** prescribing this pair; disclosed that true converters have fixed standby losses at zero transfer as well as linear/quadratic terms and cables have $I^2 R$ losses; aligned Summary Row 4 and Section 4 disclosures. |
+| **R2-07** | Low | ADR 0002 and review links resolved outside `docs/` | Corrected relative links from `m1-deficit-sources.md`: fixed ADR 0002 link to `../architecture/adr/0002-network-and-scenario-data-model.md` and review link to `../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources.md`. Replaced blanket resolution claim with accurate two-round disposition. |
