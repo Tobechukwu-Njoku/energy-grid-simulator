@@ -7,6 +7,23 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 R15V2-01 completion (2026-11-15 UTC):** reviewed the complete-value
+credential fix at `652f15d` against the second revision-15 verification fixture.
+The previously untested commit passes all 247 tests, including its four new
+regressions for multiword connection passwords, literal boundaries, whole-value
+placeholders and bare authorities. No additional production-code change is needed
+for the requested cases. Three more tests check complete unquoted parser values
+and consumed lengths, anchored template classification, and Markdown controls
+across one/two/three-backtick delimiters, punctuation and quoted/braced values.
+The original finding also now covers end-of-input, LF/CRLF, semicolon and a
+following connection attribute. All seven focused regressions pass. Final
+validation passes: `cargo test -j 2` (250 tests, zero failures),
+`cargo fmt --all --check`, `cargo xtask all`, and
+`cargo xtask provenance --base origin/main --head HEAD`.
+Build output stays in this worktree's `target/`; final validation uses a
+disk-backed, space-free TMPDIR and two build/test workers. This is local repair
+evidence, not independent review or merge approval.
+
 **PR #23 post-merge policy repair (2026-11-15 UTC):** reproduced 22 secret-scan
 findings in the round-14 report imported from main. False positives at report
 lines 49, 51, 70, 72, 109, 111, 113, 140, 147 and 343 came from Markdown delimiters
