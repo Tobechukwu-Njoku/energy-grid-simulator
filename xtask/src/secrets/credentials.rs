@@ -174,7 +174,7 @@ fn netrc(text: &str, found: &mut Vec<Match>) {
 fn markdown_value<'a>(prefix: &str, text: &'a str) -> &'a str {
     static CREDENTIAL_OPENER: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
-            r#"(?i)(?:^|[^\\`])(?P<delimiter>`+)(?:[a-z_][a-z0-9_.-]*=[^;`"'\r\n]*;[ \t]*|jdbc:[^\s"'`]*[?&;])*$"#,
+            r#"(?i)(?:^|[^\\`])(?P<delimiter>`+)(?:[a-z_][a-z0-9_.-]*=[^;`"'\r\n]*;[ \t]*|jdbc:[^\s"'`]*[?&;])*(?:[?&])?$"#,
         )
         .expect("credential Markdown opener regex")
     });
@@ -318,7 +318,12 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
                 .any(|suffix| key.ends_with(suffix))
         {
             let matched = capture.get(0).expect("whole match");
-            let value_text = markdown_value(&text[..matched.start()], &text[matched.end()..]);
+            let raw_value = &text[matched.end()..];
+            let value_text = match raw_value.chars().next() {
+                Some('\'' | '"') => raw_value,
+                Some('{') if !raw_value.starts_with("{{") => raw_value,
+                _ => markdown_value(&text[..matched.start()], raw_value),
+            };
             let (value, length) = assignment_value(value_text);
             if literal(&percent_decode(&value)) {
                 found.push((
@@ -757,6 +762,20 @@ mod tests {
             &format!(r"Use \`{key}={value};"),
             Some("local-connection-password"),
         );
+        for (opening, closing) in [("{", "}"), ("\"", "\""), ("'", "'")] {
+            check(
+                &format!("Use `{key}={opening}{value}{closing}` in a fixture."),
+                Some("local-connection-password"),
+            );
+        }
+        for delimiter in ["`", "``", "```"] {
+            for attribute in ["Pwd", "&password", "?password", "Server=...;Pwd"] {
+                check(
+                    &format!("Use {delimiter}{attribute}=...{delimiter} in examples."),
+                    None,
+                );
+            }
+        }
     }
 
     #[test]

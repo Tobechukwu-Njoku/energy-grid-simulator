@@ -7,6 +7,25 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 R15V3 blocking repairs (2026-11-15 UTC):** R15V3-01 is a literal
+synthetic authority, not a classifier false positive: redacted it to the existing
+`user:password@host` template without changing bare-authority detection. R15V3-02
+now binds Markdown delimiters to the credential's own assignment, connection
+attributes or JDBC/query syntax; unrelated source backticks and escaped openers
+cannot truncate a password to a placeholder. Both exact reviewer fixtures have
+regressions, including the Rust marker control and escaped-opener variant; the
+one/two/three-backtick placeholder controls remain accepted.
+Audited every review report without report exemptions and searched credential
+examples manually. Seven reports now use placeholders for API/runner tokens,
+database passwords, pgpass/netrc values, encoded key data and the two verification
+reproductions. Historical findings and FOLLOW-UP dispositions are preserved;
+exact synthetic regression inputs remain reconstructed in tests. Redacted PuTTY
+header examples retain exact whole-block hash exemptions; obsolete literal-example
+exemptions are removed (no new format or path allowlist). The existing
+changed-private-body rejection test uses the redacted fixture. Validation results
+will be recorded after the complete gates run. No
+independent-review, bootstrap-attestation or merge approval is claimed.
+
 **PR #23 R15V2-01 completion (2026-11-15 UTC):** reviewed the complete-value
 credential fix at `652f15d` against the second revision-15 verification fixture.
 The previously untested commit passes all 247 tests, including its four new

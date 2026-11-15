@@ -924,7 +924,7 @@ fn r13_01_exempt_header_does_not_admit_a_new_key_body() {
     let found = repository::provenance(&ctx(&repo)).expect("provenance");
     assert!(found.is_empty(), "{:?}", files(&found));
     // Same approved headers, a different body and a MAC under ADV23R12-01.
-    let body = "  Private-Lines: 1\n  AAAAYCe\n";
+    let body = "  Private-Lines: 1\n  <EXAMPLE_PRIVATE_KEY>\n";
     assert_eq!(text.matches(body).count(), 1);
     let changed = text.replace(
         body,
