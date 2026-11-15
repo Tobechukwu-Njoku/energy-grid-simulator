@@ -1053,3 +1053,75 @@ fn r13_03_secrets_and_data_added_then_removed_in_a_range_fail() {
     let found = history(&repo, &base);
     assert!(found.is_empty(), "{:?}", files(&found));
 }
+
+#[test]
+fn r15_history_retains_deleted_and_reclassified_provenance() {
+    for sources in [false, true] {
+        for base_record in [false, true] {
+            for retained in [false, true] {
+                let repo = Repo::new();
+                repo.write("data/manifest.toml", MANIFEST);
+                let record = if sources {
+                    "extra/sources.tsv"
+                } else {
+                    "extra/manifest.toml"
+                };
+                let restricted = if sources {
+                    "research-only\treview.csv\thttps://example.org/review\n"
+                } else {
+                    "[[datasets]]\nname = 'review'\nfilename = 'review.csv'\nlicence_status = 'research-only'\nlicence = 'Research only'\n"
+                };
+                if base_record {
+                    repo.write(record, restricted);
+                }
+                let base = repo.commit("data: baseline");
+                repo.write(record, restricted);
+                repo.write("spikes/data/samples/review.csv", "a,b\n1,2\n");
+                let introduced = repo.commit("data: temporary sample");
+                if retained {
+                    repo.write(
+                        record,
+                        &restricted.replace("research-only", "open-commercial"),
+                    );
+                } else {
+                    std::fs::remove_file(repo.path().join(record)).expect("remove declaration");
+                    std::fs::remove_file(repo.path().join("spikes/data/samples/review.csv"))
+                        .expect("remove sample");
+                }
+                repo.commit("data: clean up");
+                let found = history(&repo, &base);
+                assert!(
+                    found.iter().any(|finding| {
+                        finding.file.as_deref() == Some("spikes/data/samples/review.csv")
+                            && finding.message.contains("research-only")
+                            && finding.message.contains(&introduced[..12])
+                    }),
+                    "{:?}",
+                    files(&found)
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn r15_history_delimited_data_and_registered_controls() {
+    for extension in ["csv", "tsv"] {
+        for registered in [false, true] {
+            let repo = Repo::new();
+            repo.write(
+                "data/manifest.toml",
+                &MANIFEST.replace("demand.csv", &format!("demand.{extension}")),
+            );
+            let base = repo.commit("data: baseline");
+            let name = if registered { "demand" } else { "unregistered" };
+            let path = format!("spikes/data/samples/{name}.{extension}");
+            repo.write(&path, "a,b\n1,2\n");
+            repo.commit("data: temporary sample");
+            std::fs::remove_file(repo.path().join(&path)).expect("remove sample");
+            repo.commit("data: remove sample");
+            let found = history(&repo, &base);
+            assert_eq!(found.is_empty(), registered, "{:?}", files(&found));
+        }
+    }
+}

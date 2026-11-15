@@ -984,7 +984,12 @@ fn check_paths_inner(
                     .chain(&binary_types)
                     .any(|allowed| allowed.eq_ignore_ascii_case(&ext))
             });
-        let is_data = (type_allowlist && !type_allowed) || content.is_some();
+        let delimited = extension(name).is_some_and(|ext| {
+            [".csv", ".tsv"]
+                .iter()
+                .any(|kind| kind.eq_ignore_ascii_case(&ext))
+        });
+        let is_data = (type_allowlist && !type_allowed) || delimited || content.is_some();
         if !is_data || listed_metadata {
             continue;
         }
@@ -1413,13 +1418,60 @@ impl HistoryScan<'_> {
             }
         }
         let mut findings = Vec::new();
+        let mut records = self.records.to_vec();
+        let mut declarations = versions.clone();
+        if let Some(base) = &range.base {
+            let listing = crate::util::git(repo, &["ls-tree", "-r", "-z", "--full-tree", base])?;
+            for entry in listing
+                .split(|byte| *byte == 0)
+                .filter(|entry| !entry.is_empty())
+            {
+                let entry = String::from_utf8_lossy(entry);
+                if let Some((meta, path)) = entry.split_once('\t')
+                    && let Some(blob) = meta.split(' ').nth(2)
+                    && [MANIFEST_NAME, SOURCES_NAME]
+                        .contains(&path.rsplit('/').next().unwrap_or(path))
+                {
+                    declarations.insert(
+                        (path.to_owned(), blob.to_owned()),
+                        commit(base)?[..12].to_owned(),
+                    );
+                }
+            }
+        }
+        for ((path, blob), sha) in &declarations {
+            let name = path.rsplit('/').next().unwrap_or(path);
+            if ![MANIFEST_NAME, SOURCES_NAME].contains(&name) {
+                continue;
+            }
+            let bytes = crate::util::git(repo, &["cat-file", "blob", blob])?;
+            let Some(text) = decode_text(&bytes) else {
+                findings.push(Finding::at(
+                    path,
+                    None,
+                    format!("in commit {sha}: undecodable provenance record"),
+                ));
+                continue;
+            };
+            let (invalid, entries) = if name == MANIFEST_NAME {
+                manifest_records(path, &text)
+            } else {
+                sources_records(path, &text)
+            };
+            findings.extend(invalid.into_iter().map(|finding| Finding {
+                message: format!("in commit {sha}: {}", finding.message),
+                ..finding
+            }));
+            records.extend(
+                entries
+                    .into_iter()
+                    .filter(|(status, _)| status == "research-only"),
+            );
+        }
         let mut paths = Vec::new();
         let mut sniffed = BTreeMap::new();
         let mut origin: BTreeMap<String, String> = BTreeMap::new();
         for ((path, blob), sha) in &versions {
-            if at_head.contains(&(path.clone(), blob.clone())) {
-                continue;
-            }
             paths.push(path.clone());
             origin.entry(path.clone()).or_insert_with(|| sha.clone());
             if !new_objects.contains(blob) {
@@ -1433,6 +1485,9 @@ impl HistoryScan<'_> {
             });
             if let Some(format) = format {
                 sniffed.insert(path.clone(), format);
+            }
+            if at_head.contains(&(path.clone(), blob.clone())) {
+                continue;
             }
             if self.secrets.is_pinned_copy(path, || blob.clone()) {
                 continue;
@@ -1448,7 +1503,7 @@ impl HistoryScan<'_> {
         }
         paths.sort();
         paths.dedup();
-        for finding in check_paths_inner(&paths, self.document, self.records, &sniffed, false) {
+        for finding in check_paths_inner(&paths, self.document, &records, &sniffed, false) {
             let sha = finding
                 .file
                 .as_ref()
