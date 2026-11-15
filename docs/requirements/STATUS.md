@@ -7,6 +7,9 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #58 M1 deficit-sources revision 2 (2026-11-15 UTC):**
+Revised `docs/research/m1-deficit-sources.md` and `docs/requirements/02-questionnaire.md` to address R2-01–R2-07; round-3 corrections C-01–C-06 (GPT final re-check) applied from GPT's R2 review (`reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md`). Added questions Q-P-01..Q-P-07 to questionnaire Section P; repaired all broken publisher and licence URLs (ETYS archive, MIDAS Open collection UUID with v202407 coverage caveat, ERA5 CDS API CC-BY-4.0 licence, ENTSO-E CGMES library); reconciled summary licence classes with body (rows 3, 7, 8); registered explicit price interpolation and as-of policy under D-70/ADR 0002; qualified live SEMOpx trading schedule as current reference pending historical 2024 pinning; harmonised HVDC loss proxy description as constant fractional exploratory proxy with omitted standby losses; and fixed repository relative links to ADR 0002 and earlier reviews.
+
 **PR #58 M1 deficit-sources final re-check (2026-11-15 UTC):** exact head
 `739bb70d0e1bb772ceae49f3afe99353a054b10c`; verdict **accept-with-corrections**.
 Repaired publisher pages read without dataset downloads. R2-02/R2-03/R2-05/R2-06
