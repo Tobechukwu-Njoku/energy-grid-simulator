@@ -47,7 +47,7 @@ ETYS 2025/26 and DNO 2025/26 releases represent forward-looking planning snapsho
 - **Evaluation:** Necessary for 132 kV distribution impedances and equipment ratings across England & Wales. However, archived November 2024 editions for all DNOs are not fully established without record-level inspection; units differ across DNOs (SPM reports % on 100 MVA, others report ohms or pu), and individual switchgear segments lack impedances.
 
 ### Recommendation & Proxy Formulation
-- **Recommended Candidate:** Combine **NESO ETYS 2024 Appendix B** (`Candidate 1.1`, metadata inspected) for GB transmission lines with **Elexon BMRS BM Unit API + MDD** (`Candidate 1.2`) for GSP/BMU asset crosswalks, supplemented by **NGED and SSEN LTDS 2024 Table 1/2** (`Candidate 1.3`) for open-commercial 132 kV distribution.
+- **Recommended Candidate:** Combine **NESO ETYS 2024 Appendix B** (`Candidate 1.1`, metadata inspected) for GB transmission lines with **Elexon BMRS BM Unit API + MDD** (`Candidate 1.2`) for GSP/BMU asset crosswalks, supplemented by **NGED and SSEN LTDS 2024 Table 1/2** (`Candidate 1.3`) for open-commercial 132 kV distribution. **Coverage is partial:** NGED and SSEN do not cover all 14 DNO licence areas, and ETYS excludes England/Wales 132 kV circuits; the remaining DNO-area circuit baseline is incomplete pending dated LTDS acquisition and verification.
 - **Standard Engineering Proxy / Assumptions:**
   1. *Unit Base Harmonisation:* Convert all branch impedances to standard per-unit on a 100 MVA system base ($S_b = 100\text{ MVA}$). For branches given in physical ohms at nominal voltage $V_b = 132\text{ kV}$, base impedance is $Z_{\text{base}} = V_b^2 / S_b = (132^2) / 100 = 174.24\ \Omega$. For branches given in percentage on 100 MVA, divide by 100.
   2. *Continuous vs Post-Fault Rating Proxy:* Continuous operational thermal ratings remain missing where DNO tables report only a single post-fault or emergency rating (e.g. 1-hour or 3-minute overload rating). ENA Engineering Recommendation P27 does not prescribe a universal 0.88 conversion factor across overhead lines, cables, and transformers; overload duration, conductor types, and ambient conditions govern actual thermal envelopes.
@@ -269,7 +269,7 @@ Wholesale market settlement and trading procedures require dated, version-pinned
     - **IDA1:** Order book gate closure at **17:30 D-1** (verified on live SEMOpx web page).
     - **IDA2:** Order book gate closure at **08:00 D**.
     - **IDA3:** Order book gate closure at **14:00 D**.
-  - *Intraday Continuous (IDC):* Continuous trading up to 30 minutes prior to delivery.
+  - *Intraday Continuous (IDC):* The current [SEMOpx Operating Procedures V9.0](https://www.semopx.com/sites/semopx/files/2025-04/SEMOpx%20Operating%20Procedures%20V9.0.docx) close the Order Book one hour before the start of each Trading Period; historical 2024 applicability remains UNVERIFIED pending dated pinning.
   - *Historical Pinning Caveat:* While the order book timings for IDA1–IDA3 are confirmed on the live publisher portal, the [current SEMOpx rules hub](https://www.semopx.com/rules-and-monitoring/market-rules) contains 2026-dated material, and the live intraday page links procedures under a `2025-04` path. Neither establishes the exact historical gates, continuous-trading horizon, timezone/DST conventions, price limits (-€500/MWh to +€4,000/MWh), or effective intervals for every product throughout calendar year 2024. Therefore, the schedule is treated strictly as a **current publisher reference**, and historical 2024 applicability (including IDC and gate timings) is designated **`UNVERIFIED`** pending identification of dated operating procedures in force in 2024.
 
 #### Candidate 5.3: SEM Committee I-SEM Trading and Settlement Code (Part B Dated Baseline)
@@ -339,13 +339,13 @@ Unit dispatch modelling requires daily/half-hourly Short-Run Marginal Cost (SRMC
   - For renewable subsidy benchmarks: **Ofgem RO Determinations** (`Candidate 6.3`, `open-commercial`), incorporating the 1 April 2024 obligation-year transition (£59.01 $\to$ £64.73).
   - For commodity vectors: Use **World Bank Commodity Price Data** (`SRC-37b`, `open-commercial`, CC BY 4.0 for Bank-produced Pink Sheet data) with registered interpolation/as-of policy, paired with fortnightly **UK ETS auction results** (`Candidate 6.1`, `research-only / unverified`, PC-5). EU ETS (EUA) auction acquisition from EEX remains unresolved.
   - For existing plant operating parameters: Treat technology parameters as explicit assumptions (`Candidate 6.2`).
-- **Resampling, Cadence, and As-Of Policy (ASSUMPTION):**
+- **ASSUMPTION:** [Q-P-08](../requirements/02-questionnaire.md#q-p-08) Resampling, cadence, and as-of policy (proposed).
   - Monthly World Bank Pink Sheet commodity averages and fortnightly UK ETS auction clearings are not observed daily or half-hourly spot prices.
   - Converting monthly averages to daily fuel inputs via interpolation or forward-holding is an author-proposed assumption:
     - **Reconstruction Mode (D-70):** Linear interpolation between month $m$ and month $m+1$ uses information published after simulated delivery day $t$. All runs using two-sided linear interpolation must be declared and logged as **reconstruction** (D-70).
     - **As-Of / Forecast Backtest Mode (D-70 / ADR 0002):** In backtest mode, only prices published before simulated knowledge cut $t_{\text{cut}}$ may be ingested. Monthly Pink Sheet updates (typically released by the World Bank between the 3rd and 5th business day of month $m+1$) must be step-held forward strictly from their verified publication date; prior to publication, the preceding month's price is held constant.
     - **Cadence & Mask Preservation:** The data pipeline must preserve original publication cadence and persist an explicit boolean `is_imputed` / `observed_mask` for every timestamp, preventing synthetic daily prices from masquerading as observed spot pricing.
-  - Fortnightly UK ETS auction clearings are similarly step-held forward between auction dates with `is_imputed = true` on non-auction days.
+  - Fortnightly UK ETS auction clearings are similarly step-held forward between auction dates with `is_imputed = true` on non-auction days. Auction values become eligible only from their verified publication timestamp, subject to the same knowledge cut.
 - **Generator Short-Run Marginal Cost (SRMC) Proxy Formulation:**
   For each thermal generator unit $g$ with fuel type $f \in \{\text{Gas}, \text{Coal}, \text{Oil}, \text{Biomass}\}$:
   $$\text{SRMC}_g(t) = \frac{\text{FuelPrice}_f(t) + \text{EmissionFactor}_f \times \text{CarbonPrice}(t)}{\eta_g} + \text{VOM}_g$$
@@ -511,7 +511,7 @@ In accordance with ADR 0002, the pending internal implementation (`INT-01`) must
    - `publication_time`: Verified source publication or notice timestamp (labeled as `reconstruction` where unavailable).
    - `acquisition_time`: SHA-256 manifest ingestion timestamp.
 3. *Independent Content Hashing:*
-   - `input_identity_hash`: Deterministic SHA-256 hash computed over canonicalized scenario TOML, entity parameters, time series arrays, and referenced dataset manifest hashes.
+   - `input_identity_hash`: Deterministic SHA-256 hash computed over canonicalized scenario TOML excluding the `[execution]` table, entity parameters, time series arrays, and referenced dataset manifest hashes.
    - `execution_identity_hash`: SHA-256 hash computed over `input_identity_hash` combined with solver binary version, compiler flags, hardware runner ID, tolerance parameters, and seed.
 4. *Rights Lineage Tags:* Every input dataset carries an auditable classification tag (`open-commercial` or `research-only`) mapped to canonical pre-commercial tracking IDs (`PC-1` through `PC-7`), preventing commingling in commercial SaaS profiles.
 5. *Test Fixtures:* Minimal synthetic test scenarios with verifiable SHA-256 release locks to validate deserialization, schema validation, and constraint resolution.
@@ -561,7 +561,7 @@ This section documents revisions made to resolve reviewer findings across Round 
 
 ### Round 2 Review Corrections (R2-01 through R2-07)
 
-This revision directly resolves all seven findings raised in the second GPT review ([gpt-2026-11-15-pr58-deficit-sources-r2.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md)):
+This revision addresses R2-01–R2-07; the round-3 corrections C-01–C-06 from [gpt-2026-11-15-pr58-deficit-sources-r3.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources-r3.md) are applied:
 
 | Finding ID | Severity | Finding Summary | Action Taken / Fix in This Revision |
 |:---:|:---:|---|---|
