@@ -7,6 +7,17 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #58 M1 deficit-sources round-2 re-check (2026-11-15 UTC):** exact head
+`67a9d3d84091dd329ae212f8f2333e59dca4cdbb`; verdict **reject**.
+All sixteen original findings mapped; six requested publisher spot-checks supported.
+Seven remaining findings cover missing Q-P-01–Q-P-07 questionnaire entries,
+unrepaired source links, restricted/unverified rights omitted from summary rows,
+price interpolation/as-of policy, unpinned 2024 SEMOpx schedules, inconsistent
+HVDC proxy wording and broken repository references. No datasets downloaded;
+PR #58 unchanged. No deficit closure, modelling-default approval or commercial
+clearance claimed. Evidence and suggested fixes:
+[round-2 report](reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md).
+
 **PR #58 M1 deficit-sources review (2026-11-15 UTC):** exact head
 `db59b5b44adec4835fdd1d82d9ba8b94ebfec861`; verdict **reject**.
 Publisher pages, catalogue/API metadata and reference reports checked without
