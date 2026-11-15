@@ -123,48 +123,56 @@ Elexon FUELHH outturn records report transmission-connected generation only and 
 
 ### Candidate Sources
 
-#### Candidate 3.1: Sheffield Solar PV_Live API
-- **URL:** [https://www.solar.sheffield.ac.uk/pvlive/](https://www.solar.sheffield.ac.uk/pvlive/) and API Portal: [https://api.solar.sheffield.ac.uk/pvlive/api/v4/](https://api.solar.sheffield.ac.uk/pvlive/api/v4/)
-- **Publisher:** Sheffield Solar (University of Sheffield, funded by NESO)
-- **Licence Text / Link:** [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) per official terms ([Sheffield Solar Terms](https://api.solar.sheffield.ac.uk/)).
+#### Candidate 3.1: Sheffield Solar PV_Live
+- **URL:** [https://www.solar.sheffield.ac.uk/pvlive/](https://www.solar.sheffield.ac.uk/pvlive/)
+- **Publisher:** Sheffield Solar (University of Sheffield)
+- **Licence Text / Link:** [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) per publisher page ("PV_Live by Sheffield Solar is licensed under CC BY 4.0").
 - **Likely D-56 Class:** `open-commercial`
-- **Access Method:** Open REST API (JSON format; no authentication key required for standard queries)
-- **Coverage:** Great Britain; half-hourly embedded solar generation outturns and capacity estimates (MW) national aggregate, DNO region, and GSP Group levels for 2024.
-- **Evaluation:** The industry-standard reference for unmetered embedded solar generation in GB. Direct input into NESO control room forecasting. Provides audited half-hourly estimates with clear attribution terms. Does not cover Northern Ireland or the Republic of Ireland.
+- **Access Method:** Open REST API / download (JSON / CSV; standard queries do not require credentials).
+- **Coverage:** Great Britain; half-hourly embedded solar generation outturns and capacity estimates (MW) at national aggregate, DNO region, and GSP Group levels from 2013 through 2024.
+- **Evaluation:** Industry reference for unmetered embedded solar generation in GB. Metadata inspected; CC BY 4.0 licence is confirmed on the publisher page. However, endpoint schema, regional field completeness, and uninterrupted 2024 series availability remain to be verified at record level during ingestion. Does not cover Northern Ireland or the Republic of Ireland.
 
-#### Candidate 3.2: NESO Data Portal Historic Demand Data 2024
-- **URL:** [https://api.neso.energy/api/3/action/package_show?id=888229c4-810e-477d-93cb-39f38f72a910](https://api.neso.energy/api/3/action/package_show?id=888229c4-810e-477d-93cb-39f38f72a910)
+#### Candidate 3.2: NESO Historic Demand Data 2024
+- **URL:** [https://api.neso.energy/api/3/action/package_show?id=historic-demand-data](https://api.neso.energy/api/3/action/package_show?id=historic-demand-data)
 - **Publisher:** National Energy System Operator (NESO)
 - **Licence Text / Link:** [National Energy SO Open Data Licence v1.0](https://www.neso.energy/data-portal/neso-open-licence)
 - **Likely D-56 Class:** `open-commercial`
-- **Access Method:** Open CKAN API / direct CSV download
-- **Coverage:** Great Britain; continuous 17,568 half-hourly settlement periods for 2024.
-- **Evaluation:** Authoritatively reports `ND` (National Demand), `TSD` (Transmission System Demand), `ENGLAND_WALES_DEMAND`, `EMBEDDED_SOLAR_GENERATION`, `EMBEDDED_WIND_GENERATION`, and `PUMP_STORAGE_PUMPING`. Confirms official operational demand accounting boundaries.
+- **Access Method:** Open CKAN REST API / direct CSV download
+- **Coverage:** Great Britain; 2024 operational demand records across settlement periods.
+- **Evaluation:** Metadata inspected. Authoritatively reports `ND` (National Demand), `TSD` (Transmission System Demand), `ENGLAND_WALES_DEMAND`, `EMBEDDED_SOLAR_GENERATION`, `EMBEDDED_WIND_GENERATION`, and `PUMP_STORAGE_PUMPING`. Confirms official operational demand accounting boundaries. However, metadata inspection does not prove an uninterrupted 17,568-row panel; record-level completeness and station-load / metering reconciliation must be verified during pipeline ingestion.
 
-#### Candidate 3.3: ESB Networks & SEAI Microgeneration Registers (All-Island Embedded Capacity)
-- **URL:** [https://www.esbnetworks.ie/](https://www.esbnetworks.ie/) and [https://www.seai.ie/data-and-insights/seai-statistics/key-statistics/renewables/](https://www.seai.ie/data-and-insights/seai-statistics/key-statistics/renewables/)
+#### Candidate 3.3: ESB Networks & SEAI Microgeneration Reports (All-Island Embedded Capacity)
+- **URL:** ESB Networks Annual Performance Reports: [2023 Report](https://media.esbnetworks.ie/media/docs/default-source/publications/distribution-annual-performance-report-2023-accessibled434eedca532460d959ccfba328306eb.pdf), [2024 Report](https://media.esbnetworks.ie/media/docs/default-source/publications/distribution-annual-performance-report-2024.pdf), and [SEAI Renewables Statistics](https://www.seai.ie/data-and-insights/seai-statistics/key-statistics/renewables/)
 - **Publisher:** ESB Networks & Sustainable Energy Authority of Ireland (SEAI)
-- **Licence Text / Link:** SEAI Open Data / Government of Ireland Open Data Licence (OGL Ireland / CC BY 4.0); ESB Networks copyright disclaimers.
-- **Likely D-56 Class:** `open-commercial` (SEAI statistical reports) / `research-only` (ESB corporate updates)
-- **Access Method:** Open direct download (annual reports and periodic statistical CSV extracts)
-- **Coverage:** Republic of Ireland; cumulative registered microgeneration capacity across 2024 (progressing from ~350 MW across ~79,000 installations at year-start to 498 MW across 121,800 installations at year-end, averaging ~800 additions per week).
-- **Evaluation:** Verifies installed capacity baselines for behind-the-meter embedded solar in Ireland. However, neither ESB Networks nor EirGrid publishes half-hourly metered or estimated outturn time series for embedded microgeneration.
+- **Licence Text / Link:** SEAI Open Data (OGL Ireland / CC BY 4.0); ESB Networks corporate publications (copyright all rights reserved).
+- **Likely D-56 Class:** `open-commercial` (SEAI extracts) / `research-only` (ESB annual performance reports).
+- **Access Method:** Open direct download (PDF annual reports and periodic statistical CSV extracts).
+- **Coverage:** Republic of Ireland (ROI only); operational microgeneration fleet:
+  - *End-2023:* **78,400 connections and approximately 300 MW** (ESB 2023 Report, p. 5).
+  - *End-2024:* **121,700 connections and approximately 500 MW** (ESB 2024 Report, pp. 5, 64).
+- **Evaluation:** Primary publisher figures establish approximately 300 MW (end-2023) to 500 MW (end-2024) microgeneration capacity in ROI. However:
+  - Precise intra-year trajectories (such as 350 $\to$ 498 MW) are not published in these reports and constitute an unverified interpolation.
+  - Connection and application counts do not automatically equal metered commissioned generation.
+  - ESB covers the Republic of Ireland only; Northern Ireland embedded microgeneration is not reported here and remains an open data gap.
+  - Neither ESB nor EirGrid publishes half-hourly metered microgeneration outturns.
 
 ### Recommendation & Proxy Formulation
 - **Recommended Candidate:**
   - For GB: Use **NESO Historic Demand Data 2024** (`Candidate 3.2`) as primary demand identity inputs, verified against **Sheffield Solar PV_Live** (`Candidate 3.1`) for embedded solar profiles.
-  - For Ireland: Use **SEAI / ESB Networks** (`Candidate 3.3`) capacity baselines scaled by solar radiation proxies.
+  - For Ireland: Use **ESB Networks reported annual endpoints** (~300 MW to ~500 MW, `Candidate 3.3`), with Northern Ireland microgeneration tracked as an open deficit.
 - **Demand Accounting Identity Formulation:**
-  As verified from NESO settlement documentation, National Demand ($ND$) already excludes station load, interconnector exports, and pumped storage pumping (which Transmission System Demand, $TSD$, adds back). Thus:
+  As verified from NESO settlement documentation, National Demand ($ND$) already excludes station load, interconnector exports, and pumped storage pumping (which Transmission System Demand, $TSD$, adds back):
   $$ND = TSD - \text{Interconnector Exports} - \text{Pumped Storage Pumping} - \text{Station Load}$$
   The starting gross underlying demand identity for GB is:
   $$\text{Gross Underlying Demand} = ND + \text{Embedded Solar} + \text{Embedded Wind}$$
-  Pumped storage pumping is tracked as a distinct flexible storage demand asset, preventing double-subtraction.
-- **Irish Embedded Generation Proxy:**
-  Because EirGrid Smart Grid Dashboard reports only grid-connected utility-scale wind and solar, synthesize half-hourly Irish embedded solar via physical capacity scaling with dated fleet progression:
-  $$C_{\text{micro\_PV, IE}}(t) = 350\text{ MW} + (498\text{ MW} - 350\text{ MW}) \times \frac{t - t_0}{t_{\text{end}} - t_0}$$
-  $$P_{\text{embedded\_solar, IE}}(t) = C_{\text{micro\_PV, IE}}(t) \times \frac{P_{\text{utility\_solar, IE}}(t)}{C_{\text{utility\_solar, IE}}(t)}$$
-  (Applying uniform 498 MW across all of 2024 is acceptable only under an explicitly labeled fixed-fleet scenario, not as an historical outturn reconstruction).
+  Because $ND$ already excludes pumped storage pumping, pumping must **not** be subtracted from $ND$ again. Pumping is tracked as a separate flexible storage demand asset. Station load and metering adjustments must be reconciled during data ingestion.
+- **Irish Embedded Generation Proxy / Assumptions:**
+  Because half-hourly metered microgeneration is absent in Ireland, synthesize hourly Irish embedded solar profiles using an explicit assumption:
+  - **ASSUMPTION:** [Q-P-02] Linear interpolation between end-2023 (~300 MW) and end-2024 (~500 MW) is assumed for ROI micro-PV capacity:
+    $$C_{\text{micro\_PV, ROI}}(t) \approx 300\text{ MW} + (500\text{ MW} - 300\text{ MW}) \times \frac{t - t_0}{t_{\text{end}} - t_0}$$
+    Scaled generation is estimated by applying utility solar capacity factors:
+    $$P_{\text{embedded\_solar, ROI}}(t) = C_{\text{micro\_PV, ROI}}(t) \times \frac{P_{\text{utility\_solar, IE}}(t)}{C_{\text{utility\_solar, IE}}(t)}$$
+    This scaling carries significant uncertainty (differing tilt, orientation, inverter clipping, and geographic distribution between rooftop and utility solar) and is marked as an unvalidated working proxy. Northern Ireland embedded solar remains an open gap.
 
 ---
 
@@ -177,48 +185,56 @@ Directional physical loss parameters across the 10 cross-border and island inter
 
 #### Candidate 4.1: Regulated Interconnector Access Rules & Loss Methodology Filings
 - **URL:** Ofgem & National Regulatory Authority decision libraries:
-  - BritNed Access Rules (Schedule 3): [https://www.britned.com/](https://www.britned.com/) / [https://www.ofgem.gov.uk/](https://www.ofgem.gov.uk/)
-  - Nemo Link Access Rules: [https://www.nemolink.co.uk/](https://www.nemolink.co.uk/)
-  - ElecLink Access Rules: [https://www.eleclink.co.uk/](https://www.eleclink.co.uk/)
-  - Moyle & EWIC Joint Regulatory Decisions: [https://www.semcommittee.com/](https://www.semcommittee.com/) and [https://www.uregni.gov.uk/](https://www.uregni.gov.uk/)
+  - BritNed Access Rules: [BritNed 2025 Approved Rules](https://www.britned.com/wp-content/uploads/2025/09/BritNed-Access-Rules-2025-Approved.pdf) and [Ofgem 2024 Approval Decision](https://www.ofgem.gov.uk/decision/approval-modified-access-rules-britned-interconnector-pursuant-standard-licence-condition-11a-electricity-interconnector-licence-2024)
+  - Nemo Link Access Rules: [Ofgem Nemo Link Modified Access Rules](https://www.ofgem.gov.uk/sites/default/files/2022-11/The%20modified%20Access%20Rules%20-%20Nemo%20Link.pdf)
+  - ElecLink Loss Factor: [ElecLink Loss Factor Publisher Notice (20 May 2022)](https://cdn.prod.website-files.com/67b2dbc715938e08fe43fee1/67d9d09d90ce7e920a93ee31_ElecLink%20Loss%20Factor%20v2.pdf) and [ElecLink Loss Factor Page](https://www.eleclink.co.uk/publications/loss-factor)
+  - Moyle & EWIC Joint Regulatory Decisions: [SEM Committee](https://www.semcommittee.com/) and [Utility Regulator](https://www.uregni.gov.uk/)
 - **Publisher:** Interconnector Licensees (BritNed Development Ltd, Nemo Link Ltd, ElecLink Ltd, Mutual Energy, EirGrid Interconnector DAC) approved by National Regulatory Authorities (Ofgem, CREG, CRE, CRU, UR).
-- **Licence Text / Link:** Regulatory decision documents published under Open Government Licence (OGL v3.0) / public regulatory transparency; operator schedules under website terms.
-- **Likely D-56 Class:** Mixed (`open-commercial` for Ofgem/UR statutory decision notices; `research-only` for proprietary operator manuals).
-- **Access Method:** Open direct download (PDF filings and schedules)
+- **Licence Text / Link:** Regulatory decisions published under Open Government Licence (OGL v3.0); operator schedules under website terms (proprietary, `research-only`).
+- **Likely D-56 Class:** Mixed (`open-commercial` for Ofgem statutory decisions; `research-only` for operator manuals and proprietary schedules).
+- **Access Method:** Open direct download (PDF filings and schedules).
 - **Coverage:** GB and connected European / Irish markets (France, Netherlands, Belgium, Northern Ireland, Republic of Ireland); 2024 operational baseline.
-- **Evaluation:** Provides approved loss factor schedules:
-  - *BritNed:* Schedule 3 defines a 3.0% end-to-end loss factor (1.5% applied symmetrically from Mid North Sea reference point to shore).
-  - *Nemo Link:* Annex Business Rules specify a mid-point loss factor of 2.372% (symmetrical half-factor of 1.186% to each end) and an explicit market coupling technical loss factor of 2.344% in Euphemia.
-  - *ElecLink:* Deemed Metered Volume Allocation specifies an end-to-end loss factor of 2.9% (1.471% mid-interconnector loss factor).
-  - *Moyle & EWIC:* SEM Committee decisions align loss treatment with annual Transmission Loss Adjustment Factors (TLAFs).
+- **Evaluation:** Important distinction: these filings establish **commercial deemed-loss factors** for nomination accounting, NOT physical converter/cable loss models.
+  - *BritNed:* Schedule 3 of published Access Rules defines a **3.0% commercial loss factor** applied symmetrically around the Mid North Sea reference point. (The 2024 Ofgem decision approved specific modifications, but does not prove a historical 2024 factor panel).
+  - *ElecLink:* Publisher notice dated 20 May 2022 confirms an end-to-end loss factor of **2.9%** (mid-interconnector factor of 1.471%) applied to midpoint nominations to determine Deemed Metered Volumes.
+  - *Nemo Link:* Ofgem-hosted rules (Annex C) define $\text{BMUMV} = (1 \pm LF/2) \times \text{DMV}$, deferring the numerical loss factor to the operator's website. The operator website was blocked (HTTP 403) during review; the precise numbers (2.372% end-to-end, 1.186% mid-factor, 2.344% market coupling) remain **`UNVERIFIED`** pending direct operator access, though algebraically consistent.
+  - *Mathematical Note on Midpoint Factors:* A midpoint nomination denominator differs from a sending-end denominator. With $LF = 3.0\%$, the ratio of receiving to sending energy is $\frac{1 - LF/2}{1 + LF/2} = \frac{0.985}{1.015} \approx 0.9704$, not $0.9700$. Commercial deemed factors must not be conflated with physical loss curves.
+  - *Moyle & EWIC:* Regulated under SEM Committee decisions; market settlement incorporates Transmission Loss Adjustment Factors (TLAFs) at connection substations (Woodland, Ballycronan More).
 
-#### Candidate 4.2: Elexon Insights Solution SAA & Settlement Stack REST API (`SRC-50`)
-- **URL:** [https://data.elexon.co.uk/saa/api/v1/i014/party-level/](https://data.elexon.co.uk/saa/api/v1/i014/party-level/) and [https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/system-prices](https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/system-prices)
+#### Candidate 4.2: Elexon Insights Solution REST API & Balancing Settlement Stack (`SRC-50`)
+- **URL:** [OpenAPI Specification](https://data.elexon.co.uk/swagger/v1/swagger.json), [Elexon Insights API](https://data.elexon.co.uk/), and [BSC Modification P278 Decision](https://assets.elexon.co.uk/wp-content/uploads/sites/11/2012/01/28170102/P278D.pdf)
 - **Publisher:** Elexon Limited
 - **Licence Text / Link:** [Licence to use BMRS open data](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/)
 - **Likely D-56 Class:** `open-commercial`
-- **Access Method:** Open REST API (JSON / SAA-I014 settlement reports; no authentication key required)
-- **Coverage:** Great Britain; all 17,568 settlement periods for 2024 across settlement runs (II, SF, R1–R3, RF).
-- **Evaluation:** Provides verified outturn Transmission Loss Multipliers ($TLM_{ij}$) and Transmission Loss Factors ($TLF_{ij}$) for all registered BM Units and GSP groups. Formally confirms BSC Modification P278 rule: **for all interconnector BM units, $TLM = 1.0$ exactly** in GB imbalance settlement.
+- **Access Method:** Open REST API (JSON; no authentication key required).
+- **Coverage:** Great Britain; 2024 settlement periods.
+- **Evaluation:** 
+  - The official OpenAPI specification defines the balancing settlement acceptance stack endpoint: `/balancing/settlement/stack/all/{bidOffer}/{settlementDate}/{settlementPeriod}`, which exposes a nullable `transmissionLossMultiplier` field. Annual coverage across all BMUs and 17,568 periods remains `UNVERIFIED` pending programmatic pipeline testing.
+  - **Interconnector TLM Rule:** Per BSC Modification P278 (implemented 29 November 2012 per [P278 Proposal](https://assets.elexon.co.uk/wp-content/uploads/sites/11/2012/01/04142822/P278.pdf) and [Authority Decision](https://assets.elexon.co.uk/wp-content/uploads/sites/11/2012/01/28170102/P278D.pdf)), **$TLM = 1.0$ exactly for all interconnector BM units** in GB imbalance settlement. This is an administrative transmission-loss allocation rule under the BSC, not a claim of zero physical losses.
 
 #### Candidate 4.3: SEM Committee / EirGrid & SONI Annual TLAF Decision Tables
-- **URL:** [https://www.semcommittee.com/publications/](https://www.semcommittee.com/publications/) and [https://www.eirgrid.ie/customer-and-community/operational-constraints](https://www.eirgrid.ie/customer-and-community/operational-constraints)
+- **URL:** [SEM Committee Publications](https://www.semcommittee.com/publications/) and [EirGrid Operational Constraints](https://www.eirgrid.ie/customer-and-community/operational-constraints)
 - **Publisher:** Single Electricity Market Committee (CRU & Utility Regulator) and System Operators (EirGrid & SONI)
 - **Licence Text / Link:** SEM Committee public notices / statutory decision disclaimers ([EirGrid Disclaimer](https://www.eirgrid.ie/disclaimer)).
 - **Likely D-56 Class:** `research-only` (PC-2 / PC-3)
-- **Access Method:** Open direct download (annual decision papers and Excel tables)
+- **Access Method:** Open direct download (annual decision papers and Excel tables).
 - **Coverage:** All-island Ireland (ROI and NI); 2023/24 and 2024/25 tariff years (half-hourly nodal loss multipliers).
-- **Evaluation:** Authoritative source for nodal loss multipliers in the SEM. Confirms that interconnector volumes landing at Woodland (EWIC) and Ballycronan More (Moyle) are scaled by nodal TLAFs in ex-ante market clearing and ex-post imbalance settlement.
+- **Evaluation:** Authoritative source for nodal loss multipliers in the SEM. The dated 2023/24 and 2024/25 TLAF tables must be inspected during ingestion to verify EWIC (Woodland) and Moyle (Ballycronan More) factors across each market clearing and settlement stage.
 
 ### Recommendation & Proxy Formulation
-- **Recommended Candidate:** Use **Elexon Insights SAA API** (`Candidate 4.2`) for GB settlement loss accounting (enforcing $TLM = 1.0$ for interconnector units per BSC P278), combined with primary **Regulated Access Rules** (`Candidate 4.1`) for physical loss percentages across certified links (BritNed 3.0%, Nemo Link 2.372%, ElecLink 2.9%).
-- **HVDC Interconnector Physical Loss Proxy:**
-  For links lacking explicit operator loss filings in 2024 (IFA, IFA2, NSL, Viking Link, Greenlink), adopt the standard CIGRE B4 HVDC converter and cable loss formulation:
-  1. *Converter Losses:* Assume fixed + linear converter station loss of $0.75\%$ per converter station ($1.50\%$ for both AC/DC terminals combined).
-  2. *Cable Ohmic Losses:* Linear ohmic cable loss factor of $0.30\%$ per 100 km of subsea/underground HVDC cable.
-  3. *Directional Formulation:* Let $P_{\text{send}}$ be real power injected at the sending converter bus. Power received at the receiving converter bus is:
-     $$P_{\text{receive}} = P_{\text{send}} \times (1 - L_{\text{converter, send}}) \times (1 - L_{\text{cable}}(d)) \times (1 - L_{\text{converter, receive}})$$
-     where $L_{\text{cable}}(d) = 0.003 \times (d / 100\text{ km})$.
+- **Recommended Candidate:**
+  - For GB settlement accounting: Apply **BSC Modification P278** ($TLM = 1.0$ for interconnector BMUs), with balancing stack data tested via **Elexon OpenAPI** (`Candidate 4.2`).
+  - For commercial nomination accounting: Use certified operator notices for **BritNed** (3.0% midpoint) and **ElecLink** (2.9% end-to-end / 1.471% midpoint), noting Nemo Link values remain `UNVERIFIED` pending direct operator access.
+- **Separation of Commercial vs Physical Losses & HVDC Physical Loss Proxy:**
+  Commercial deemed-loss factors must strictly be kept separate from physical electrical loss models:
+  - Commercial factors dictate billing and nomination reconciliation at the border.
+  - Physical losses represent thermal dissipation across AC/DC converters and subsea/underground cables.
+  - **ASSUMPTION:** [Q-P-03] For interconnectors lacking publisher-certified physical loss curves (e.g. IFA, IFA2, NSL, Viking Link, Greenlink), the following author-proposed heuristic proxy is adopted as an unvalidated working assumption:
+    1. *Converter Losses:* Fixed plus linear converter loss approximated as $0.75\%$ per converter station ($1.50\%$ for both terminals combined).
+    2. *Cable Ohmic Losses:* Linear cable loss approximated as $0.30\%$ per 100 km cable length: $L_{\text{cable}}(d) = 0.003 \times (d / 100\text{ km})$.
+    3. *Physical Formulation:* For real power $P_{\text{send}}$ injected at the sending converter bus:
+       $$P_{\text{receive}} = P_{\text{send}} \times (1 - L_{\text{converter, send}}) \times (1 - L_{\text{cable}}(d)) \times (1 - L_{\text{converter, receive}})$$
+    - *Disclosures:* This formulation is an author-proposed proxy and is **NOT** an established or certified CIGRE standard. CIGRE Study Committee B4 publishes general technical literature but does not prescribe this universal coefficient pair. True physical cable losses follow quadratic resistive heating ($I^2 R$), depending on operating voltage, conductor cross-section, and temperature; converter stations have no-load and standby losses. This proxy is labeled `ASSUMPTION` and requires sensitivity evaluation before baseline reliance.
 
 ---
 
