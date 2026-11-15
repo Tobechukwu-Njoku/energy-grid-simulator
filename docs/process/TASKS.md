@@ -10,7 +10,7 @@ Current task status board for the energy grid simulator project across active th
 |---|---|---|---|---|---|---|
 | T-1 | M0 CI merge gates & Cargo workspace: revision 15 fixes | Claude Opus 5.5 (fixes) / Coordinator (verification & merge) | blocked | [#23](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/23) (`t3/m0-cargo-workspace-ci`) | Revision 15 is PAUSED by the owner. After unpause: address open round-14 findings, verify against reviewer reproductions, commit bootstrap seed, and merge per D-75. | 2026-11-15 |
 | T-2 | Cumulative triage record of PR #23 review findings | GPT 6.1 Sol | in review | [#53](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/53) (`t3/pr23-review-triage-record`) | Waiting on owner decision: merge now, or hold for Claude Opus review (D-54). Merge conflict against main to resolve. | 2026-11-15 |
-| T-3 | M1 open-data acquisition plan | GPT 6.1 Sol | running | Branch `docs/m1-acquisition-plan` | — | 2026-11-15 |
+| T-3 | M1 open-data acquisition plan (43 public-scope entries) | GPT 6.1 Sol | in review | [#60](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/60) (`docs/m1-acquisition-plan`) | Under D-54 needs Claude review; Claude work is paused by the owner. | 2026-11-15 |
 | T-4 | Candidate sources for the 9 M1 data deficits | Gemini Flash 3.8 | in review | [#58](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/58) (`docs/m1-deficit-sources`) | — | 2026-11-15 |
 | T-5 | M1 acceptance test spec (34 tests, 10 requirements covered, 8 flagged items) | GPT 6.1 Sol | in review | [#59](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/59) (`docs/m1-acceptance-tests`) | Under D-54 needs Claude review; Claude work is paused by the owner. | 2026-11-15 |
 | T-6 | Follow-up issues for deferred PR #23 findings | GPT 6.1 Sol / Coordinator | todo | — | Blocked on completion and merge of T-1 (PR #23). | 2026-11-15 |
@@ -21,6 +21,7 @@ Current task status board for the energy grid simulator project across active th
 ### Active Task Decisions
 - **T-1 (PR #23)**: Owner unpause needed for Claude Opus revision 15 to resolve the 12 open round-14 findings, allow coordinator verification against reviewer reproductions, commit the one-time bootstrap seed, and merge under D-75.
 - **T-2 (PR #53)**: Owner decision needed whether to merge the cumulative triage record now or hold for Claude Opus cross-provider review per D-54 (with merge conflict resolution against main).
+- **T-3 (PR #60)**: Requires Claude Opus cross-provider review under D-54, but Claude work is currently paused by the owner.
 - **T-5 (PR #59)**: Requires Claude Opus cross-provider review under D-54, but Claude work is currently paused by the owner.
 
 ### Owner To-Dos
