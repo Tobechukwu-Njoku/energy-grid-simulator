@@ -19,7 +19,12 @@ LF/CRLF suffixes in shell printf examples are removed before literal classificat
 exceptions are scoped to the exact documentation authority and an ellipsis
 password, not arbitrary literal passwords or environment references. Four new
 regression tests cover placeholders, descriptions, literals and mixed lines;
-all 19 secret-scanner tests pass. Full workspace and xtask validation pending.
+all 19 secret-scanner tests pass. `cargo test -j 2` passes all 243 tests, including
+repository self-policy (239 existing tests plus four new regressions). Formatting,
+warning-free all-target/all-feature Clippy, xtask policy, docs, checkout and
+`origin/main..HEAD` provenance, full-range attribution, and `build-gate --jobs 2`
+pass. Build output stays in this worktree's `target/`; test scratch uses a
+disk-backed, space-free TMPDIR rather than RAM-backed `/tmp`.
 
 **PR #23 revision 15 implementation (2026-11-15 UTC):** round-14 CORE repairs
 retain historical research-only declarations from manifests/source tables and
