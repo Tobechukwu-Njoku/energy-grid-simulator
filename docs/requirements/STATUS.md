@@ -79,6 +79,26 @@ coverage and documented bounded follow-ups need not block independently.
 Evidence, regressions, adversarial triage and M0 assessment:
 [revision-13 report](reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
 
+**PR #23 revision 15 third verification (2026-11-15 UTC):** exact head
+`6ed8bc713ef531110f92c392ac1d66a816d7f9c4`; verdict **NOT ATTEST**.
+All seven original round-14 CORE reproductions still reject; all 48 original
+R15V2-01 variants reject, including EOF, CRLF, semicolons and following attributes;
+the three original Markdown placeholder controls and additional controls pass.
+Two **BLOCKING** items remain: **R15V3-01**, the merged second-verification
+report's synthetic example at line 153 triggers the new bare-authority rule,
+failing repository self-policy, clean-head `xtask all` and explicit range
+provenance; **R15V3-02**, an unrelated earlier backtick in Rust source is mistaken
+for a Markdown opener and restores the repaired password-truncation bypass.
+Observed workspace tests total 249 passed and 1 failed after separately running
+the range suite omitted when the exact `cargo test -j 2` command stopped.
+A bounded 18-case boundary attempt plus source-context comparisons found no
+old-reject/new-accept case versus `112de8d`; the source-context case blocks as an
+obvious bypass of the fixed item, while distinct alternate-terminator and
+unvalidated header-syntax cases are **FOLLOW-UP** under D-75, not another review
+round. Do not attest this merged head. PR #23, its policy and bootstrap records
+remain unchanged. Evidence and item table:
+[third verification report](reviews/gpt-2026-11-15-pr23-r15-verify-3.md).
+
 **PR #23 revision 15 second verification (2026-11-15 UTC):** exact head
 `e993dfec5c5d0ca73ac765f6fc74897f2f1d7636`; verdict **NOT ATTEST**.
 All seven original CORE reproductions still reject; all three previously failing
