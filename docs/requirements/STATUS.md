@@ -1,11 +1,18 @@
 # STATUS
 
-_Last updated: 2026-11-14_
+_Last updated: 2026-11-15_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-75 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**M1 public acquisition planning (2026-11-15 UTC):** documenting the credential-free
+subset of the 54-row inventory in
+[m1-acquisition-plan.md](../research/m1-acquisition-plan.md). Public publisher
+pages/catalogue metadata/API specifications are being checked without dataset
+downloads. D-56 classifications and raw-data restrictions remain in force;
+credential-gated sources and unresolved public endpoints remain explicit gaps.
 
 **PR #52 M1 inventory final re-check (2026-11-14 UTC):** exact revised head
 `8af069ca0af0712f29b9645810282070b02e45a4`; verdict **accept-with-corrections**.
