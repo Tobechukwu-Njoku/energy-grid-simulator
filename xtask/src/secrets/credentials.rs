@@ -229,7 +229,7 @@ fn percent_decode(text: &str) -> String {
 
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*["']?(?:basic|bearer)[ \t]+(<[^>\r\n]*>|[^\s"'`]+)"#)
+        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*["']?(?:basic|bearer)[ \t]+([^\s"'`]+)"#)
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
@@ -552,6 +552,10 @@ mod tests {
             );
             check(
                 &format!("Use `Authorization: {scheme} s3cr3t!` instead."),
+                Some("local-http-authorization"),
+            );
+            check(
+                &format!("Use `Authorization: {scheme} <token>s3cr3t!` instead."),
                 Some("local-http-authorization"),
             );
         }

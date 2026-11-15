@@ -7,6 +7,19 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 post-merge policy repair (2026-11-15 UTC):** reproduced 22 secret-scan
+findings in the round-14 report imported from main. False positives at report
+lines 49, 51, 70, 72, 109, 111, 113, 140, 147 and 343 came from Markdown delimiters
+being consumed as credential values, ellipses, or the bare URI authority template.
+Literal examples at lines 76, 77, 80, 81, 116, 119, 154, 155, 156, 157, 160 and 165
+are replaced with angle-bracket placeholders; no report content is deleted.
+Parser value boundaries now respect inline-code delimiters and unquoted whitespace,
+and Authorization headers cannot consume a value from the following line. URI
+exceptions are scoped to the exact documentation authority and an ellipsis
+password, not arbitrary literal passwords or environment references. Four new
+regression tests cover placeholders, descriptions, literals and mixed lines;
+all 19 secret-scanner tests pass. Full workspace and xtask validation pending.
+
 **PR #23 revision 15 implementation (2026-11-15 UTC):** round-14 CORE repairs
 retain historical research-only declarations from manifests/source tables and
 the range base, reject removed CSV/TSV datasets, parse YAML kubeconfig scalars and
