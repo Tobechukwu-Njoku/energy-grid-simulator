@@ -950,6 +950,87 @@ fn history(repo: &Repo, base: &str) -> Vec<Finding> {
     repository::provenance_range(&ctx(repo), Some(&range)).expect("provenance")
 }
 
+#[test]
+fn historical_secret_exemptions_require_path_blob_and_block_and_never_cover_checkout() {
+    let repo = Repo::new();
+    repo.write("data/manifest.toml", MANIFEST);
+    let base = repo.commit("docs: start");
+    let path = "docs/review.md";
+    let line = ["service_token=gh", "p_", &"0".repeat(36)].concat();
+    repo.write(path, &line);
+    let block_blob = repo.git(&["hash-object", path]);
+    let text = format!("{line}\nordinary context\n");
+    repo.write(path, &text);
+    let blob = repo.git(&["hash-object", path]);
+    repo.commit("docs: reviewed example");
+
+    let policy = Repo::new();
+    copy_secret_policy(&policy);
+    policy.write(
+        repository::POLICY,
+        &std::fs::read_to_string(root().join(repository::POLICY)).expect("policy"),
+    );
+    let list = "xtask/policy/history-secret-exemptions.toml";
+    let entry = format!(
+        "[[exemption]]\npath = {path:?}\nblob = {blob:?}\nblock_blob = {block_blob:?}\nreason = \"Synthetic scope test\"\n"
+    );
+    policy.write(list, &entry);
+    let trusted = Ctx {
+        repo: repo.path().to_path_buf(),
+        policy: policy.path().to_path_buf(),
+    };
+    let has_secret = |findings: &[Finding]| {
+        findings
+            .iter()
+            .any(|finding| finding.message.contains("local-github-token"))
+    };
+    assert!(has_secret(
+        &repository::provenance(&trusted).expect("checkout")
+    ));
+    let range = repository::History {
+        base: Some(base),
+        head: "HEAD".to_owned(),
+    };
+    assert!(has_secret(
+        &repository::provenance_range(&trusted, Some(&range)).expect("range with checkout")
+    ));
+    std::fs::remove_file(repo.path().join(path)).expect("remove");
+    repo.commit("docs: remove example");
+    for base in [range.base.clone(), None] {
+        let range = repository::History {
+            base,
+            ..range.clone()
+        };
+        let scan = || repository::provenance_range(&trusted, Some(&range)).expect("history");
+        assert!(!has_secret(&scan()));
+        for changed in [
+            entry.replace(&block_blob, &"1".repeat(40)),
+            entry.replace(&blob, &"2".repeat(40)),
+            entry.replace(path, "docs/other.md"),
+        ] {
+            policy.write(list, &changed);
+            assert!(has_secret(&scan()));
+        }
+        policy.write(list, &entry);
+    }
+    for changed in [
+        text.replace(&"0".repeat(36), &"3".repeat(36)),
+        format!("{text}extra context\n"),
+    ] {
+        let changed_range = repository::History {
+            base: Some(repo.git(&["rev-parse", "HEAD"])),
+            ..range.clone()
+        };
+        repo.write(path, &changed);
+        repo.commit("docs: changed example");
+        std::fs::remove_file(repo.path().join(path)).expect("remove");
+        repo.commit("docs: remove changed example");
+        assert!(has_secret(
+            &repository::provenance_range(&trusted, Some(&changed_range)).expect("changed history")
+        ));
+    }
+}
+
 // R13-03 (CORE): at 9db2a40 a secret added in one commit and deleted (or
 // replaced) in the next left the final tree clean, and provenance passed.
 // Every file version the range introduced is now scanned.

@@ -29,20 +29,25 @@ template now terminates the placeholder with `&ssl=true`, and its standalone
 `&password` example quotes the ellipsis. No findings or review dispositions are
 removed. The old URI negative fixture now appends a literal suffix to its variable
 placeholder: whole-variable URI placeholders are exempt under the requested
-design, and explicit positive/negative controls cover both forms. No exemption
-or allowlist is added.
+design, and explicit positive/negative controls cover both forms.
 
-Validation: `cargo test -j 2` passes all 256 tests; the final focused credential
-suite passes 23 tests, and `cargo xtask all`, formatting and workspace/all-target
-clippy with warnings denied pass. Builds use this worktree's `target/` and the
-space-free TMPDIR `/var/tmp/pr23-backtick-fix`. Historical range validation is
-not green: stricter parsing detects the prior round-14 report's two Markdown
-placeholder controls in an immutable introduced blob, even though their current
-spellings have been repaired. Redacting HEAD cannot change those historical
-blocks. No historical exemption, history rewrite, bootstrap attestation or merge
-approval is claimed. The Authorization recognizer also requires the grammar's
-whitespace between scheme and value, so historical no-value description tests
-are not mistaken for credentials.
+With explicit owner approval, `xtask/policy/history-secret-exemptions.toml`
+records only the two immutable round-14 placeholder examples. Each entry requires
+the exact report path, full file blob hash and complete finding-block hash, with
+a placeholder-only reason. Only history/range scans load this list; checkout
+scans never use it. Tests cover matching entries in both historical scan modes,
+changed paths/blocks/blobs, actual changed line/context content, and rejection in
+checkout even when all three identifiers match. No history rewrite, bootstrap
+attestation or merge approval is claimed. The Authorization recognizer also
+requires whitespace between scheme and value, so historical no-value description
+tests are not mistaken for credentials.
+
+Validation: `cargo test -j 2` passes all 257 tests; `cargo xtask all` passes,
+including self-policy over all 104 Markdown files; and `cargo xtask provenance
+--base origin/main --head HEAD` passes with the approved historical entries.
+Formatting and workspace/all-target clippy with warnings denied also pass.
+Builds use this worktree's `target/` and the space-free TMPDIR
+`/var/tmp/pr23-backtick-fix`.
 
 **PR #23 R15V3 blocking repairs (2026-11-15 UTC):** R15V3-01 is a literal
 synthetic authority, not a classifier false positive: redacted it to the existing

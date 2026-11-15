@@ -23,6 +23,8 @@ use crate::util::{Ctx, Finding, git_command, glob_match, is_sha, string_array, t
 /// Trusted repository policy.
 pub const POLICY: &str = "xtask/policy/repository.toml";
 
+const HISTORY_SECRET_EXEMPTIONS: &str = "xtask/policy/history-secret-exemptions.toml";
+
 fn policy(ctx: &Ctx) -> Result<DocumentMut, String> {
     ctx.policy_toml(POLICY)
 }
@@ -1089,6 +1091,64 @@ fn load_secret_exemptions(document: &DocumentMut) -> Result<Vec<(String, String)
     Ok(found)
 }
 
+struct HistorySecretExemption {
+    path: String,
+    blob: String,
+    block_blob: String,
+}
+
+fn load_history_secret_exemptions(ctx: &Ctx) -> Result<Vec<HistorySecretExemption>, String> {
+    let document = ctx.policy_toml(HISTORY_SECRET_EXEMPTIONS)?;
+    let tables = document
+        .get("exemption")
+        .and_then(Item::as_array_of_tables)
+        .ok_or_else(|| format!("{HISTORY_SECRET_EXEMPTIONS}: missing exemption list"))?;
+    tables
+        .iter()
+        .map(|table| {
+            let field = |key: &str| table.get(key).and_then(Item::as_str).map(str::to_owned);
+            match (
+                field("path"),
+                field("blob"),
+                field("block_blob"),
+                field("reason"),
+            ) {
+                (Some(path), Some(blob), Some(block_blob), Some(reason))
+                    if !path.is_empty()
+                        && !path.contains(['*', '?', '['])
+                        && is_sha(&blob)
+                        && is_sha(&block_blob)
+                        && !reason.trim().is_empty() =>
+                {
+                    Ok(HistorySecretExemption {
+                        path,
+                        blob,
+                        block_blob,
+                    })
+                }
+                _ => Err(format!(
+                    "{HISTORY_SECRET_EXEMPTIONS}: each exemption needs an exact path, full blob and block_blob hashes, and reason"
+                )),
+            }
+        })
+        .collect()
+}
+
+fn exempt_history_block(
+    repo: &std::path::Path,
+    exemptions: &[HistorySecretExemption],
+    path: &str,
+    blob: &str,
+    block: &str,
+) -> bool {
+    let mut block_blob = None;
+    exemptions.iter().any(|entry| {
+        entry.path == path
+            && entry.blob == blob
+            && block_blob.get_or_insert_with(|| line_blob(repo, block)) == &entry.block_blob
+    })
+}
+
 /// The one canonical provenance manifest name (ADV23R3-07). Records may also
 /// live in a `sources.tsv` table.
 pub const MANIFEST_NAME: &str = "manifest.toml";
@@ -1311,11 +1371,13 @@ pub fn provenance_range(ctx: &Ctx, range: Option<&History>) -> Result<Vec<Findin
         &paths, &document, &records, &sniffed,
     ));
     if let Some(range) = range {
+        let history_exemptions = load_history_secret_exemptions(ctx)?;
         let scan = HistoryScan {
             document: &document,
             records: &records,
             secrets: &secrets,
             exemptions: &secret_exemptions,
+            history_exemptions: &history_exemptions,
             dtd_allowed: &dtd_allowed,
         };
         findings.extend(scan.run(ctx, range)?);
@@ -1329,6 +1391,7 @@ struct HistoryScan<'a> {
     records: &'a [(String, String)],
     secrets: &'a crate::secrets::Ruleset,
     exemptions: &'a [(String, String)],
+    history_exemptions: &'a [HistorySecretExemption],
     dtd_allowed: &'a [String],
 }
 
@@ -1490,7 +1553,10 @@ impl HistoryScan<'_> {
             if self.secrets.is_pinned_copy(path, || blob.clone()) {
                 continue;
             }
-            let exempt = |block: &str| exempt_block(repo, self.exemptions, path, block);
+            let exempt = |block: &str| {
+                exempt_block(repo, self.exemptions, path, block)
+                    || exempt_history_block(repo, self.history_exemptions, path, blob, block)
+            };
             for hit in self.secrets.scan_with(path, &bytes, &exempt) {
                 findings.push(Finding::at(
                     path.clone(),
