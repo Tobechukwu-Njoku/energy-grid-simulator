@@ -30,7 +30,19 @@ template now terminates the placeholder with `&ssl=true`, and its standalone
 removed. The old URI negative fixture now appends a literal suffix to its variable
 placeholder: whole-variable URI placeholders are exempt under the requested
 design, and explicit positive/negative controls cover both forms. No exemption
-or allowlist is added. Validation results will be recorded after the full gates.
+or allowlist is added.
+
+Validation: `cargo test -j 2` passes all 256 tests; the final focused credential
+suite passes 23 tests, and `cargo xtask all`, formatting and workspace/all-target
+clippy with warnings denied pass. Builds use this worktree's `target/` and the
+space-free TMPDIR `/var/tmp/pr23-backtick-fix`. Historical range validation is
+not green: stricter parsing detects the prior round-14 report's two Markdown
+placeholder controls in an immutable introduced blob, even though their current
+spellings have been repaired. Redacting HEAD cannot change those historical
+blocks. No historical exemption, history rewrite, bootstrap attestation or merge
+approval is claimed. The Authorization recognizer also requires the grammar's
+whitespace between scheme and value, so historical no-value description tests
+are not mistaken for credentials.
 
 **PR #23 R15V3 blocking repairs (2026-11-15 UTC):** R15V3-01 is a literal
 synthetic authority, not a classifier false positive: redacted it to the existing
