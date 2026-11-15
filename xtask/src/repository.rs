@@ -1351,8 +1351,9 @@ impl HistoryScan<'_> {
             Ok(String::from_utf8_lossy(&out).trim().to_owned())
         };
         let head = commit(&range.head)?;
-        let selector = match &range.base {
-            Some(base) => format!("{}..{head}", commit(base)?),
+        let base = range.base.as_deref().map(commit).transpose()?;
+        let selector = match &base {
+            Some(base) => format!("{base}..{head}"),
             None => head.clone(),
         };
         // Objects the range introduced: reachable from head, not from base.
@@ -1420,7 +1421,7 @@ impl HistoryScan<'_> {
         let mut findings = Vec::new();
         let mut records = self.records.to_vec();
         let mut declarations = versions.clone();
-        if let Some(base) = &range.base {
+        if let Some(base) = &base {
             let listing = crate::util::git(repo, &["ls-tree", "-r", "-z", "--full-tree", base])?;
             for entry in listing
                 .split(|byte| *byte == 0)
@@ -1432,10 +1433,7 @@ impl HistoryScan<'_> {
                     && [MANIFEST_NAME, SOURCES_NAME]
                         .contains(&path.rsplit('/').next().unwrap_or(path))
                 {
-                    declarations.insert(
-                        (path.to_owned(), blob.to_owned()),
-                        commit(base)?[..12].to_owned(),
-                    );
+                    declarations.insert((path.to_owned(), blob.to_owned()), base[..12].to_owned());
                 }
             }
         }

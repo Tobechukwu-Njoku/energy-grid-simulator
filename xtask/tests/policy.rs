@@ -1056,49 +1056,58 @@ fn r13_03_secrets_and_data_added_then_removed_in_a_range_fail() {
 
 #[test]
 fn r15_history_retains_deleted_and_reclassified_provenance() {
-    for sources in [false, true] {
-        for base_record in [false, true] {
-            for retained in [false, true] {
-                let repo = Repo::new();
-                repo.write("data/manifest.toml", MANIFEST);
-                let record = if sources {
-                    "extra/sources.tsv"
-                } else {
-                    "extra/manifest.toml"
-                };
-                let restricted = if sources {
-                    "research-only\treview.csv\thttps://example.org/review\n"
-                } else {
-                    "[[datasets]]\nname = 'review'\nfilename = 'review.csv'\nlicence_status = 'research-only'\nlicence = 'Research only'\n"
-                };
-                if base_record {
-                    repo.write(record, restricted);
-                }
-                let base = repo.commit("data: baseline");
-                repo.write(record, restricted);
-                repo.write("spikes/data/samples/review.csv", "a,b\n1,2\n");
-                let introduced = repo.commit("data: temporary sample");
-                if retained {
-                    repo.write(
-                        record,
-                        &restricted.replace("research-only", "open-commercial"),
+    for extension in ["csv", "parquet"] {
+        for sources in [false, true] {
+            for base_record in [false, true] {
+                for retained in [false, true] {
+                    let repo = Repo::new();
+                    repo.write("data/manifest.toml", MANIFEST);
+                    let record = if sources {
+                        "extra/sources.tsv"
+                    } else {
+                        "extra/manifest.toml"
+                    };
+                    let restricted = if sources {
+                        "research-only\treview.csv\thttps://example.org/review\n"
+                    } else {
+                        "[[datasets]]\nname = 'review'\nfilename = 'review.csv'\nlicence_status = 'research-only'\nlicence = 'Research only'\n"
+                    };
+                    let restricted =
+                        restricted.replace("review.csv", &format!("review.{extension}"));
+                    if base_record {
+                        repo.write(record, &restricted);
+                    }
+                    let base = repo.commit("data: baseline");
+                    repo.write(record, &restricted);
+                    let path = format!("spikes/data/samples/review.{extension}");
+                    let content = if extension == "parquet" {
+                        "PAR1syntheticPAR1"
+                    } else {
+                        "a,b\n1,2\n"
+                    };
+                    repo.write(&path, content);
+                    let introduced = repo.commit("data: temporary sample");
+                    if retained {
+                        repo.write(
+                            record,
+                            &restricted.replace("research-only", "open-commercial"),
+                        );
+                    } else {
+                        std::fs::remove_file(repo.path().join(record)).expect("remove declaration");
+                        std::fs::remove_file(repo.path().join(&path)).expect("remove sample");
+                    }
+                    repo.commit("data: clean up");
+                    let found = history(&repo, &base);
+                    assert!(
+                        found.iter().any(|finding| {
+                            finding.file.as_deref() == Some(path.as_str())
+                                && finding.message.contains("research-only")
+                                && finding.message.contains(&introduced[..12])
+                        }),
+                        "{:?}",
+                        files(&found)
                     );
-                } else {
-                    std::fs::remove_file(repo.path().join(record)).expect("remove declaration");
-                    std::fs::remove_file(repo.path().join("spikes/data/samples/review.csv"))
-                        .expect("remove sample");
                 }
-                repo.commit("data: clean up");
-                let found = history(&repo, &base);
-                assert!(
-                    found.iter().any(|finding| {
-                        finding.file.as_deref() == Some("spikes/data/samples/review.csv")
-                            && finding.message.contains("research-only")
-                            && finding.message.contains(&introduced[..12])
-                    }),
-                    "{:?}",
-                    files(&found)
-                );
             }
         }
     }
