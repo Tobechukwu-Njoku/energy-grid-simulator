@@ -573,14 +573,86 @@ mod tests {
             "<secret>`meadow2026",
             "ordinary meadow2026",
         ] {
-            check(
-                &format!("{prefix}={value};"),
-                Some("local-connection-password"),
-            );
+            for ending in ["", ";", "\n", "\r\n", ";Database=grid"] {
+                check(
+                    &format!("{prefix}={value}{ending}"),
+                    Some("local-connection-password"),
+                );
+            }
             check(
                 &format!("`{prefix}={value};`"),
                 Some("local-connection-password"),
             );
+        }
+    }
+
+    #[test]
+    fn r15v2_unquoted_assignment_consumes_the_complete_value() {
+        for value in [
+            "secret meadow2026",
+            "<secret> meadow2026",
+            "... meadow2026",
+            "...`meadow2026",
+            "<secret>`meadow2026",
+            "realvalue`",
+            "realvalue...",
+            "real multiword password",
+        ] {
+            for ending in ["", ";Database=grid", "\nnext line", "\r\nnext line"] {
+                let (parsed, length) = assignment_value(&format!("{value}{ending}"));
+                assert_eq!(parsed, value);
+                assert_eq!(length, value.len());
+                assert!(literal(&parsed));
+            }
+        }
+    }
+
+    #[test]
+    fn r15v2_placeholder_classification_is_anchored() {
+        for template in [
+            "<secret>",
+            "...",
+            "${VAR}",
+            "$VAR",
+            "$(command)",
+            "{{password}}",
+            "${{ secrets.PASSWORD }}",
+            "%PASSWORD%",
+            "secret",
+        ] {
+            assert!(!literal(template), "{template:?}");
+            for value in [
+                format!("{template} meadow2026"),
+                format!("meadow2026 {template}"),
+                format!("{template}-meadow2026"),
+                format!("meadow2026-{template}"),
+                format!("{template}`meadow2026"),
+            ] {
+                assert!(literal(&value), "{value:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn r15v2_markdown_connection_placeholder_controls() {
+        let key = "Pwd";
+        for delimiter in ["`", "``", "```"] {
+            for template in ["<secret>", "...", "${VAR}", "${{ secrets.PASSWORD }}"] {
+                for wrapper in [("", ""), ("\"", "\""), ("'", "'"), ("{", "}")] {
+                    let escaped = if wrapper.0 == "{" {
+                        template.replace('}', "}}")
+                    } else {
+                        template.to_owned()
+                    };
+                    let value = format!("{}{escaped}{}", wrapper.0, wrapper.1);
+                    for ending in [".", ",", ";", ")", "", "\nMore documentation."] {
+                        check(
+                            &format!("Use {delimiter}{key}={value}{delimiter}{ending}"),
+                            None,
+                        );
+                    }
+                }
+            }
         }
     }
 
