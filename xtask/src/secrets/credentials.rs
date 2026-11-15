@@ -172,19 +172,18 @@ fn netrc(text: &str, found: &mut Vec<Match>) {
 }
 
 fn markdown_value<'a>(prefix: &str, text: &'a str) -> &'a str {
+    static CREDENTIAL_OPENER: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r#"(?i)(?:^|[^\\`])(?P<delimiter>`+)(?:[a-z_][a-z0-9_.-]*=[^;`"'\r\n]*;[ \t]*|jdbc:[^\s"'`]*[?&;])*$"#,
+        )
+        .expect("credential Markdown opener regex")
+    });
     static BACKTICKS: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"`+").expect("Markdown delimiter regex"));
-    let mut delimiter = None;
-    for matched in BACKTICKS.find_iter(prefix.rsplit('\n').next().unwrap_or(prefix)) {
-        match delimiter {
-            None => delimiter = Some(matched.len()),
-            Some(length) if length == matched.len() => delimiter = None,
-            _ => {}
-        }
-    }
-    if let Some(length) = delimiter
+    if let Some(opener) = CREDENTIAL_OPENER.captures(prefix)
+        && let Some(delimiter) = opener.name("delimiter")
         && let Some(closing) = BACKTICKS.find_iter(text).find(|matched| {
-            matched.len() == length
+            matched.len() == delimiter.len()
                 && text[matched.end()..].chars().next().is_none_or(|next| {
                     next.is_whitespace()
                         || [',', '.', ';', ':', ')', ']', '}', '!', '?'].contains(&next)
@@ -728,6 +727,36 @@ mod tests {
         }
         let template = ["user:", "password", "@host"].concat();
         check(&format!("Use `{template}` in examples."), None);
+    }
+
+    #[test]
+    fn r15v3_01_review_authority_requires_redaction() {
+        let authority = ["user:", "realpass", "@host"].concat();
+        check(
+            &format!("The authority text `{authority}` is accepted without a scheme at both"),
+            Some("local-bare-authority-credentials"),
+        );
+        check(
+            "The authority text `user:password@host` is accepted without a scheme at both",
+            None,
+        );
+    }
+
+    #[test]
+    fn r15v3_02_unrelated_backticks_cannot_truncate_passwords() {
+        let prefix = "Server=database.internal;Uid=operator;";
+        let key = "Pwd";
+        let value = ["secret", "`", " meadow2026"].concat();
+        for marker in ["`", "|", "``"] {
+            let text = format!(
+                "fn main() {{ let marker = \"{marker}\"; let connection = \"{prefix}{key}={value};\"; let _ = (marker, connection); }}\n"
+            );
+            check(&text, Some("local-connection-password"));
+        }
+        check(
+            &format!(r"Use \`{key}={value};"),
+            Some("local-connection-password"),
+        );
     }
 
     #[test]
