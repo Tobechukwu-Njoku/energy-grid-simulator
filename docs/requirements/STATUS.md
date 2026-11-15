@@ -1,11 +1,37 @@
 # STATUS
 
-_Last updated: 2026-11-14_
+_Last updated: 2026-11-15_
 
-**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-74 (D-5 superseded by D-23).
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**PR #23 revision 15 implementation (2026-11-15 UTC):** round-14 CORE repairs
+retain historical research-only declarations from manifests/source tables and
+the range base, reject removed CSV/TSV datasets, parse YAML kubeconfig scalars and
+netrc/pgpass grammars, and detect literal HTTP Authorization, JDBC, ODBC/ADO.NET
+and environment-key credentials. Shared attribution patterns also cover the
+requested inexpensive peripheral additions. Positive and negative regressions
+are included for every requested item, including placeholder/environment controls.
+Local validation: `cargo test -j 2` passes 239 tests (nine new regression tests);
+the final focused replay also passes all nine. Formatting, warning-free Clippy,
+policy, checkout/range provenance (current main through the revised code head),
+docs, full-range attribution and `build-gate --jobs 2` pass. A generated RSA PEM
+inside a YAML block scalar is rejected; the corresponding environment placeholder
+passes. Build output stays under the worktree's `target/`; test scratch storage
+uses a disk-backed, space-free TMPDIR because existing linker-script fixtures
+assume that their scratch root has no spaces.
+
+Actual PR event replays leave independent-review blocked by missing approving
+current-head evidence, and policy-approval blocked because the existing PR was
+opened by the owner (D-74 prevents self-approval). No gate was weakened. Under
+D-75 the coordinator must verify the new head, resolve the bootstrap prerequisites
+and attest the seed; no attestation or merge is performed here. The ambiguous
+lowercase bare-tool attribution tradeoff remains a follow-up. ADR 0001 now
+distinguishes parser placeholder classification, format-specific regex limits
+and decoder boundaries. D-75/D-76 are copied unchanged from current main's
+owner decision log so this branch's references resolve.
 
 **PR #23 revision-13 review:** exact head `9db2a40a88aa9e4f1400f0417a4e188389c72653`
 re-reviewed; verdict **must-fix**. All 224 submitted tests and the original round-12

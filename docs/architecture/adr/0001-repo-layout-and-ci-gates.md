@@ -761,13 +761,19 @@ revision 12. This addendum implements D-56 and D-52 as written and adds no decis
   one. Inline `gitleaks:allow` markers are not honoured; only the trusted exemption
   file accepts a finding. Upstream's global placeholder allowlist (`x+`, `${VAR}`,
   stopwords) covers the vendored rules only; the local rules accept examples only by
-  exemption.
-- **History (R13-03).** `provenance` with a range (`--base/--head`, or the GitHub
+  exemption (the parser-backed formats added in revision 15 have their own
+  placeholder classification, described below).
+- **History (R13-03, revised in revision 15).** `provenance` with a range (`--base/--head`, or the GitHub
   event; CI passes current main as the base of a pull request) also scans every
   (path, blob) any commit of the range added or changed, against each parent of a
   merge, for objects not reachable from the base: secrets, `raw/` paths, key files,
-  research-only records and recognised data formats. Versions identical to the
-  checkout are not rescanned. The file-type allowlist and the binary/undecodable
+  research-only datasets, CSV/TSV files and recognised data formats. Historical
+  manifests and source tables, including those present at the range base, are
+  validated and their research-only declarations are conservatively unioned with
+  the checkout's records. Deleting a declaration or changing it to open-commercial
+  cannot clear an earlier restricted version. Versions identical to the checkout
+  are not rescanned for secrets, but still receive historical restrictions.
+  The file-type allowlist and the binary/undecodable
   class apply to the checkout only, so earlier commits holding an allowed-but-later-
   removed file type do not fail (accepted limitation). In GitHub Actions a missing
   range is an error.
@@ -775,10 +781,44 @@ revision 12. This addendum implements D-56 and D-52 as written and adds no decis
   information for any scheme, kubeconfig `client-key-data` and credentials under a
   `user:` entry, netrc machine/login/password records, pgpass
   `host:port:database:user:password` records, and keyword assignments longer than the
-  vendored generic rule's 150-character cap (entropy 3.5). No local rule has a length
-  cap or placeholder heuristic.
+  vendored generic rule's 150-character cap (entropy 3.5). These are format-specific
+  rules, not a uniform length or placeholder policy: the short-assignment rule
+  retains its own limits; revision 15 replaces the kubeconfig/netrc/pgpass regexes
+  with parsers. UTF decoding does not recursively decode base64, decompress archives
+  or interpret arbitrary programming-language expressions.
 - **Attribution (ADV23R13-04..08).** CodeQwen and Refact join the names;
   appreciation, discussion and conversation phrases, `Discussed with`, and
   `Thanks:`, `Appreciation:`, `Assistance:`, `AI-Assistance:`, `AI-Generated:`
   trailers are matched; the value of a trailer must still be a model name, so human
   credits pass.
+
+## Addendum — 2026-11-15: final bootstrap repairs (PR #23 revision 15)
+
+Under D-75, revision 15 closes the round-14 CORE reproductions before coordinator
+verification and bootstrap attestation; this addendum is not an attestation.
+
+- Kubeconfig credential fields use the existing `yaml-rust2` dependency, including
+  literal/folded block scalars, quoted strings, aliases and JSON serialization.
+  Findings cover the parsed document rather than exempting only a scalar header.
+- Netrc uses a whitespace/quoted-token lexer, escaped characters, optional login
+  and account fields, machine/default records, comments and macro-body skipping.
+  Pgpass splits the four unescaped field separators, unescapes backslash sequences
+  and preserves password whitespace. Recognition in arbitrary text requires a
+  host-shaped first field and numeric/wildcard port to avoid quoted source code
+  and timestamp false positives; no restriction is placed on password whitespace.
+- Additional credential recognizers cover literal HTTP Basic/Bearer Authorization
+  headers, JDBC password query parameters (including percent-encoded names/values),
+  ODBC/ADO.NET Password/Pwd attributes with quoted/braced values, and environment
+  PASS/PWD/PASSPHRASE keys, including DB-prefixed forms.
+- These parser-backed checks classify empty values, explicit placeholders and
+  environment/template references as non-literals. This does not create a global
+  allowlist for other rules. Existing exact-block exemptions still apply per view;
+  no new exemption is needed for these repairs.
+- StableCode/Stability AI, derivation phrases, and direct prompt, consultation,
+  discussion, conversation, guidance, feedback and review trailers are covered by
+  the shared hook/CI attribution patterns. Human/prose controls remain accepted.
+
+The existing extension/binary historical limitation remains, except that CSV/TSV
+extensions are now data even after removal. The lowercase ambiguous bare-tool
+attribution tradeoff (R14-04) remains a follow-up; it is outside the requested CORE
+repairs and preserves existing ordinary-prose controls.
