@@ -6,20 +6,16 @@ use yaml_rust2::{Yaml, YamlLoader};
 pub(super) type Match = (usize, usize, &'static str);
 
 fn literal(value: &str) -> bool {
+    static TEMPLATE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r"\A(?:\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$\([^()\r\n]+\)|\$?\{\{[^{}\r\n]+\}\}|<[^<>\r\n]+>|%[A-Za-z_][A-Za-z0-9_]*%)\z",
+        )
+        .expect("placeholder regex")
+    });
     let value = value.trim();
     let lower = value.to_ascii_lowercase();
     !value.is_empty()
-        && !value.strip_prefix('$').is_some_and(|name| {
-            !name.is_empty()
-                && name
-                    .chars()
-                    .all(|character| character.is_ascii_alphanumeric() || character == '_')
-        })
-        && !value.contains("${")
-        && !value.contains("$(")
-        && !value.contains("{{")
-        && !(value.starts_with('<') && value.ends_with('>'))
-        && !(value.starts_with('%') && value.ends_with('%'))
+        && !TEMPLATE.is_match(value)
         && ![
             "password",
             "secret",
@@ -175,6 +171,32 @@ fn netrc(text: &str, found: &mut Vec<Match>) {
     }
 }
 
+fn markdown_value<'a>(prefix: &str, text: &'a str) -> &'a str {
+    static BACKTICKS: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"`+").expect("Markdown delimiter regex"));
+    let mut delimiter = None;
+    for matched in BACKTICKS.find_iter(prefix.rsplit('\n').next().unwrap_or(prefix)) {
+        match delimiter {
+            None => delimiter = Some(matched.len()),
+            Some(length) if length == matched.len() => delimiter = None,
+            _ => {}
+        }
+    }
+    if let Some(length) = delimiter
+        && let Some(closing) = BACKTICKS.find_iter(text).find(|matched| {
+            matched.len() == length
+                && text[matched.end()..].chars().next().is_none_or(|next| {
+                    next.is_whitespace()
+                        || [',', '.', ';', ':', ')', ']', '}', '!', '?'].contains(&next)
+                })
+        })
+    {
+        &text[..closing.start()]
+    } else {
+        text
+    }
+}
+
 fn assignment_value(text: &str) -> (String, usize) {
     let mut chars = text.char_indices();
     let Some((_, first)) = chars.next() else {
@@ -201,9 +223,7 @@ fn assignment_value(text: &str) -> (String, usize) {
         (value, text.len())
     } else {
         let length = text
-            .find(|character: char| {
-                character.is_whitespace() || [';', '&', '\'', '"', '`'].contains(&character)
-            })
+            .find(|character: char| ['\r', '\n', ';', '&', '\'', '"'].contains(&character))
             .unwrap_or(text.len());
         (text[..length].trim().to_owned(), length)
     }
@@ -229,7 +249,7 @@ fn percent_decode(text: &str) -> String {
 
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*["']?(?:basic|bearer)[ \t]+([^\s"'`]+)"#)
+        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*["']?(?:basic|bearer)[ \t]+((?:\$?\{\{[^{}\r\n]+\}\}|[^\s"'`])+)"#)
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
@@ -299,7 +319,8 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
                 .any(|suffix| key.ends_with(suffix))
         {
             let matched = capture.get(0).expect("whole match");
-            let (value, length) = assignment_value(&text[matched.end()..]);
+            let value_text = markdown_value(&text[..matched.start()], &text[matched.end()..]);
+            let (value, length) = assignment_value(value_text);
             if literal(&percent_decode(&value)) {
                 found.push((
                     matched.start(),
@@ -539,6 +560,102 @@ mod tests {
             "Server=localhost;Database=grid;Integrated Security=true\n",
             None,
         );
+    }
+
+    #[test]
+    fn r15v2_01_unquoted_multiword_connection_password() {
+        let prefix = "Server=database.internal;Uid=operator;Pwd";
+        for value in [
+            "secret meadow2026",
+            "<secret> meadow2026",
+            "... meadow2026",
+            "...`meadow2026",
+            "<secret>`meadow2026",
+            "ordinary meadow2026",
+        ] {
+            check(
+                &format!("{prefix}={value};"),
+                Some("local-connection-password"),
+            );
+            check(
+                &format!("`{prefix}={value};`"),
+                Some("local-connection-password"),
+            );
+        }
+    }
+
+    #[test]
+    fn r15v2_literal_assignment_boundaries() {
+        let key = "Pwd";
+        for value in ["realvalue`", "realvalue...", "real multiword password"] {
+            check(&format!("{key}={value}"), Some("local-connection-password"));
+            check(
+                &format!("Use `{key}={value}` in a fixture."),
+                Some("local-connection-password"),
+            );
+        }
+        check(
+            &format!("Use ``{key}=...`meadow2026`` in a fixture."),
+            Some("local-connection-password"),
+        );
+    }
+
+    #[test]
+    fn r15v2_whole_value_placeholders_only() {
+        let key = "Pwd";
+        let header = "Authorization";
+        for template in [
+            "<secret>",
+            "...",
+            "${VAR}",
+            "$VAR",
+            "$(command)",
+            "{{password}}",
+            "${{ secrets.PASSWORD }}",
+            "%PASSWORD%",
+            "secret",
+        ] {
+            check(&format!("{header}: Bearer {template}"), None);
+            for value in [
+                format!("{template}-meadow2026"),
+                format!("meadow2026{template}"),
+            ] {
+                check(
+                    &format!("{header}: Bearer {value}"),
+                    Some("local-http-authorization"),
+                );
+            }
+            for wrapper in ["", "\"", "'"] {
+                let value = format!("{wrapper}{template}{wrapper}");
+                check(&format!("{key}={value};"), None);
+                check(&format!("Use `{key}={value}` in examples."), None);
+                check(&format!("Use ``{key}={value}`` in examples."), None);
+                for literal in [
+                    format!("{template}-meadow2026"),
+                    format!("meadow2026{template}"),
+                    format!("{template} meadow2026"),
+                    format!("{template}meadow2026{template}"),
+                ] {
+                    check(
+                        &format!("{key}={wrapper}{literal}{wrapper};"),
+                        Some("local-connection-password"),
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn r15v2_bare_authority_password_boundary() {
+        let authority = ["user:", "realpass", "@host"].concat();
+        for text in [
+            authority.clone(),
+            format!("Use `{authority}` in a fixture."),
+        ] {
+            check(&text, Some("local-bare-authority-credentials"));
+        }
+        let template = ["user:", "password", "@host"].concat();
+        check(&format!("Use `{template}` in examples."), None);
     }
 
     #[test]
