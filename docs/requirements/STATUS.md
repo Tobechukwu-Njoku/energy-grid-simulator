@@ -7,6 +7,20 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 revision 15 sixth verification (2026-11-16 UTC):** exact head
+`260d5f9410ca9f6fff832752c8146e253765f796`; verdict **ATTEST** under D-75.
+All three fifth-verification blockers now reject, including encoded URI-host,
+leading encoded JDBC-key and nested/fenced code-span variants. R15V4-01,
+R15V3-02, all 48 R15V2-01 variants and all seven round-14 CORE reproductions
+remain fixed. Markdown controls and the two exact history-only exemptions are
+unchanged. All 261 tests, clean-head `xtask all` and explicit main-to-head
+range provenance pass. Independent evidence includes a fixed 179-input batch
+against both `112de8d` and `f666c59`, a bounded 40-case decoder matrix and
+45 fresh CLI checks. No old-reject/new-accept case was found; unsupported
+double-encoded/invalid key spellings remain FOLLOW-UP. Report and STATUS are
+scanned before publication. PR #23 and bootstrap records remain unchanged.
+[Sixth-verification report](reviews/gpt-2026-11-16-pr23-r15-verify-6.md).
+
 **PR #23 R15V5 blocking repairs (2026-11-16 UTC):** the value-first scanner
 now recognizes leading and fully percent-encoded JDBC password keys before
 whole-value classification. URI host handling percent-decodes host text and
