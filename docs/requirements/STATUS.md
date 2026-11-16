@@ -624,7 +624,7 @@ mapped regression tests (finding→test table in the PR body). Trusted gates now
 action before CI can pass:** commit `docs/process/ci-bootstrap.toml` with
 `seed_sha = "<final PR #23 head>"` to `main` and re-run CI; then GPT re-review, Gemini
 adversarial re-check and a triage record for every adversarial finding (format in
-REVIEW-BRIEF.md). The D-74 machine account (`egs-bot` placeholder) is still to be created.
+REVIEW-BRIEF.md). The D-74 machine account `automated-machines` was created on 2026-11-16; agents push and open PRs from it with a classic `public_repo` token (90-day expiry, rotate by 2027-02-14).
 
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
