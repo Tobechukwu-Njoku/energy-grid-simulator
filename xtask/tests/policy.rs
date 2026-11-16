@@ -1215,3 +1215,63 @@ fn r15_history_delimited_data_and_registered_controls() {
         }
     }
 }
+
+#[test]
+fn r15v5_credentials_reject_in_checkout_and_deleted_history() {
+    let synthetic = ["r15v5", "-synthetic-credential"].concat();
+    let mut cases = Vec::new();
+    let prefix = ["postgresql", "://operator:"].concat();
+    for host in ["%2Fvar%2Frun%2Fpostgresql", "%68ost"] {
+        cases.push((
+            format!("let uri = \"{prefix}{synthetic}@{host}/db\";\n"),
+            "local-uri-credentials",
+        ));
+    }
+    for key in ["%70assword", "%70wd", "%70%61%73%73%77%6f%72%64"] {
+        cases.push((
+            format!("url = \"jdbc:postgresql://localhost/db?user=grid&{key}={synthetic}\"\n"),
+            "local-jdbc-password",
+        ));
+    }
+    let key = "DB_PASS";
+    cases.push((
+        format!("Use `` `{key}=<password>`literal `` in examples.\n"),
+        "local-connection-password",
+    ));
+    for (text, rule) in cases {
+        let repo = Repo::new();
+        repo.write("data/manifest.toml", MANIFEST);
+        let base = repo.commit("docs: start");
+        repo.write("notes.txt", &text);
+        repo.git(&["add", "notes.txt"]);
+        let found = repository::provenance(&ctx(&repo)).expect("staged checkout");
+        assert!(
+            found.iter().any(|finding| finding.message.contains(rule)),
+            "{text:?}: {:?}",
+            files(&found)
+        );
+        let added = repo.commit("docs: synthetic fixture");
+        let found = repository::provenance(&ctx(&repo)).expect("committed checkout");
+        assert!(
+            found.iter().any(|finding| finding.message.contains(rule)),
+            "{text:?}: {:?}",
+            files(&found)
+        );
+        std::fs::remove_file(repo.path().join("notes.txt")).expect("rm");
+        repo.commit("docs: remove fixture");
+        assert!(
+            repository::provenance(&ctx(&repo))
+                .expect("clean checkout")
+                .is_empty()
+        );
+        let found = history(&repo, &base);
+        assert!(
+            found
+                .iter()
+                .any(|finding| finding.message.contains(rule)
+                    && finding.message.contains(&added[..12])),
+            "{text:?}: {:?}",
+            files(&found)
+        );
+    }
+}

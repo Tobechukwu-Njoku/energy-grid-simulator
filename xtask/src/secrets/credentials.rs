@@ -1,4 +1,6 @@
-use std::sync::LazyLock;
+use std::{ops::Range, sync::LazyLock};
+
+use pulldown_cmark::{Event, Parser};
 
 use regex::Regex;
 use yaml_rust2::{Yaml, YamlLoader};
@@ -171,35 +173,39 @@ fn netrc(text: &str, found: &mut Vec<Match>) {
     }
 }
 
-fn code_span_value<'a>(prefix: &str, text: &'a str) -> &'a str {
-    static BACKTICKS: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"`+").expect("Markdown delimiter regex"));
-    let opener = prefix.trim_end_matches('`');
-    let length = prefix.len() - opener.len();
-    let escapes = opener
-        .bytes()
-        .rev()
-        .take_while(|byte| *byte == b'\\')
-        .count();
-    if length > 0
-        && escapes % 2 == 0
-        && let Some(closing) = BACKTICKS
-            .find_iter(text)
-            .find(|matched| matched.len() == length)
-    {
-        &text[..closing.start()]
-    } else {
-        text
-    }
+fn code_spans(text: &str) -> Vec<Range<usize>> {
+    Parser::new(text)
+        .into_offset_iter()
+        .filter_map(|(event, range)| {
+            if !matches!(event, Event::Code(_)) {
+                return None;
+            }
+            let source = &text[range.clone()];
+            let delimiter = source.bytes().take_while(|byte| *byte == b'`').count();
+            let content = range.start + delimiter..range.end - delimiter;
+            // Even within a real CommonMark span, embedded unequal runs require
+            // strict format extraction rather than a presentation exemption.
+            (!text[content.clone()].contains('`')).then_some(content)
+        })
+        .collect()
 }
 
 fn assignment_value(text: &str) -> (String, usize) {
     grammar_value(text, ";")
 }
 
-fn credential_text(text: &str, key_start: usize, value_start: usize) -> &str {
+fn credential_text<'a>(
+    text: &'a str,
+    spans: &[Range<usize>],
+    key_start: usize,
+    value_start: usize,
+) -> &'a str {
     let prefix = &text[..key_start];
-    let value = code_span_value(prefix, &text[value_start..]);
+    let end = spans
+        .iter()
+        .find(|span| span.start == key_start && span.end >= value_start)
+        .map_or(text.len(), |span| span.end);
+    let value = &text[value_start..end];
     if let Some(quote @ ('\'' | '"')) = prefix.chars().next_back()
         && !text[key_start..value_start].contains(quote)
     {
@@ -267,7 +273,8 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\b([a-z_][a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#).expect("assignment regex")
+        Regex::new(r#"(?i)((?:\b[a-z_]|%[0-9a-f]{2})[a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#)
+            .expect("assignment regex")
     });
     static URI: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r#"(?:[A-Za-z][A-Za-z0-9+.-]*|<scheme>)://[^\s:@/?#"'\\]*:"#)
@@ -277,6 +284,7 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         Regex::new(r#"(?:^|[\s"'`(<;])(?P<key>[A-Za-z0-9_.-]+):"#).expect("bare authority regex")
     });
     let mut found = Vec::new();
+    let spans = code_spans(text);
     if (text.contains("client-key-data") || text.contains("user"))
         && let Ok(documents) = YamlLoader::load_from_str(text)
         && documents
@@ -311,7 +319,7 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
     }
     for capture in AUTH.captures_iter(text) {
         let matched = capture.get(0).expect("whole match");
-        let raw = credential_text(text, matched.start(), matched.end());
+        let raw = credential_text(text, &spans, matched.start(), matched.end());
         let quote = &capture["quote"];
         let raw = if quote.is_empty() {
             raw
@@ -344,7 +352,7 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             let query = jdbc || line.trim_end_matches('`').ends_with(['?', '&']);
             let connection =
                 line.contains(';') || ["password", "pwd", "pass"].contains(&key.as_str());
-            let value_text = credential_text(text, matched.start(), matched.end());
+            let value_text = credential_text(text, &spans, matched.start(), matched.end());
             let value_text = if jdbc {
                 let jdbc_start = prefix
                     .to_ascii_lowercase()
@@ -387,7 +395,7 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             (key.as_str() != "mailto").then_some((key.start(), capture.get(0)?.end(), false))
         }))
     {
-        let raw = credential_text(text, start, end);
+        let raw = credential_text(text, &spans, start, end);
         let raw = raw.split(['\r', '\n']).next().unwrap_or("");
         if !uri && (raw.starts_with("//") || raw.starts_with(char::is_whitespace)) {
             continue;
@@ -406,8 +414,12 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             })
             .next()
             .unwrap_or("");
-        if !host
-            .starts_with(|character: char| character.is_ascii_alphanumeric() || character == '[')
+        let decoded_host = percent_decode(host);
+        if decoded_host.is_empty()
+            || (!uri
+                && !decoded_host.starts_with(|character: char| {
+                    character.is_ascii_alphanumeric() || character == '[' || character == '/'
+                }))
         {
             continue;
         }
@@ -442,11 +454,16 @@ mod tests {
     use crate::{secrets::Ruleset, util::Ctx};
 
     fn check(text: &str, expected: Option<&str>) {
+        check_bytes(text.as_bytes(), expected);
+    }
+
+    fn check_bytes(bytes: &[u8], expected: Option<&str>) {
         static RULES: LazyLock<Ruleset> = LazyLock::new(|| {
             let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
             Ruleset::load(&Ctx::local(&root)).expect("rules")
         });
-        let hits = RULES.scan("docs/notes.txt", text.as_bytes());
+        let hits = RULES.scan("docs/notes.txt", bytes);
+        let text = String::from_utf8_lossy(bytes);
         if let Some(id) = expected {
             assert!(
                 hits.iter().any(|hit| hit.message.contains(id)),
@@ -454,6 +471,96 @@ mod tests {
             );
         } else {
             assert!(hits.is_empty(), "{text:?}: {hits:?}");
+        }
+    }
+
+    #[test]
+    fn r15v5_01_encoded_uri_hosts_and_text_encodings() {
+        let synthetic = ["r15v5", "-synthetic-credential"].concat();
+        for host in ["%2Fvar%2Frun%2Fpostgresql", "%68ost", "_host", "[::1]"] {
+            let prefix = ["postgresql", "://operator:"].concat();
+            let uri = format!("{prefix}{synthetic}@{host}/db");
+            for text in [uri.clone(), format!("let uri = \"{uri}\";\n")] {
+                check(&text, Some("local-uri-credentials"));
+                for width in [1, 2, 4] {
+                    for big_endian in [false, true] {
+                        let encoded: Vec<u8> = match width {
+                            1 => text.as_bytes().to_vec(),
+                            2 => text
+                                .encode_utf16()
+                                .flat_map(|unit| {
+                                    if big_endian {
+                                        unit.to_be_bytes()
+                                    } else {
+                                        unit.to_le_bytes()
+                                    }
+                                })
+                                .collect(),
+                            _ => text
+                                .chars()
+                                .flat_map(|character| {
+                                    let unit = u32::from(character);
+                                    if big_endian {
+                                        unit.to_be_bytes()
+                                    } else {
+                                        unit.to_le_bytes()
+                                    }
+                                })
+                                .collect(),
+                        };
+                        for alignment in 0..4 {
+                            let mut bytes = vec![b'x'; alignment];
+                            bytes.extend_from_slice(&encoded);
+                            check_bytes(&bytes, Some("local-uri-credentials"));
+                        }
+                    }
+                }
+            }
+            check(
+                &format!("postgresql://operator:${{PASSWORD}}@{host}/db"),
+                None,
+            );
+        }
+    }
+
+    #[test]
+    fn r15v5_02_encoded_jdbc_password_keys() {
+        let synthetic = ["r15v5", "-synthetic-credential"].concat();
+        for scheme in ["postgresql", "mysql"] {
+            for key in [
+                "%70assword",
+                "%70wd",
+                "%70%61%73%73%77%6f%72%64",
+                "%70%77%64",
+                "p%61ssword",
+            ] {
+                let prefix = format!("jdbc:{scheme}://localhost/db?user=grid&{key}");
+                check(
+                    &format!("url = \"{prefix}={synthetic}\""),
+                    Some("local-jdbc-password"),
+                );
+                check(&format!("url = \"{prefix}=%3Cpassword%3E\""), None);
+            }
+        }
+    }
+
+    #[test]
+    fn r15v5_03_nested_unequal_and_fenced_spans_use_strict_values() {
+        let key = "DB_PASS";
+        for text in [
+            format!("Use `` `{key}=<password>`literal `` in examples."),
+            format!("Use ``{key}=<password>`literal`` in examples."),
+            format!("Use `{key}=<password>``literal` in examples."),
+            format!("```text\n`{key}=<password>`literal\n```\n"),
+            format!("~~~text\n`{key}=<password>`literal\n~~~\n"),
+        ] {
+            check(&text, Some("local-connection-password"));
+        }
+        for delimiter in ["`", "``", "```"] {
+            check(
+                &format!("Use {delimiter}{key}=<password>{delimiter} in examples."),
+                None,
+            );
         }
     }
 
