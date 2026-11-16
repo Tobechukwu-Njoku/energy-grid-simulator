@@ -24,9 +24,23 @@ sub read_utf8 {
 
 my ($pattern_path, $message_path) = @ARGV;
 my @patterns;
+my %fragments;
+sub expand {
+    my ($rule) = @_;
+    $rule =~ s/\{\{([^{}]*)\}\}/exists $fragments{$1} ? $fragments{$1} : die "undefined fragment {{$1}}\n"/ge;
+    die "unterminated fragment reference\n" if $rule =~ /\{\{/;
+    return $rule;
+}
 for my $pattern (split /\n/, read_utf8($pattern_path)) {
     $pattern =~ s/\r$//;
     next if $pattern =~ /^\s*(?:#|$)/;
+    if ($pattern =~ /^\s*define (.*)$/) {
+        my ($name, $body) = $1 =~ /^\s*([A-Z_]+) = (.*)$/
+            or die "invalid fragment definition\n";
+        $fragments{$name} = expand($body);
+        next;
+    }
+    $pattern = expand($pattern);
     my $compiled = qr/$pattern/i;
     die "unsafe empty-string attribution pattern\n" if '' =~ $compiled;
     push @patterns, $compiled;
