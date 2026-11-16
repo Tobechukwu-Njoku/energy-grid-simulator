@@ -7,6 +7,14 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #71 independent code review (2026-11-16 UTC):** reviewed exact head
+`e31f429dfdecce9596219cb7f71a607c91529a25`; verdict **approve**. The D-74
+account policy, operational status and policy-backed integration expectation
+are consistent. Remaining old-name literals are test fixtures or historical
+records. `cargo test -j 2` passed with a worktree-local target directory and
+space-free TMPDIR; no blocking findings. Review evidence is published separately
+against `main`: [report](reviews/gpt-2026-11-16-pr71.md).
+
 **PR #23 revision 15 sixth verification (2026-11-16 UTC):** exact head
 `260d5f9410ca9f6fff832752c8146e253765f796`; verdict **ATTEST** under D-75.
 All three fifth-verification blockers now reject, including encoded URI-host,
