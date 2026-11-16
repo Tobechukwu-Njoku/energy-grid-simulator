@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-11-15_
+_Last updated: 2026-11-16_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
@@ -145,6 +145,22 @@ attest this head as the one-time bootstrap seed. R13-04's lowercase attribution
 coverage and documented bounded follow-ups need not block independently.
 Evidence, regressions, adversarial triage and M0 assessment:
 [revision-13 report](reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
+
+**PR #23 revision 15 fifth verification (2026-11-16 UTC):** exact head
+`f19551e0da7b9178fea0b35fc53af3aaf4bdd0d9`; verdict **NOT ATTEST**.
+R15V4-01, R15V3-02, all 48 original R15V2-01 variants, 18 further Markdown
+variants and all seven round-14 CORE reproductions reject. All 257 workspace
+tests, clean-head `xtask all` and explicit range provenance pass. The changed
+Markdown controls remain usable with tested grammar-bound presentation forms;
+both history-only exemptions are pinned exactly and fail checkout/scope negatives.
+The replacement parser nevertheless introduces **BLOCKING R15V5-01**: valid
+percent-encoded URI hosts hide literal credentials rejected by both `112de8d`
+and `f666c59`. A libpq parser validates the socket URI; staged `all`, committed
+checkout and added-then-deleted history incorrectly pass in a full candidate
+clone. **R15V5-02/03** additionally regress versus `f666c59`: leading encoded
+JDBC keys and inert inner backticks of enclosing CommonMark spans lose findings.
+The report is scanned before publication; PR #23 and bootstrap records are unchanged.
+[Fifth-verification report](reviews/gpt-2026-11-15-pr23-r15-verify-5.md).
 
 **PR #23 revision 15 fourth verification (2026-11-15 UTC):** exact head
 `f666c598ac157fec464923ead444873af29524d0`; verdict **NOT ATTEST**.
