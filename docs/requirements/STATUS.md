@@ -7,6 +7,33 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #23 R15V5 blocking repairs (2026-11-16 UTC):** the value-first scanner
+now recognizes leading and fully percent-encoded JDBC password keys before
+whole-value classification. URI host handling percent-decodes host text and
+preserves literal-password findings for encoded hostnames, PostgreSQL socket
+paths and other nonempty URI hosts. No first-character plausibility filter can
+silently discard an already recognized URI credential.
+
+Replaced local backtick adjacency inference with CommonMark parsing through
+`pulldown-cmark` (xtask only). A presentation boundary requires a real inline
+code span starting immediately at the credential key. Nested/unequal runs and
+fenced code use strict format extraction with no span exemption. The existing
+single extraction/classification path and whole-placeholder rules remain.
+
+Added R15V5-01/02/03 regression constructions from the fifth verification report:
+encoded socket/hostname URIs, quoted JDBC values with leading/fully encoded keys,
+and a two-backtick span containing a single-backtick assignment and literal
+suffix. Tests also cover UTF-8/16/32, both endian orders and four byte alignments,
+whole-placeholder controls, unequal runs, fenced contexts, staged and committed
+checkout detection, and add-then-delete range detection with introducing commits.
+All 257 pre-existing tests remain unchanged; four regression tests are added.
+Validation commands: `cargo test -j 2` (261 passed, zero failed),
+`cargo xtask all`, and `cargo xtask provenance --base origin/main --head HEAD`.
+Formatting, workspace/all-target Clippy with warnings denied, and cargo-deny pass.
+Builds use this worktree's `target/` and space-free TMPDIR
+`/tmp/egs-pr23-r15v5`; command logs are retained under ignored `target/r15v5-*`.
+No bootstrap attestation or independent re-review is claimed.
+
 **PR #23 R15V4-01 extraction redesign (2026-11-15 UTC):** supersedes the
 R15V3 Markdown inference below. Credential extraction uses connection semicolons,
 query ampersands/fragments, userinfo `@`, line endings and matching quotes/braces;
