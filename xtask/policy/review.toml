@@ -1,0 +1,45 @@
+# Trusted review-evidence matrix (ADR 0001, NFR-3.AC3/AC5, D-28, D-51, D-53, D-54,
+# docs/process/team.md). CI reads it from main. Changing it needs the policy owner's
+# approval (.github/CODEOWNERS, policy-approval).
+
+# Vendor of a role/provider field: any listed word (whole word, case-insensitive) in
+# its provider part. A field naming no vendor, or more than one, is invalid.
+[vendors]
+anthropic = ["anthropic", "claude", "opus", "sonnet", "haiku", "fable"]
+openai = ["openai", "gpt", "chatgpt", "codex"]
+google = ["google", "gemini"]
+
+# Independent review (D-28, D-51, D-54): an author role and vendor, and the reviewer
+# roles and vendors that may review it. The vendors must also differ. Gemini never
+# supplies independent review (team.md rule 2).
+[[independent]]
+author_roles = ["code generation"]
+author_vendors = ["anthropic"]
+reviewer_roles = ["independent code review", "code review"]
+reviewer_vendors = ["openai"]
+
+[[independent]]
+author_roles = [
+    "specification",
+    "requirements",
+    "architecture",
+    "documentation",
+    "research",
+    "code generation",
+]
+author_vendors = ["openai"]
+reviewer_roles = ["independent review", "independent code review", "code review", "document review"]
+reviewer_vendors = ["anthropic"]
+
+# Adversarial review (D-53): Gemini tries to break the change. It never approves.
+[adversarial]
+reviewer_roles = ["adversarial review"]
+reviewer_vendors = ["google"]
+
+# Triage of adversarial findings (D-53): by GPT or the coordinator, never Gemini.
+# Every finding ID of every adversarial report on the pull request needs one of the
+# closing dispositions, in a triage record whose reviewed head is still current.
+[triage]
+roles = ["triage", "adversarial triage", "coordinator triage"]
+vendors = ["openai"]
+dispositions = ["fixed", "rejected", "deferred", "duplicate", "not-applicable"]
