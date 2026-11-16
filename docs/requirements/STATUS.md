@@ -7,6 +7,11 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
+Gemini report against the exact reviewed head and approval logic. Published
+[triage record](reviews/triage-gemini-2026-11-16-pr71.md); no implementation
+changes required. The trusted gate requires this record even for zero findings.
+
 **PR #71 independent code review (2026-11-16 UTC):** reviewed exact head
 `e31f429dfdecce9596219cb7f71a607c91529a25`; verdict **approve**. The D-74
 account policy, operational status and policy-backed integration expectation
