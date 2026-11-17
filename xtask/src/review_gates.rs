@@ -485,6 +485,113 @@ pub fn still_current(repo: &Path, main: &str, reviewed: &str, head: &str) -> Res
     Ok(true)
 }
 
+/// Whether a repository path is a review-evidence document.
+#[must_use]
+pub fn is_review_document_path(path: &str) -> bool {
+    (path.starts_with(REVIEWS) && path.ends_with(".md")) || path == "docs/requirements/STATUS.md"
+}
+
+fn evaluate_review_evidence_pr(
+    repo: &Path,
+    main: &str,
+    head: &str,
+    changed: &BTreeSet<String>,
+    matrix: &Matrix,
+) -> Result<Option<Vec<Finding>>, String> {
+    if changed.is_empty() || !changed.iter().all(|path| is_review_document_path(path)) {
+        return Ok(None);
+    }
+    let mut findings = Vec::new();
+    for path in changed {
+        if git(repo, &["cat-file", "-e", &format!("{head}:{path}")]).is_err() {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "review document cannot be deleted in a review-evidence pull request",
+            ));
+            continue;
+        }
+        if path.starts_with(REVIEWS)
+            && git(repo, &["cat-file", "-e", &format!("{main}:{path}")]).is_ok()
+        {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "existing review evidence on main cannot be modified",
+            ));
+            continue;
+        }
+        if !path.starts_with(REVIEWS) {
+            continue;
+        }
+        let bytes = git(repo, &["show", &format!("{head}:{path}")])?;
+        let text = String::from_utf8_lossy(&bytes);
+        let header = parse_header(&text);
+        let Some(reviewed_head) = &header.head else {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "missing Reviewed head SHA in review report header",
+            ));
+            continue;
+        };
+        if !is_sha(reviewed_head) {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                format!("invalid Reviewed head SHA: {reviewed_head}"),
+            ));
+            continue;
+        }
+        if header.triager.is_some() {
+            if header.triaged.is_none() {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "triage record missing Triaged report field",
+                ));
+            }
+            if !matrix.triager_valid(&header) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "triager role or vendor not permitted by review policy",
+                ));
+            }
+        } else if matrix.is_adversarial_role(&header) || path.contains("adversarial") {
+            if !matrix.adversarial_valid(&header) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "adversarial review role or vendor not permitted by review policy",
+                ));
+            }
+        } else {
+            if header.verdict.is_none() {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "independent review missing Verdict field",
+                ));
+            }
+            if let Some(problem) = matrix.independent_problem(&header) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    format!("independent review pairing invalid: {problem}"),
+                ));
+            }
+        }
+    }
+    if findings.is_empty() {
+        println!(
+            "review-evidence pull request: {} review document(s) verified",
+            changed.len()
+        );
+    }
+    Ok(Some(findings))
+}
+
 /// Runs the independent-review gate. `main` is the current tip of `main`
 /// (also the evidence tree); `head` is the pull-request head.
 ///
@@ -509,6 +616,13 @@ pub fn independent_review(ctx: &Ctx, main: &str, head: &str) -> Result<Vec<Findi
     )?)
     .trim()
     .to_owned();
+    let changed = changed_paths(repo, &main, head)?;
+    if changed.is_empty() {
+        return Ok(Vec::new());
+    }
+    if let Some(findings) = evaluate_review_evidence_pr(repo, &main, head, &changed, &matrix)? {
+        return Ok(findings);
+    }
     let commits: BTreeSet<String> =
         String::from_utf8_lossy(&git(repo, &["rev-list", &format!("{main}..{head}")])?)
             .split_whitespace()

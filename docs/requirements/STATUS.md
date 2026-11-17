@@ -1,11 +1,20 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-17_
 
-**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-77 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**Review evidence gate circular deadlock fix (2026-11-17 UTC, D-77):** resolved
+the circular gate deadlock where PRs publishing review evidence into
+`docs/requirements/reviews/` and `docs/requirements/STATUS.md` were evaluated
+by `independent-review` as requiring pre-existing reviews on `main`. Review-only
+PRs are now validated directly: all paths must be review documents (`.md` in
+`docs/requirements/reviews/` or `STATUS.md`), no review documents may be deleted,
+existing review evidence on `main` is immutable, and all added review headers
+must satisfy role and cross-vendor policy with full commit SHAs.
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published

@@ -317,3 +317,105 @@ fn r3_03_review_directory_change_invalidates_review() {
         review_gates::independent_review(&review_ctx(&repo), &main, &reviewed).expect("gate");
     assert!(found.is_empty(), "{found:?}");
 }
+
+// Review-evidence publication PRs (containing only docs/requirements/reviews/*.md
+// and docs/requirements/STATUS.md) are verified for valid headers and immutability
+// of existing review evidence, without circular self-dependency.
+#[test]
+fn review_evidence_pr_passes_without_prior_evidence_on_main() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    let target_sha = "a".repeat(40);
+    repo.write(
+        "docs/requirements/STATUS.md",
+        "# STATUS\nUpdated with PR review record\n",
+    );
+    repo.write(
+        &format!("{REVIEW_DIR}/gpt-review-pr99.md"),
+        &format!(
+            "# Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n\nNo blocking findings.\n"
+        ),
+    );
+    let head = repo.commit("docs: publish PR 99 review");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(found.is_empty(), "unexpected findings: {found:?}");
+}
+
+#[test]
+fn review_evidence_pr_with_invalid_header_is_rejected() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    let target_sha = "a".repeat(40);
+    repo.write(
+        &format!("{REVIEW_DIR}/same-vendor.md"),
+        &format!(
+            "# Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / Anthropic\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n"
+        ),
+    );
+    let head = repo.commit("docs: invalid review");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(!found.is_empty(), "invalid header was accepted");
+    let messages: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
+    assert!(
+        messages.iter().any(|m| m.contains("pairing invalid")),
+        "{messages:?}"
+    );
+}
+
+#[test]
+fn review_evidence_pr_modifying_existing_review_on_main_is_rejected() {
+    let repo = Repo::new();
+    let target_sha = "a".repeat(40);
+    repo.write(
+        &format!("{REVIEW_DIR}/original.md"),
+        &format!(
+            "# Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n"
+        ),
+    );
+    let main = repo.commit("docs: initial review evidence");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    repo.write(
+        &format!("{REVIEW_DIR}/original.md"),
+        &format!(
+            "# Modified Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n"
+        ),
+    );
+    let head = repo.commit("docs: tamper with existing evidence");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(!found.is_empty(), "modified review was accepted");
+    let messages: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
+    assert!(
+        messages.iter().any(|m| m.contains("cannot be modified")),
+        "{messages:?}"
+    );
+}
+
+#[test]
+fn review_evidence_pr_with_non_markdown_file_is_not_exempt() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    repo.write(
+        &format!("{REVIEW_DIR}/payload.rs"),
+        "pub fn secret() -> u32 { 42 }\n",
+    );
+    let head = repo.commit("chore: add non-markdown file in reviews");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(!found.is_empty(), "non-markdown review file was exempt");
+    let messages: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
+    assert!(
+        messages
+            .iter()
+            .any(|m| m.contains("no approving, role-compatible independent review")),
+        "{messages:?}"
+    );
+}
