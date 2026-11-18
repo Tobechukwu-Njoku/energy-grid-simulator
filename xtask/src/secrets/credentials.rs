@@ -267,6 +267,50 @@ fn percent_decode(text: &str) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
+// Key normalization is deliberately conservative, not a driver parser. Decode
+// nested escapes only while the byte length shrinks; values still decode once
+// so an encoded literal cannot turn into an exempt placeholder.
+fn credential_key(raw: &str) -> String {
+    let mut key = raw.to_ascii_lowercase();
+    loop {
+        let decoded = percent_decode(&key).to_ascii_lowercase();
+        if decoded.len() >= key.len() {
+            break;
+        }
+        key = decoded;
+    }
+    key
+}
+
+fn password_key(key: &str) -> bool {
+    ["password", "pwd", "pass", "passphrase"].contains(&key)
+        || ["_pass", "_pwd", "_password", "_passphrase"]
+            .iter()
+            .any(|suffix| key.ends_with(suffix))
+}
+
+fn malformed_password_key(key: &str) -> bool {
+    // Reject credential names with invalid/incomplete escapes or decoded
+    // delimiters. These spellings need not authenticate to expose a literal.
+    let mut skeleton = String::new();
+    let mut chars = key.chars().peekable();
+    while let Some(character) = chars.next() {
+        if character == '%' {
+            for _ in 0..2 {
+                if chars.peek().is_some_and(char::is_ascii_alphanumeric) {
+                    chars.next();
+                }
+            }
+        } else if character.is_ascii_alphanumeric() || character == '_' {
+            skeleton.push(character);
+        }
+    }
+    password_key(&skeleton)
+        || key
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .any(password_key)
+}
+
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*(?P<quote>["']?)(?:basic|bearer)[ \t]+"#)
@@ -337,12 +381,8 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         }
     }
     for capture in ASSIGNMENT.captures_iter(text) {
-        let key = percent_decode(&capture[1]).to_ascii_lowercase();
-        if ["password", "pwd", "pass", "passphrase"].contains(&key.as_str())
-            || ["_pass", "_pwd", "_password", "_passphrase"]
-                .iter()
-                .any(|suffix| key.ends_with(suffix))
-        {
+        let key = credential_key(&capture[1]);
+        if password_key(&key) || (capture[1].contains('%') && malformed_password_key(&key)) {
             let matched = capture.get(0).expect("whole match");
             let prefix = &text[..matched.start()];
             let line = prefix.rsplit(['\r', '\n', '\'', '"']).next().unwrap_or("");
@@ -471,6 +511,31 @@ mod tests {
             );
         } else {
             assert!(hits.is_empty(), "{text:?}: {hits:?}");
+        }
+    }
+
+    #[test]
+    fn deferred_encoded_and_malformed_credential_keys() {
+        let value = ["followup", "-synthetic-value"].concat();
+        for key in [
+            "%2570assword",
+            "%2570%2577%2564",
+            "p%2561ssword",
+            "password%",
+            "password%2",
+            "password%GG",
+            "pass%ZZword",
+            "%ZZpassword",
+            "password%3D",
+            "password%26",
+            "pass%00word",
+        ] {
+            let prefix = format!("jdbc:postgresql://host/db?{key}");
+            check(&format!("{prefix}={value}"), Some("password"));
+            check(&format!("{prefix}=<secret>"), None);
+        }
+        for key in ["sslmode", "%2573slmode", "compass", "password_hint"] {
+            check(&format!("jdbc:postgresql://host/db?{key}=require"), None);
         }
     }
 
