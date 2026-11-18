@@ -357,19 +357,21 @@ pub fn evaluate(
     let mut triages = Vec::new();
     for (path, text) in reports {
         let header = parse_header(text);
+        let cites_pr = header.head.as_ref().is_some_and(|h| commits.contains(h))
+            || ((header.head.is_none() || !header.errors.is_empty())
+                && text
+                    .split(|c: char| !c.is_ascii_hexdigit())
+                    .any(|word| commits.contains(word)));
         if !header.errors.is_empty() {
-            findings.push(Finding::at(path.as_str(), None, header.errors.join("; ")));
+            if cites_pr {
+                findings.push(Finding::at(path.as_str(), None, header.errors.join("; ")));
+            }
             continue;
         }
         if header.triager.is_some() {
             triages.push((path.as_str(), text.as_str(), header));
             continue;
         }
-        let cites_pr = header.head.as_ref().is_some_and(|h| commits.contains(h))
-            || (header.head.is_none()
-                && text
-                    .split(|c: char| !c.is_ascii_hexdigit())
-                    .any(|word| commits.contains(word)));
         if !cites_pr {
             continue;
         }

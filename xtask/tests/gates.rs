@@ -798,6 +798,29 @@ fn pr75_conflicting_merges_fail_both_gates_closed() {
 }
 
 #[test]
+fn pr81_unrelated_malformed_main_report_does_not_block_ordinary_pr() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let base = repo.commit("chore: main");
+    let mut malformed = evidence(&base).remove(0).1;
+    malformed.push_str("- Verdict: request changes\n");
+    assert!(!review_gates::parse_header(&malformed).errors.is_empty());
+    repo.write(&format!("{REVIEW_DIR}/unrelated.md"), &malformed);
+    repo.commit("docs: unrelated malformed report");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+    repo.write("run.sh", "echo ok\n");
+    let reviewed = repo.commit("feat: script");
+    repo.git(&["checkout", "-q", "main"]);
+    for (path, text) in evidence(&reviewed) {
+        repo.write(&path, &text);
+    }
+    let main = repo.commit("docs: review evidence");
+    let findings =
+        review_gates::independent_review(&review_ctx(&repo), &main, &reviewed).expect("gate");
+    assert!(findings.is_empty(), "{findings:?}");
+}
+
+#[test]
 fn pr75_duplicate_headers_reject_publication_and_trusted_evidence() {
     for field in [
         "Reviewed head",
