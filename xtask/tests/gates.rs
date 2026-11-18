@@ -419,3 +419,247 @@ fn review_evidence_pr_with_non_markdown_file_is_not_exempt() {
         "{messages:?}"
     );
 }
+
+fn pr75_setup() -> (Repo, String) {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    repo.write("docs/requirements/STATUS.md", "# Status\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+    (repo, main)
+}
+
+fn pr75_report(head: &str) -> String {
+    format!(
+        "- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{head}`\n- Verdict: **approve**\n"
+    )
+}
+
+fn pr75_findings(repo: &Repo, main: &str, head: &str) -> Vec<xtask::util::Finding> {
+    review_gates::independent_review(&review_ctx(repo), main, head).expect("gate")
+}
+
+#[test]
+fn pr75_current_main_advance_does_not_delete_evidence() {
+    for main_path in [
+        "docs/requirements/reviews/later-main-report.md",
+        "src/main-only.rs",
+    ] {
+        let (repo, base) = pr75_setup();
+        repo.write(&format!("{REVIEW_DIR}/pr-report.md"), &pr75_report(&base));
+        let head = repo.commit("docs: branch review");
+        repo.git(&["checkout", "-q", "main"]);
+        repo.write(main_path, &pr75_report(&base));
+        let main = repo.commit("docs: independent main change");
+        let found = pr75_findings(&repo, &main, &head);
+        assert!(found.is_empty(), "main-only path {main_path}: {found:?}");
+    }
+}
+
+#[test]
+fn pr75_existing_evidence_remains_immutable() {
+    for variant in ["modify", "delete", "rename", "mode"] {
+        let (repo, base) = pr75_setup();
+        let original = format!("{REVIEW_DIR}/original.md");
+        repo.write(&original, &pr75_report(&base));
+        let main = repo.commit("docs: original evidence");
+        match variant {
+            "modify" => repo.write(&original, &format!("{}\nchanged\n", pr75_report(&base))),
+            "delete" => {
+                repo.git(&["rm", "-q", &original]);
+            }
+            "rename" => {
+                repo.git(&["mv", &original, &format!("{REVIEW_DIR}/renamed.md")]);
+            }
+            "mode" => {
+                repo.git(&["update-index", "--chmod=+x", &original]);
+            }
+            _ => unreachable!(),
+        }
+        let head = if variant == "mode" {
+            repo.git(&["commit", "-q", "-m", "docs: mode"]);
+            repo.git(&["rev-parse", "HEAD"])
+        } else {
+            repo.commit("docs: change existing evidence")
+        };
+        assert!(!pr75_findings(&repo, &main, &head).is_empty(), "{variant}");
+    }
+}
+
+#[test]
+fn pr75_touched_evidence_is_compared_with_current_main() {
+    for identical in [false, true] {
+        let (repo, base) = pr75_setup();
+        let path = format!("{REVIEW_DIR}/report.md");
+        repo.write(&path, &pr75_report(&base));
+        let head = repo.commit("docs: branch review");
+        repo.git(&["checkout", "-q", "main"]);
+        let text = if identical {
+            pr75_report(&base)
+        } else {
+            format!("{}\nmain evidence\n", pr75_report(&base))
+        };
+        repo.write(&path, &text);
+        let main = repo.commit("docs: main review");
+        let found = pr75_findings(&repo, &main, &head);
+        assert_eq!(found.is_empty(), identical, "{found:?}");
+    }
+}
+
+#[test]
+fn pr75_classifier_rejects_nested_and_noncanonical_paths() {
+    for path in [
+        "docs/requirements/reviews/nested/report.md",
+        "docs/requirements/reviews/./report.md",
+        "docs/requirements/reviews/../report.md",
+        "docs/requirements/reviews//report.md",
+        "./docs/requirements/reviews/report.md",
+        "docs/requirements/reviews/nested\\report.md",
+        "docs/requirements/reviews/.md",
+    ] {
+        assert!(!review_gates::is_review_document_path(path), "{path}");
+    }
+    for path in [
+        "docs/requirements/reviews/report.md",
+        "docs/requirements/STATUS.md",
+    ] {
+        assert!(review_gates::is_review_document_path(path), "{path}");
+    }
+}
+
+#[test]
+fn pr75_nested_report_is_not_exempt_end_to_end() {
+    let (repo, main) = pr75_setup();
+    repo.write(
+        &format!("{REVIEW_DIR}/nested/report.md"),
+        &pr75_report(&main),
+    );
+    let head = repo.commit("docs: nested report");
+    assert!(!pr75_findings(&repo, &main, &head).is_empty());
+}
+
+#[test]
+fn pr75_rejects_malformed_sha_headers() {
+    for variant in [
+        "hex-suffix",
+        "text-suffix",
+        "peel",
+        "short",
+        "nonhex",
+        "uppercase",
+        "extra-tick",
+    ] {
+        let (repo, main) = pr75_setup();
+        let sha = match variant {
+            "hex-suffix" => format!("{main}a"),
+            "text-suffix" => format!("{main}not-a-sha"),
+            "peel" => format!("{main}^{{}}"),
+            "short" => main[..7].to_owned(),
+            "nonhex" => "z".repeat(40),
+            "uppercase" => "A".repeat(40),
+            "extra-tick" => format!("`{main}"),
+            _ => unreachable!(),
+        };
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &pr75_report(&sha));
+        let head = repo.commit("docs: malformed reference");
+        assert!(!pr75_findings(&repo, &main, &head).is_empty(), "{variant}");
+    }
+}
+
+#[test]
+fn pr75_rejects_empty_or_unknown_independent_verdict() {
+    for verdict in ["", "   ", "****", "**unknown**", "**request bananas**"] {
+        let (repo, main) = pr75_setup();
+        let text = pr75_report(&main).replace("**approve**", verdict);
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &text);
+        let head = repo.commit("docs: invalid verdict");
+        assert!(!pr75_findings(&repo, &main, &head).is_empty(), "{verdict}");
+    }
+}
+
+#[test]
+fn pr75_rejects_empty_triaged_report() {
+    for reference in ["", "   ", "``"] {
+        let (repo, main) = pr75_setup();
+        let text = format!(
+            "- Triager role/provider: triage / OpenAI\n- Reviewed head: `{main}`\n- Triaged report: {reference}\n"
+        );
+        repo.write(&format!("{REVIEW_DIR}/triage.md"), &text);
+        let head = repo.commit("docs: blank triage reference");
+        assert!(
+            !pr75_findings(&repo, &main, &head).is_empty(),
+            "{reference}"
+        );
+    }
+}
+
+#[test]
+fn pr75_accepts_recognized_publication_verdicts() {
+    for verdict in [
+        "approve",
+        "approved",
+        "merge-ready",
+        "request changes",
+        "request-changes",
+        "must-fix",
+    ] {
+        let (repo, main) = pr75_setup();
+        let text = pr75_report(&main).replace("**approve**", &format!("**{verdict}**"));
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &text);
+        let head = repo.commit("docs: valid verdict");
+        let found = pr75_findings(&repo, &main, &head);
+        assert!(found.is_empty(), "{verdict}: {found:?}");
+    }
+}
+
+#[test]
+fn pr75_documents_must_be_regular_files() {
+    for path in [
+        "docs/requirements/STATUS.md",
+        "docs/requirements/reviews/report.md",
+    ] {
+        for mode in ["120000", "160000"] {
+            let (repo, main) = pr75_setup();
+            let object = if mode == "160000" {
+                main.clone()
+            } else {
+                repo.write("target.md", &pr75_report(&main));
+                repo.git(&["hash-object", "-w", "target.md"])
+            };
+            repo.git(&[
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                &format!("{mode},{object},{path}"),
+            ]);
+            repo.git(&["commit", "-q", "-m", "chore: nonregular document"]);
+            let head = repo.git(&["rev-parse", "HEAD"]);
+            let found = pr75_findings(&repo, &main, &head);
+            assert!(
+                found
+                    .iter()
+                    .any(|finding| finding.message.contains("regular file")),
+                "{mode} {path}: {found:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn pr75_status_only_is_explicitly_allowed_by_d77() {
+    let (repo, main) = pr75_setup();
+    repo.write("docs/requirements/STATUS.md", "# Status\nupdated\n");
+    let head = repo.commit("docs: status");
+    assert!(pr75_findings(&repo, &main, &head).is_empty());
+}
+
+#[test]
+fn pr75_google_author_output_can_be_reviewed_by_openai() {
+    let (repo, main) = pr75_setup();
+    let text =
+        pr75_report(&main).replace("code generation / Anthropic", "code generation / Google");
+    repo.write(&format!("{REVIEW_DIR}/report.md"), &text);
+    let head = repo.commit("docs: review Google output");
+    let found = pr75_findings(&repo, &main, &head);
+    assert!(found.is_empty(), "{found:?}");
+}

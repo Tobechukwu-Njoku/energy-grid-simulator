@@ -2,8 +2,9 @@
 //!
 //! Both gates run from `main` (`.github/workflows/trusted-gates.yml`, a
 //! `pull_request_target` workflow that never builds or runs pull-request
-//! code) and compare against the current tip of `main`, never the event's
-//! possibly stale base (F1, ADV23R-08).
+//! code) and use the current tip of `main`, never the event's possibly stale
+//! base (F1, ADV23R-08). PR-owned paths are measured from its merge base with
+//! the head; trusted evidence and immutability are checked against current main.
 //!
 //! `independent-review` passes only when the trusted evidence tree (`main`)
 //! holds, for commits of this pull request:
@@ -54,7 +55,7 @@ pub struct Party {
 pub struct ReviewHeader {
     /// Reviewed commit.
     pub head: Option<String>,
-    /// Verdict word, lower case.
+    /// Verdict text, lower case.
     pub verdict: Option<String>,
     /// Author role and provider.
     pub author: Option<Party>,
@@ -94,21 +95,21 @@ pub fn parse_header(text: &str) -> ReviewHeader {
     let mut header = ReviewHeader::default();
     for line in text.lines().take(40) {
         if let Some(value) = field(line, "Reviewed head") {
-            let sha: String = value
-                .trim_matches(['`', ' ', '.'])
-                .chars()
-                .take(40)
-                .collect();
-            if is_sha(&sha) {
-                header.head = Some(sha);
+            let value = value.strip_suffix('.').unwrap_or(value);
+            let sha = value
+                .strip_prefix('`')
+                .and_then(|value| value.strip_suffix('`'))
+                .unwrap_or(value);
+            if is_sha(sha) {
+                header.head = Some(sha.to_owned());
             }
         } else if let Some(value) = field(line, "Verdict") {
             let word: String = value
                 .trim_start_matches(['*', '_', '`'])
                 .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '-')
+                .take_while(|c| c.is_alphanumeric() || matches!(*c, '-' | ' '))
                 .collect();
-            header.verdict = Some(word.to_lowercase());
+            header.verdict = Some(word.trim().to_lowercase());
         } else if let Some(value) = field(line, "Author role/provider") {
             header.author = party(value);
         } else if let Some(value) = field(line, "Reviewer role/provider") {
@@ -488,7 +489,10 @@ pub fn still_current(repo: &Path, main: &str, reviewed: &str, head: &str) -> Res
 /// Whether a repository path is a review-evidence document.
 #[must_use]
 pub fn is_review_document_path(path: &str) -> bool {
-    (path.starts_with(REVIEWS) && path.ends_with(".md")) || path == "docs/requirements/STATUS.md"
+    path == "docs/requirements/STATUS.md"
+        || path.strip_prefix(REVIEWS).is_some_and(|name| {
+            name.len() > 3 && name.ends_with(".md") && !name.contains(['/', '\\'])
+        })
 }
 
 fn evaluate_review_evidence_pr(
@@ -503,7 +507,18 @@ fn evaluate_review_evidence_pr(
     }
     let mut findings = Vec::new();
     for path in changed {
-        if git(repo, &["cat-file", "-e", &format!("{head}:{path}")]).is_err() {
+        let entry = git(
+            repo,
+            &[
+                "ls-tree",
+                "-z",
+                "--full-tree",
+                head,
+                "--",
+                &format!(":(literal){path}"),
+            ],
+        )?;
+        if entry.is_empty() {
             findings.push(Finding::at(
                 path.as_str(),
                 None,
@@ -511,8 +526,17 @@ fn evaluate_review_evidence_pr(
             ));
             continue;
         }
+        if !(entry.starts_with(b"100644 blob ") || entry.starts_with(b"100755 blob ")) {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "review document must be a regular file (no symlinks or gitlinks)",
+            ));
+            continue;
+        }
         if path.starts_with(REVIEWS)
             && git(repo, &["cat-file", "-e", &format!("{main}:{path}")]).is_ok()
+            && !same_entries(repo, main, head, path)
         {
             findings.push(Finding::at(
                 path.as_str(),
@@ -544,11 +568,15 @@ fn evaluate_review_evidence_pr(
             continue;
         }
         if header.triager.is_some() {
-            if header.triaged.is_none() {
+            if !header
+                .triaged
+                .as_ref()
+                .is_some_and(|value| !value.trim().is_empty())
+            {
                 findings.push(Finding::at(
                     path.as_str(),
                     None,
-                    "triage record missing Triaged report field",
+                    "triage record missing non-empty Triaged report field",
                 ));
             }
             if !matrix.triager_valid(&header) {
@@ -567,11 +595,14 @@ fn evaluate_review_evidence_pr(
                 ));
             }
         } else {
-            if header.verdict.is_none() {
+            if !header.verdict.as_deref().is_some_and(|verdict| {
+                APPROVING.contains(&verdict)
+                    || matches!(verdict, "request changes" | "request-changes" | "must-fix")
+            }) {
                 findings.push(Finding::at(
                     path.as_str(),
                     None,
-                    "independent review missing Verdict field",
+                    "independent review missing recognized Verdict field",
                 ));
             }
             if let Some(problem) = matrix.independent_problem(&header) {
@@ -616,7 +647,10 @@ pub fn independent_review(ctx: &Ctx, main: &str, head: &str) -> Result<Vec<Findi
     )?)
     .trim()
     .to_owned();
-    let changed = changed_paths(repo, &main, head)?;
+    let merge_base = String::from_utf8_lossy(&git(repo, &["merge-base", &main, head])?)
+        .trim()
+        .to_owned();
+    let changed = changed_paths(repo, &merge_base, head)?;
     if changed.is_empty() {
         return Ok(Vec::new());
     }

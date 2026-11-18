@@ -14,7 +14,7 @@ google = ["google", "gemini"]
 # supplies independent review (team.md rule 2).
 [[independent]]
 author_roles = ["code generation"]
-author_vendors = ["anthropic"]
+author_vendors = ["anthropic", "google"]
 reviewer_roles = ["independent code review", "code review"]
 reviewer_vendors = ["openai"]
 
