@@ -1,7 +1,7 @@
 # M1 acceptance-test specification
 
 Status: specification for implementation; **no tests executed and no M1 pass claimed**.
-Date: 2026-11-18. Source snapshot: main `79a2d2e` (merged into this branch).
+Date: 2026-11-18. Source snapshot: main `0b32d50` (merged into this branch).
 Stable test IDs are append-only: do not renumber or reuse a retired AT-M1 ID.
 
 ## Authority and exit boundary
@@ -643,8 +643,9 @@ convention (Q-R-2; relates to Q-N-1/Q-N-2).
 ### AT-M1-31 — Exact-SHA admission and untrusted dispatch denial
 
 - **Covers:** NFR-12.AC1/AC2; D-17, D-22, D-28, D-43, D-53, D-54, D-65, D-72.
-- **Pending policy reference:** PR #75 proposes the D-77 review-evidence exception.
-  It is not in the decisions log or gate policy at merged main `79a2d2e`.
+- **Pending policy reference:** PR #75 proposes the review-evidence exception
+  (decision numbered 77 in that unmerged branch).
+  It is not in the decisions log or gate policy at merged main `0b32d50`.
   Do not assume that exception is active; test the accepted gate policy and add
   the review-evidence-only variant only after that policy is accepted and merged.
 - **Level:** integration. **Light CI:** No — actual D-65 admission boundary required.

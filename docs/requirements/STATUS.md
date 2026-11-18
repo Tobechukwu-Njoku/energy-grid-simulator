@@ -7,12 +7,12 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
-**M1 acceptance review revision (2026-11-18 UTC):** merged main `79a2d2e`,
+**M1 acceptance review revision (2026-11-18 UTC):** merged main `0b32d50`,
 preserving both status histories. All nine PR #59 findings addressed: section R
 questions, PR #58 evidence/proxy paths, CI-aligned sample placement, binary64
 boundary construction, explicit FX units, NI denominator assumption, both years'
-DST/offset checks and D-53/D-54 traceability. The review's D-77/current-header
-claim is rebutted: merged main ends at D-76; D-77 is pending in PR #75, referenced
+DST/offset checks and D-53/D-54 traceability. The review's current-header
+claim is rebutted: merged main ends at D-76; decision 77 is pending in PR #75, referenced
 separately in AT-M1-31, not promoted to an accepted decision. No owner decisions changed.
 
 **M1 acceptance specification (2026-11-15 UTC):**
