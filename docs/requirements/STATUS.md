@@ -1,11 +1,22 @@
 # STATUS
 
-_Last updated: 2026-11-17_
+_Last updated: 2026-11-18_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-77 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**PR #75 review repairs (2026-11-18 UTC):** resumed from remote head `b39bfcf`,
+which already contains all five implementation fixes and their regression tests in
+`xtask/tests/gates.rs`. PR changes use the merge base; touched evidence remains
+immutable against current main. Direct publication accepts only single-component
+review Markdown paths and regular files (including STATUS), exact lowercase full
+SHAs, recognized independent-review verdicts and non-empty triage references.
+Request-changes reports and regular STATUS-only updates remain publishable.
+The Google-author/OpenAI-reviewer matrix alignment is included, following D-51
+and team rule 2; trusted CI uses this policy only after it reaches main. D-77's
+wording now spells out these validation rules without expanding its path scope.
 
 **Review evidence gate circular deadlock fix (2026-11-17 UTC, D-77):** resolved
 the circular gate deadlock where PRs publishing review evidence into
