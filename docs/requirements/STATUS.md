@@ -7,7 +7,25 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
-**PR #75 review repairs (2026-11-18 UTC):** resumed from remote head `b39bfcf`,
+**PR #75 replacement repairs (2026-11-18 UTC):** branch
+`fix/review-evidence-loop-v2` starts at `2aaec3c` and merges current main.
+Claude's findings are addressed by classifying both human gates against the
+actual merge-result tree, rejecting conflicts and ambiguous/malformed report
+headers, and restoring the trusted reviewer matrix. The Google-author/OpenAI
+pairing expansion is not needed. D-77 is restored verbatim from its original
+`c938d79` row (current main has no D-77 row), removing the later agent rewrite
+and stray final blank line. ASSUMPTION: implementation boundaries pending owner
+confirmation are recorded in Q-K-5, not as owner decisions. The replacement PR
+uses `automated-machines`; #75 remains untouched for coordinator
+closure. Validation: `cargo test -p xtask -j 2` passed 255 tests (159 unit,
+96 integration, including 26 gate tests; zero failures and doctests). The run
+used `CARGO_TARGET_DIR="$PWD/target/pr75-v2"`,
+`TMPDIR=/tmp/energy-pr75-v2-tmp`, `CARGO_BUILD_JOBS=2`, and
+`RUST_TEST_THREADS=2`. Formatting and diff checks passed. The single final
+`cargo xtask all` run passed every repository, provenance/secrets/data and
+documentation check (113 Markdown files).
+
+**PR #75 earlier review repairs (2026-11-18 UTC, superseded above):** resumed from remote head `b39bfcf`,
 which already contains all five implementation fixes and their regression tests in
 `xtask/tests/gates.rs`. PR changes use the merge base; touched evidence remains
 immutable against current main. Direct publication accepts only single-component
