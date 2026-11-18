@@ -7,6 +7,20 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #81 review follow-up (2026-11-18 UTC):** merged current main
+`f54279c` before repairs. P2: ordinary review evaluation reports malformed-header
+errors only when the report cites a commit of the PR being evaluated; unrelated
+malformed reports on main are ignored as non-evidence. Added a regression with
+such a report already on main and an unrelated, fully reviewed code PR. The
+existing duplicate-header rejection test still passes for cited evidence.
+P3: removed superseded claims that the reviewer-matrix expansion and D-77
+rewording were included; both remain withdrawn. Validation:
+`cargo test -p xtask -j 2` passed 256 tests (159 unit, 97 integration,
+including 27 gate tests; zero failures and doctests). Used worktree-local
+`CARGO_TARGET_DIR="$PWD/target/pr81-review-fixes"`, space-free
+`TMPDIR=/tmp/energy-pr81-review-fixes-tmp`, `CARGO_BUILD_JOBS=2`, and
+`RUST_TEST_THREADS=2`.
+
 **PR #75 replacement repairs (2026-11-18 UTC):** branch
 `fix/review-evidence-loop-v2` starts at `2aaec3c` and merges current main.
 Claude's findings are addressed by classifying both human gates against the
@@ -25,23 +39,8 @@ used `CARGO_TARGET_DIR="$PWD/target/pr75-v2"`,
 `cargo xtask all` run passed every repository, provenance/secrets/data and
 documentation check (113 Markdown files).
 
-**PR #75 earlier review repairs (2026-11-18 UTC, superseded above):** resumed from remote head `b39bfcf`,
-which already contains all five implementation fixes and their regression tests in
-`xtask/tests/gates.rs`. PR changes use the merge base; touched evidence remains
-immutable against current main. Direct publication accepts only single-component
-review Markdown paths and regular files (including STATUS), exact lowercase full
-SHAs, recognized independent-review verdicts and non-empty triage references.
-Request-changes reports and regular STATUS-only updates remain publishable.
-The Google-author/OpenAI-reviewer matrix alignment is included, following D-51
-and team rule 2; trusted CI uses this policy only after it reaches main. D-77's
-wording now spells out these validation rules without expanding its path scope.
-Validation: `cargo test -p xtask -j 2` passed 250 tests (159 unit, 91
-integration, including all 21 gate tests; zero doctests and failures). The
-successful run used `RUST_TEST_THREADS=2` after the initial concurrent fixture
-run was stopped for memory pressure. Cargo used worktree-local
-`CARGO_TARGET_DIR="$PWD/target/pr75-implementation"` and space-free
-`TMPDIR=/tmp/energy-pr75-implementation-tmp`. Formatting and diff checks passed. `cargo xtask all` passed all repository,
-provenance/secrets/data and documentation checks (112 Markdown files).
+**PR #75 withdrawn changes:** the earlier reviewer-matrix expansion and D-77
+rewording were withdrawn; neither is included in the replacement PR.
 
 **Review evidence gate circular deadlock fix (2026-11-17 UTC, D-77):** resolved
 the circular gate deadlock where PRs publishing review evidence into
