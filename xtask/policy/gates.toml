@@ -1,0 +1,93 @@
+# Trusted gate graph and workflow policy (ADR 0001, NFR-12). The trusted gates read
+# this file from main, so a pull request cannot weaken the rules judging it.
+# Changing it needs the policy owner's approval (.github/CODEOWNERS, policy-approval).
+
+allowed_triggers = ["pull_request", "push"]
+# The only `${{ }}` expressions allowed inside `run:` scripts. Everything else,
+# including any github.event.* value AND any env.* value (an env value may itself
+# hold event data, F5), reaches a script as a shell variable: `env: {T: ...}` then
+# "$T" in the script.
+run_expressions = ["runner.temp", "runner.os"]
+runner_labels = ["ubuntu-24.04", "macos-15"]
+# Every variable name a workflow, job, step or local action `env:` may set
+# (ADV23R5-01, ADV23R9-03): an allowlist, so a new start-up hook needs no new
+# rule. Exact, case-sensitive names. The Cargo ones change no compiler flags,
+# wrappers, linkers or lint levels; the others carry step data into scripts.
+# Dynamic-loader (LD_*, DYLD_*) and shell/interpreter/Git start-up variables
+# (BASH_ENV, ENV, PYTHON*, NODE_OPTIONS, PERL5*, RUBYOPT, JAVA_TOOL_OPTIONS,
+# GIT_*, ...) are rejected even if listed here.
+allowed_env = [
+    "CARGO_TERM_COLOR", "CARGO_INCREMENTAL", "CARGO_DENY_VERSION", "NEXTEST_VERSION",
+    "TRUSTED", "MAIN", "GH_TOKEN", "NEEDS", "NUMBER", "HEAD_SHA",
+]
+# Lines a `run:` script may contain that name a GitHub Actions file-command
+# file ($GITHUB_ENV, $GITHUB_PATH, $GITHUB_OUTPUT, $GITHUB_STATE,
+# $GITHUB_STEP_SUMMARY). Exact trimmed lines; empty by default (ADV23R6-03).
+allowed_file_command_lines = []
+
+# The build gate's linker guard (NFR-10, R6-02, ADV23R6-02) accepts only these
+# library and framework names, plus Rust's own rlibs and objects. Anything else a
+# build needs (a native solver library) is added here with the owner's approval.
+link_libraries = [
+    # Linux: the C runtime and the libraries the Rust standard library links.
+    "c", "m", "dl", "rt", "pthread", "util", "gcc_s", "gcc", "gcc_eh",
+    # macOS: the system umbrella library and what std links there.
+    "System", "iconv", "resolv", "objc",
+]
+link_frameworks = ["CoreFoundation", "Security", "SystemConfiguration"]
+# R7-01: an allow-listed name is not enough. The guard resolves every library
+# and framework request through the link line's search directories: a matching
+# file in a directory that is not the toolchain sysroot, one of the C driver's
+# own library directories (`cc -print-search-dirs`) or a root listed here is
+# refused, whatever it contains, and a system linker script's inputs are checked
+# the same way. Build and temporary directories are never trusted. A native
+# solver installed outside the system directories is added here with the
+# owner's approval. The operating system's own library roots are listed because
+# the driver does not report all of them (glibc's libc.so names
+# /lib64/ld-linux-x86-64.so.2, which gcc's search list omits).
+link_search_roots = [
+    "/lib", "/lib32", "/lib64", "/libx32", "/usr/lib", "/usr/lib32", "/usr/lib64",
+    "/usr/libx32",
+]
+
+# Check names branch protection requires (ADV23R8-01). Together with the id and
+# published name of every gate job and aggregator below they are protected: no
+# job of any workflow may take one as its id or name except the owning
+# workflow's job of that id (compared case-insensitively).
+required_checks = ["merge-gates", "independent-review", "policy-approval"]
+
+# Pull-request gates. They build and test PR code with a read-only token and no
+# secrets. Their workflow files are protected paths: any change needs the owner's
+# exact-head approval, checked by the trusted policy-approval gate below (F1).
+[[workflow]]
+file = ".github/workflows/ci.yml"
+jobs = [
+    "rust-linux",
+    "rust-macos",
+    "licences",
+    "attribution",
+    "docs",
+    "policy",
+    "provenance",
+]
+aggregator = "merge-gates"
+# Published check names (`name:`) of the jobs above whose name is not their id
+# (R9-02, ADV23R9-01). Each gate job must publish exactly this name (or its id
+# when unlisted), and no other job of any workflow may use an id or name here.
+# The aggregator's steps must equal main's copy of this workflow (ADV23R9-02).
+[workflow.names]
+rust-linux = "rust (fmt, clippy, nextest incl. xtask and hook tests) linux"
+rust-macos = "rust (build, nextest) macos"
+licences = "licences and advisories (cargo-deny, trusted deny.toml)"
+attribution = "attribution policy (D-52)"
+docs = "documentation gates"
+policy = "repository policy (unsafe scope, manifests, workflows, Python)"
+provenance = "provenance, secrets and raw data (D-56)"
+
+# Trusted gates: run from main via pull_request_target, read the PR head only as
+# Git data and never check out, build or run PR code (F1, ADV23R-08).
+[[workflow]]
+file = ".github/workflows/trusted-gates.yml"
+jobs = ["independent-review", "policy-approval"]
+triggers = ["pull_request_target"]
+trusted = true

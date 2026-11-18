@@ -1,0 +1,3 @@
+# One-time CI bootstrap seed (D-75). The coordinator attests this exact PR #23 head
+# after GPT verification (docs/requirements/reviews/gpt-2026-11-16-pr23-r15-verify-6.md, PR #69).
+seed_sha = "260d5f9410ca9f6fff832752c8146e253765f796"

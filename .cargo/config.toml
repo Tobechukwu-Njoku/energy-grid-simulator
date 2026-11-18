@@ -1,0 +1,3 @@
+# `cargo xtask <check>` runs the repository policy checks (D-73, ADR 0001).
+[alias]
+xtask = "run --locked --quiet --package xtask --"
