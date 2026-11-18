@@ -501,8 +501,12 @@ fn pr75_touched_evidence_is_compared_with_current_main() {
         };
         repo.write(&path, &text);
         let main = repo.commit("docs: main review");
-        let found = pr75_findings(&repo, &main, &head);
-        assert_eq!(found.is_empty(), identical, "{found:?}");
+        let result = review_gates::independent_review(&review_ctx(&repo), &main, &head);
+        if identical {
+            assert!(result.expect("identical merge").is_empty());
+        } else {
+            assert!(result.is_err(), "conflicting evidence must fail closed");
+        }
     }
 }
 
@@ -654,12 +658,191 @@ fn pr75_status_only_is_explicitly_allowed_by_d77() {
 }
 
 #[test]
-fn pr75_google_author_output_can_be_reviewed_by_openai() {
+fn pr75_google_author_output_requires_owner_authorized_pairing() {
     let (repo, main) = pr75_setup();
     let text =
         pr75_report(&main).replace("code generation / Anthropic", "code generation / Google");
     repo.write(&format!("{REVIEW_DIR}/report.md"), &text);
     let head = repo.commit("docs: review Google output");
     let found = pr75_findings(&repo, &main, &head);
-    assert!(found.is_empty(), "{found:?}");
+    assert!(!found.is_empty(), "unauthorized pairing accepted");
+}
+
+fn owner_policy_findings(
+    repo: &Repo,
+    main: &str,
+    head: &str,
+) -> Result<Vec<xtask::util::Finding>, String> {
+    review_gates::policy_approval(
+        &review_ctx(repo),
+        main,
+        &PullRequest {
+            repository: "example/repo".to_owned(),
+            number: 1,
+            head: head.to_owned(),
+            author: "Tobechukwu-Njoku".to_owned(),
+        },
+        &[],
+    )
+}
+
+fn criss_cross(revert: bool, report: bool) -> (Repo, String, String) {
+    let (repo, base) = pr75_setup();
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("xtask/gate.rs", "safe\n");
+    repo.commit("test: initial gate");
+    repo.git(&["checkout", "-q", "-b", "feature"]);
+    repo.write("xtask/gate.rs", "hardened\n");
+    repo.commit("test: harden gate");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("main.txt", "work\n");
+    let first = repo.commit("test: independent work");
+    repo.git(&[
+        "merge",
+        "-q",
+        "--no-ff",
+        "feature",
+        "-m",
+        "test: merge feature",
+    ]);
+    let main = repo.git(&["rev-parse", "HEAD"]);
+    repo.git(&["checkout", "-q", "-B", "pr", &first]);
+    if revert {
+        repo.git(&[
+            "merge",
+            "-q",
+            "-s",
+            "ours",
+            "feature",
+            "-m",
+            "test: discard hardening",
+        ]);
+    } else {
+        repo.git(&[
+            "merge",
+            "-q",
+            "--no-ff",
+            "feature",
+            "-m",
+            "test: preserve hardening",
+        ]);
+    }
+    if report {
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &pr75_report(&base));
+        repo.commit("test: publish report");
+    }
+    let head = repo.git(&["rev-parse", "HEAD"]);
+    assert_eq!(
+        repo.git(&["merge-base", "--all", &main, &head])
+            .lines()
+            .count(),
+        2
+    );
+    (repo, main, head)
+}
+
+#[test]
+fn pr75_criss_cross_reverts_require_both_gates() {
+    for report in [false, true] {
+        let (repo, main, head) = criss_cross(true, report);
+        assert!(!pr75_findings(&repo, &main, &head).is_empty());
+        assert!(
+            !owner_policy_findings(&repo, &main, &head)
+                .expect("policy gate")
+                .is_empty()
+        );
+        assert!(!review_gates::still_current(repo.path(), &main, &main, &head).expect("freshness"));
+    }
+}
+
+#[test]
+fn pr75_criss_cross_noop_preserves_main() {
+    for report in [false, true] {
+        let (repo, main, head) = criss_cross(false, report);
+        assert!(pr75_findings(&repo, &main, &head).is_empty());
+        assert!(
+            owner_policy_findings(&repo, &main, &head)
+                .expect("policy gate")
+                .is_empty()
+        );
+    }
+}
+
+#[test]
+fn pr75_single_base_revert_requires_both_gates() {
+    let (repo, _) = pr75_setup();
+    repo.write("xtask/gate.rs", "safe\n");
+    repo.commit("test: initial gate");
+    repo.write("xtask/gate.rs", "hardened\n");
+    let main = repo.commit("test: harden gate");
+    repo.git(&["revert", "--no-edit", &main]);
+    let head = repo.git(&["rev-parse", "HEAD"]);
+    assert!(!pr75_findings(&repo, &main, &head).is_empty());
+    assert!(
+        !owner_policy_findings(&repo, &main, &head)
+            .expect("policy gate")
+            .is_empty()
+    );
+}
+
+#[test]
+fn pr75_conflicting_merges_fail_both_gates_closed() {
+    let (repo, _) = pr75_setup();
+    repo.write("README.md", "branch\n");
+    let head = repo.commit("test: branch change");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("README.md", "main change\n");
+    let main = repo.commit("test: conflicting main change");
+    assert!(review_gates::independent_review(&review_ctx(&repo), &main, &head).is_err());
+    assert!(owner_policy_findings(&repo, &main, &head).is_err());
+}
+
+#[test]
+fn pr75_duplicate_headers_reject_publication_and_trusted_evidence() {
+    for field in [
+        "Reviewed head",
+        "Verdict",
+        "Author role/provider",
+        "Reviewer role/provider",
+        "Triaged report",
+        "Triager role/provider",
+    ] {
+        for invalid in [false, true] {
+            let (repo, main) = pr75_setup();
+            let mut text = pr75_report(&main);
+            if field.starts_with("Triag") {
+                text.push_str(
+                    "- Triager role/provider: triage / OpenAI\n- Triaged report: `report.md`\n",
+                );
+            }
+            let original = text
+                .lines()
+                .find(|line| line.starts_with(&format!("- {field}:")))
+                .expect("field");
+            let duplicate = if invalid {
+                format!("- {field}: garbage")
+            } else {
+                original.to_owned()
+            };
+            text.push_str(&format!("{duplicate}\n"));
+            let parsed = review_gates::parse_header(&text);
+            assert!(!parsed.errors.is_empty(), "{field} invalid={invalid}");
+            let reports = vec![(format!("{REVIEW_DIR}/report.md"), text.clone())];
+            let matrix =
+                review_gates::Matrix::parse(include_str!("../policy/review.toml")).expect("matrix");
+            let findings =
+                review_gates::evaluate(&reports, &[main.clone()].into(), &|_| true, &matrix);
+            assert!(
+                findings
+                    .iter()
+                    .any(|finding| finding.message.contains("duplicate"))
+            );
+            repo.write(&reports[0].0, &text);
+            let head = repo.commit("test: duplicate header");
+            assert!(
+                !pr75_findings(&repo, &main, &head).is_empty(),
+                "{field} invalid={invalid}"
+            );
+        }
+    }
 }

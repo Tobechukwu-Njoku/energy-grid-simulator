@@ -3,8 +3,8 @@
 //! Both gates run from `main` (`.github/workflows/trusted-gates.yml`, a
 //! `pull_request_target` workflow that never builds or runs pull-request
 //! code) and use the current tip of `main`, never the event's possibly stale
-//! base (F1, ADV23R-08). PR-owned paths are measured from its merge base with
-//! the head; trusted evidence and immutability are checked against current main.
+//! base (F1, ADV23R-08). PR-owned paths are measured from current main to the
+//! actual merge result; conflicting merges fail closed.
 //!
 //! `independent-review` passes only when the trusted evidence tree (`main`)
 //! holds, for commits of this pull request:
@@ -53,6 +53,8 @@ pub struct Party {
 /// Parsed machine-checked review header.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReviewHeader {
+    /// Malformed or repeated header fields, which invalidate the report.
+    pub errors: Vec<String>,
     /// Reviewed commit.
     pub head: Option<String>,
     /// Verdict text, lower case.
@@ -93,7 +95,20 @@ fn party(value: &str) -> Option<Party> {
 #[must_use]
 pub fn parse_header(text: &str) -> ReviewHeader {
     let mut header = ReviewHeader::default();
+    let mut seen = BTreeSet::new();
     for line in text.lines().take(40) {
+        for name in [
+            "Reviewed head",
+            "Verdict",
+            "Author role/provider",
+            "Reviewer role/provider",
+            "Triager role/provider",
+            "Triaged report",
+        ] {
+            if field(line, name).is_some() && !seen.insert(name) {
+                header.errors.push(format!("duplicate {name} header field"));
+            }
+        }
         if let Some(value) = field(line, "Reviewed head") {
             let value = value.strip_suffix('.').unwrap_or(value);
             let sha = value
@@ -102,6 +117,8 @@ pub fn parse_header(text: &str) -> ReviewHeader {
                 .unwrap_or(value);
             if is_sha(sha) {
                 header.head = Some(sha.to_owned());
+            } else {
+                header.errors.push("invalid Reviewed head SHA".to_owned());
             }
         } else if let Some(value) = field(line, "Verdict") {
             let word: String = value
@@ -340,6 +357,10 @@ pub fn evaluate(
     let mut triages = Vec::new();
     for (path, text) in reports {
         let header = parse_header(text);
+        if !header.errors.is_empty() {
+            findings.push(Finding::at(path.as_str(), None, header.errors.join("; ")));
+            continue;
+        }
         if header.triager.is_some() {
             triages.push((path.as_str(), text.as_str(), header));
             continue;
@@ -462,6 +483,15 @@ fn changed_paths(repo: &Path, from: &str, to: &str) -> Result<BTreeSet<String>, 
     .collect())
 }
 
+fn merge_result(repo: &Path, main: &str, head: &str) -> Result<String, String> {
+    let output = git(repo, &["merge-tree", "--write-tree", main, head])?;
+    let tree = String::from_utf8_lossy(&output).trim().to_owned();
+    if !is_sha(&tree) {
+        return Err("merge-tree did not return a single merge result tree".to_owned());
+    }
+    Ok(tree)
+}
+
 /// Whether a review of `reviewed` still covers `head`: every path changed
 /// between them either has the same tree entry (blob AND mode) or is no
 /// longer changed by the pull request (`main`'s version, after a merge of
@@ -473,13 +503,9 @@ fn changed_paths(repo: &Path, from: &str, to: &str) -> Result<BTreeSet<String>, 
 ///
 /// Fails if Git fails.
 pub fn still_current(repo: &Path, main: &str, reviewed: &str, head: &str) -> Result<bool, String> {
-    let merge_base = String::from_utf8_lossy(&git(repo, &["merge-base", main, head])?)
-        .trim()
-        .to_owned();
+    let merged = merge_result(repo, main, head)?;
     for path in changed_paths(repo, reviewed, head)? {
-        if !same_entries(repo, reviewed, head, &path)
-            && !same_entries(repo, &merge_base, head, &path)
-        {
+        if !same_entries(repo, reviewed, head, &path) && !same_entries(repo, main, &merged, &path) {
             return Ok(false);
         }
     }
@@ -551,6 +577,10 @@ fn evaluate_review_evidence_pr(
         let bytes = git(repo, &["show", &format!("{head}:{path}")])?;
         let text = String::from_utf8_lossy(&bytes);
         let header = parse_header(&text);
+        if !header.errors.is_empty() {
+            findings.push(Finding::at(path.as_str(), None, header.errors.join("; ")));
+            continue;
+        }
         let Some(reviewed_head) = &header.head else {
             findings.push(Finding::at(
                 path.as_str(),
@@ -647,14 +677,12 @@ pub fn independent_review(ctx: &Ctx, main: &str, head: &str) -> Result<Vec<Findi
     )?)
     .trim()
     .to_owned();
-    let merge_base = String::from_utf8_lossy(&git(repo, &["merge-base", &main, head])?)
-        .trim()
-        .to_owned();
-    let changed = changed_paths(repo, &merge_base, head)?;
+    let merged = merge_result(repo, &main, head)?;
+    let changed = changed_paths(repo, &main, &merged)?;
     if changed.is_empty() {
         return Ok(Vec::new());
     }
-    if let Some(findings) = evaluate_review_evidence_pr(repo, &main, head, &changed, &matrix)? {
+    if let Some(findings) = evaluate_review_evidence_pr(repo, &main, &merged, &changed, &matrix)? {
         return Ok(findings);
     }
     let commits: BTreeSet<String> =
@@ -887,12 +915,8 @@ pub fn policy_approval(
     let protected = string_array(&document["protected_paths"]);
     let repo = ctx.repo.as_path();
     let head = pull.head.as_str();
-    let merge_base = String::from_utf8_lossy(&git(repo, &["merge-base", main, head])?)
-        .trim()
-        .to_owned();
-    let changed: Vec<String> = changed_paths(repo, &merge_base, head)?
-        .into_iter()
-        .collect();
+    let merged = merge_result(repo, main, head)?;
+    let changed: Vec<String> = changed_paths(repo, main, &merged)?.into_iter().collect();
     let listing = git(
         repo,
         &[
@@ -900,7 +924,7 @@ pub fn policy_approval(
             "-r",
             "-z",
             "--name-only",
-            head,
+            &merged,
             "--",
             ".github/workflows/",
         ],
@@ -908,7 +932,7 @@ pub fn policy_approval(
     let mut workflows = Vec::new();
     for name in String::from_utf8_lossy(&listing).split('\0') {
         if name.ends_with(".yml") || name.ends_with(".yaml") {
-            let body = git(repo, &["show", &format!("{head}:{name}")])?;
+            let body = git(repo, &["show", &format!("{merged}:{name}")])?;
             workflows.push((name.to_owned(), String::from_utf8_lossy(&body).into_owned()));
         }
     }
