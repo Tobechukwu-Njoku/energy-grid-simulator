@@ -94,7 +94,7 @@ impl Tokens<'_> {
             if bytes.get(self.offset) != Some(&b'#') {
                 break;
             }
-            while bytes.get(self.offset).is_some_and(|byte| *byte != b'\n') {
+            while bytes.get(self.offset).is_some_and(|byte| !matches!(*byte, b'\r' | b'\n')) {
                 self.offset += 1;
             }
         }
@@ -313,7 +313,7 @@ fn malformed_password_key(key: &str) -> bool {
 
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*(?P<quote>["']?)(?:basic|bearer)[ \t]+"#)
+        Regex::new(r#"(?i)\bauthorization(?:["']|`+)?[ \t]*:[ \t]*(?:\r?\n[ \t]+)?(?P<quote>["']?)(?:basic|bearer)[ \t]+(?:\r?\n[ \t]+)?"#)
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
@@ -343,7 +343,7 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         found.push((0, text.len(), id));
     }
     let mut offset = 0;
-    for line in text.split_inclusive('\n') {
+    for line in text.split_inclusive(['\r', '\n']) {
         if let Some(fields) = pgpass(line.trim_end_matches(['\r', '\n']))
             && (fields[1] == "*" || fields[1].parse::<u16>().is_ok())
             && !fields[0].contains(['\'', '"', '`'])
@@ -370,7 +370,19 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         } else {
             &raw[..raw.find(quote).unwrap_or(raw.len())]
         };
-        let (value, length) = grammar_value(raw, "");
+        // RFC 9110 obs-fold is obsolete, but recipients can unfold it.
+        // Keep the original byte length so finding ranges remain exact.
+        let mut unfolded = raw.as_bytes().to_vec();
+        for (index, byte) in raw.bytes().enumerate() {
+            if byte == b'\n' && raw.as_bytes().get(index + 1).is_some_and(|b| matches!(b, b' ' | b'\t')) {
+                unfolded[index] = b' ';
+                if index > 0 && unfolded[index - 1] == b'\r' {
+                    unfolded[index - 1] = b' ';
+                }
+            }
+        }
+        let unfolded = String::from_utf8(unfolded).expect("unchanged UTF-8 boundaries");
+        let (value, length) = grammar_value(&unfolded, "");
         let value = value.trim_end_matches(r"\n").trim_end_matches(r"\r");
         if literal(value) {
             found.push((
@@ -511,6 +523,32 @@ mod tests {
             );
         } else {
             assert!(hits.is_empty(), "{text:?}: {hits:?}");
+        }
+    }
+
+    #[test]
+    fn deferred_line_terminators_and_header_variants() {
+        let value = ["followup", "-synthetic-value"].concat();
+        for newline in ["\n", "\r", "\r\n"] {
+            let pg = format!("host:5432:db:user:<secret>{newline}host:5432:db:user:{value}{newline}");
+            check(&pg, Some("local-pgpass-credentials"));
+            let netrc = format!("# comment{newline}machine host login user password {value}");
+            check(&netrc, Some("local-netrc-credentials"));
+            check(&format!("Password=<secret>{newline}Pwd={value}"), Some("local-connection-password"));
+        }
+        for field in ["Authorization", "authorization", "Proxy-Authorization", "`Authorization`", "\"Authorization\""] {
+            for gap in [" ", "\t", "\r\n "] {
+                for scheme in ["Basic", "Bearer"] {
+                    let prefix = format!("{field}:{gap}{scheme}{gap}");
+                    check(&format!("{prefix}{value}"), Some("local-http-authorization"));
+                    check(&format!("{prefix}<token>"), None);
+                    check(&format!("{prefix}<token>\r\n {value}"), Some("local-http-authorization"));
+                }
+            }
+        }
+        for suffix in ["&literal", "'literal", "\"literal", "`literal"] {
+            check(&format!("Pwd=<secret>{suffix};"), Some("local-connection-password"));
+            check(&format!("Authorization: Bearer <token>{suffix}"), Some("local-http-authorization"));
         }
     }
 
