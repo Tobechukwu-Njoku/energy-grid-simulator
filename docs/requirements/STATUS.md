@@ -2,15 +2,15 @@
 
 _Last updated: 2026-11-18_
 
-**M1 acquisition review revision (2026-11-18 UTC):** merged main `79a2d2e`,
+**M1 acquisition review revision (2026-11-18 UTC):** merged main `0b32d50`,
 preserving both status histories. All eight PR #60 findings addressed: full PR #58
 candidate dispositions/historical edition locks, registered-sample commit rule,
 D-65/ADR-0004 bulk storage and D-62 writer constraints, governing decision citations,
 EEX project-use gate, shared tzdata2024b SHA-256 and Elexon publication filters.
 NGED/SSEN historical resource/hash pinning remains an explicit fetch gate after
 metadata rechecks returned 403; no current release substitutes for November 2024.
-The review's D-77/current-header claim is rebutted: merged main `79a2d2e` ends at
-D-76; D-77 is pending in PR #75. No owner decisions or CI policy changed;
+The review's current-header claim is rebutted: merged main `0b32d50` ends at
+D-76; decision 77 is pending in PR #75. No owner decisions or CI policy changed;
 no bulk acquisition performed.
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).

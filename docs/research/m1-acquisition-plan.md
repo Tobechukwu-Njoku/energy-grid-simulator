@@ -1,7 +1,7 @@
 # M1 acquisition plan: sources without credentials
 
 Publisher pages and catalogue/API documentation checked **2026-11-15 UTC**;
-review reconciliation **2026-11-18 UTC** against merged main `79a2d2e`.
+review reconciliation **2026-11-18 UTC** against merged main `0b32d50`.
 The PR #58 candidate dispositions below supplement the original register.
 Based on the 54 external resource rows (`SRC-01`–`SRC-50`, including split IDs)
 in [m1-data-inventory.md](m1-data-inventory.md). This is an acquisition plan,
