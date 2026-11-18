@@ -17,6 +17,13 @@ Request-changes reports and regular STATUS-only updates remain publishable.
 The Google-author/OpenAI-reviewer matrix alignment is included, following D-51
 and team rule 2; trusted CI uses this policy only after it reaches main. D-77's
 wording now spells out these validation rules without expanding its path scope.
+Validation: `cargo test -p xtask -j 2` passed 250 tests (159 unit, 91
+integration, including all 21 gate tests; zero doctests and failures). The
+successful run used `RUST_TEST_THREADS=2` after the initial concurrent fixture
+run was stopped for memory pressure. Cargo used worktree-local
+`CARGO_TARGET_DIR="$PWD/target/pr75-implementation"` and space-free
+`TMPDIR=/tmp/energy-pr75-implementation-tmp`. Formatting and diff checks passed. `cargo xtask all` passed all repository,
+provenance/secrets/data and documentation checks (112 Markdown files).
 
 **Review evidence gate circular deadlock fix (2026-11-17 UTC, D-77):** resolved
 the circular gate deadlock where PRs publishing review evidence into
