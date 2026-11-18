@@ -1,5 +1,58 @@
 # PR #23 — cumulative finding triage (M0 CI checks)
 
+## Current reconciliation — 2026-11-18 UTC
+
+PR [#23](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/23)
+**merged on 2026-11-16 as `3cf6a3f3327f0e42e0bfbf7112a9fa092b64722a`**.
+The [revision-15 verify-6 report](gpt-2026-11-16-pr23-r15-verify-6.md)
+records **ATTEST** for `260d5f9410ca9f6fff832752c8146e253765f796`, also pinned
+in [the bootstrap seed](../../process/ci-bootstrap.toml). The paused revision,
+missing seed and all-open round-14 descriptions below describe 2026-11-14;
+they are superseded by this reconciliation, not current merge blockers.
+
+The 182-ID ledger and original reports are preserved. Its 167 fixed / 1 duplicate /
+2 deferred / 12 open totals are the historical snapshot, not final closure counts.
+This update reconciles later evidence without inventing new test executions or
+turning a triage record into an independent approval.
+
+| Historical item(s) | Current disposition and evidence |
+|---|---|
+| R14-01 | Repaired in revision 15. Verify-6 confirms historical deleted research-only declarations/data reject and identify the introducing commit; submitted reclassification regressions also pass. |
+| R14-02 | Repaired. Verify-6 confirms generated valid kubeconfig key material rejects in YAML block and inline forms, including fresh CLI checks. |
+| R14-03 | Repaired. Verify-6 replays the original internal-space pgpass and no-login netrc records; both reject with the intended diagnostics. |
+| ADV23R14-01–04 | Repaired. Verify-6 separately confirms original Basic/Bearer headers, JDBC, connection/password assignments and transient CSV/TSV histories reject. |
+| R14-04 / R13-04 | Retained lowercase ordinary-word attribution limit; the [revision-15 ADR addendum](../../architecture/adr/0001-repo-layout-and-ci-gates.md) explicitly routes this to follow-up. No universal spelling coverage is claimed. |
+| R14-05 | Disclosure repaired in the merged ADR credential-format/evaluator paragraphs: retained upstream heuristics and omitted base64/archive recursion are explicit. This is documentation closure, not removal of those limits. |
+| ADV23R14-05–07 | Revision-15 attribution changes are on main. The [first revision-15 verification](gpt-2026-11-15-pr23-r15-verify.md) records the bounded CORE scope; verify-6 attests that scope and the full submitted suite, not an independent replay of every peripheral spelling. Their original pending implementation status is historical; no broader completeness claim is inferred. |
+| F2 / C3 / L1 | Main policy now configures `automated-machines`; account creation is not a remaining task. Required-check deployment and exact-head owner approval remain operational obligations. The bootstrap seed and PR #23 merge are completed, while M0 sign-off is separate. |
+
+The five preceding revision-15 verification reports recorded NOT ATTEST and drove
+bounded repairs. Verify-6 supersedes those candidate verdicts for its exact head:
+179 batch inputs, 45 CLI checks, 261 submitted tests and `cargo xtask all` passed.
+Its decoder matrix retains eight unsupported key spellings; it does not establish
+that malformed keys authenticate with a real driver.
+
+**Separate follow-up work is in progress** on
+`fix/xtask-deferred-policy-followups`, for a protected follow-up PR, covering:
+
+- double-encoded/invalid key spellings and bounded normalization, with valid-driver controls;
+- original R15V3-F01/F02 alternate terminator/header probes, closing cases already
+  repaired on merged main before expanding coverage;
+- lowercase bare-name credit contexts with ordinary-prose and hook/CI controls.
+
+These are D-75 follow-ups, not another PR #23 review round. No follow-up PR number
+was present in the 2026-11-18 open-PR snapshot when this reconciliation began.
+Protected policy changes still need exact-head owner approval and required review.
+Required-check enforcement, NFR-8 inventory/N/A disposition, target-runner isolation,
+D-17 licence selection and the D-58 publication audit remain separately tracked;
+PR #23's merge does not certify them complete.
+
+## Historical snapshot — 2026-11-14 (preserved)
+
+The remainder is the original round-1–14 ledger at `112de8d`. All statements of
+OPEN, paused, absent-main addenda, account setup or unperformed merge below are
+historical and must be read with the current reconciliation above.
+
 - Date: 2026-11-14 UTC.
 - Artifact kind: cumulative review triage and handoff, not a new review round.
 - Triager role/provider: triage / OpenAI
