@@ -87,6 +87,59 @@ fn hook_fixtures() {
 }
 
 #[test]
+fn lowercase_bare_names_have_hook_and_ci_parity() {
+    let dir = TempDir::new("lowercase names");
+    let hooks = dir.path().join("hooks");
+    copy_hooks(&hooks);
+    let message = dir.path().join("message");
+    let patterns = Patterns::load(&std::fs::read(root().join(PATTERNS)).expect("read patterns"))
+        .expect("patterns");
+    for tool in ["blackbox", "sweep", "granite"] {
+        for name in [tool.to_owned(), tool.to_uppercase()] {
+            for prefix in [
+                "Tested with",
+                "Reviewed by",
+                "Fixed by",
+                "Thanks to",
+                "Kudos to",
+                "Thank you",
+            ] {
+                for target in [name.clone(), format!("[{name}](https://example.com)")] {
+                    let credit = format!("{prefix} {target}");
+                    assert!(patterns.matches_line(&credit), "CI missed {credit}");
+                    let input =
+                        format!("fix: exercise policy\n\n{credit}\n\nReviewed by Jane Doe\n");
+                    std::fs::write(&message, input).expect("write");
+                    assert!(run_hook(&hooks, &message).status.success(), "{credit}");
+                    assert_eq!(
+                        std::fs::read_to_string(&message).expect("read"),
+                        "fix: exercise policy\n\n\nReviewed by Jane Doe\n"
+                    );
+                    let subject = format!("{credit}\n\nDetails\n");
+                    std::fs::write(&message, &subject).expect("write");
+                    assert!(!run_hook(&hooks, &message).status.success(), "{credit}");
+                    assert_eq!(std::fs::read_to_string(&message).expect("read"), subject);
+                }
+            }
+        }
+    }
+    for prose in [
+        "Fixed by the parameter sweep",
+        "Tested with a blackbox harness",
+        "Built with granite blocks",
+        "Thanks to Jane Doe",
+        "Thanks to Granite Smith",
+        "Co-authored-by: Jane Sweep <jane@example.com>",
+    ] {
+        assert!(!patterns.matches_line(prose), "CI rejected {prose}");
+        let input = format!("fix: exercise policy\n\n{prose}\n");
+        std::fs::write(&message, &input).expect("write");
+        assert!(run_hook(&hooks, &message).status.success());
+        assert_eq!(std::fs::read_to_string(&message).expect("read"), input);
+    }
+}
+
+#[test]
 fn hook_pattern_file_robustness() {
     let dir = TempDir::new("hook patterns");
     let hooks = dir.path().join("hooks");

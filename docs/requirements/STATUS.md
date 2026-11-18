@@ -1,11 +1,26 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-18_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**PR #23 bounded policy follow-ups (2026-11-18 UTC):** implemented the three
+deferred scanner/hook items identified by the M0 exit audit on PR #78.
+Credential keys are decoded at most twice; percent-bearing JDBC query keys
+that still contain escapes, invalid bytes or decoded delimiters fail closed
+when their values are literal. This is conservative scanning, not a claim
+that drivers accept malformed names. Whole-placeholder controls remain valid.
+Original connection/header suffix probes have explicit rejection regressions;
+header unfolding covers legacy continuation syntax without crossing ordinary
+header boundaries, and pgpass scanning handles CR as well as LF/CRLF records.
+Shared case-insensitive bare-name rules now cover maintenance and gratitude
+credits in both the commit hook and CI, with subject/body/metadata/addition
+tests and human/prose controls. No history exemptions were added or broadened.
+Validation and commit mapping are recorded in the follow-up PR; this does not
+reopen D-75 or declare review approval or milestone acceptance.
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published
