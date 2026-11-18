@@ -272,7 +272,7 @@ fn f2_owner_authored_policy_pr_explains_why_it_cannot_pass() {
     let text: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
     assert!(
         text.iter()
-            .any(|m| m.contains("cannot pass") && m.contains("egs-bot")),
+            .any(|m| m.contains("cannot pass") && m.contains("automated-machines")),
         "{text:?}"
     );
     assert!(

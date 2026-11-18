@@ -1,11 +1,34 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-18_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**Task board refresh (2026-11-18 UTC):** merged current main and refreshed
+[the task board](../process/TASKS.md) with all six open PRs (#53, #57, #59, #60,
+#75, #78), the active review/repair threads and #78's ordered M0–M1 backlog.
+PR #23 merged as `3cf6a3f` after verify-6 ATTEST. Deferred scanner/hook work is
+being prepared separately on `fix/xtask-deferred-policy-followups` under D-75.
+#59/#60 have request-changes reviews on main and repairs underway; #75 remains
+blocked on trusted review/policy gates. The configured account is
+`automated-machines`; D-65 hardware is unconfirmed. This board is a dated work
+snapshot, not approving evidence or M0 sign-off.
+
+**PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
+Gemini report against the exact reviewed head and approval logic. Published
+[triage record](reviews/triage-gemini-2026-11-16-pr71.md); no implementation
+changes required. The trusted gate requires this record even for zero findings.
+
+**PR #71 independent code review (2026-11-16 UTC):** reviewed exact head
+`e31f429dfdecce9596219cb7f71a607c91529a25`; verdict **approve**. The D-74
+account policy, operational status and policy-backed integration expectation
+are consistent. Remaining old-name literals are test fixtures or historical
+records. `cargo test -j 2` passed with a worktree-local target directory and
+space-free TMPDIR; no blocking findings. Review evidence is published separately
+against `main`: [report](reviews/gpt-2026-11-16-pr71.md).
 
 **PR #23 revision 15 sixth verification (2026-11-16 UTC):** exact head
 `260d5f9410ca9f6fff832752c8146e253765f796`; verdict **ATTEST** under D-75.
@@ -624,7 +647,7 @@ mapped regression tests (finding→test table in the PR body). Trusted gates now
 action before CI can pass:** commit `docs/process/ci-bootstrap.toml` with
 `seed_sha = "<final PR #23 head>"` to `main` and re-run CI; then GPT re-review, Gemini
 adversarial re-check and a triage record for every adversarial finding (format in
-REVIEW-BRIEF.md). The D-74 machine account (`egs-bot` placeholder) is still to be created.
+REVIEW-BRIEF.md). The D-74 machine account `automated-machines` was created on 2026-11-16; agents push and open PRs from it with a classic `public_repo` token (90-day expiry, rotate by 2027-02-14).
 
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).
