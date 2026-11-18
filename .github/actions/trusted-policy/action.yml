@@ -1,0 +1,21 @@
+name: trusted policy
+description: >
+  Check out the current tip of main as the trusted policy tree (R1, F1, ADV23R-08)
+  and install its pinned toolchain. Fails closed when main has no xtask policy,
+  except for the exact bootstrap seed SHA attested on main (load.sh). Policy
+  checks, deny.toml and check configuration are read from this tree, never from
+  the pull request. This action is itself a protected path: a pull request that
+  changes it needs the owner's exact-head approval (trusted policy-approval gate).
+outputs:
+  dir:
+    description: Path of the trusted policy tree.
+    value: ${{ steps.load.outputs.dir }}
+  main:
+    description: The main commit the policy was read from.
+    value: ${{ steps.load.outputs.main }}
+runs:
+  using: composite
+  steps:
+    - id: load
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/load.sh"

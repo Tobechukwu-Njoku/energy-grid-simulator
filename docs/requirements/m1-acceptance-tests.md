@@ -1,7 +1,7 @@
 # M1 acceptance-test specification
 
 Status: specification for implementation; **no tests executed and no M1 pass claimed**.
-Date: 2026-11-15. Source snapshot: main `be21158d9e21b3d079734976a2b745fd991c457b`.
+Date: 2026-11-18. Source snapshot: main `79a2d2e` (merged into this branch).
 Stable test IDs are append-only: do not renumber or reuse a retired AT-M1 ID.
 
 ## Authority and exit boundary
@@ -16,12 +16,12 @@ and NFR-12.AC1/AC2**: ten requirement IDs. Decisions are authoritative in
 [0001](../architecture/adr/0001-repo-layout-and-ci-gates.md) and
 [0005](../architecture/adr/0005-execution-topology.md) refine the contracts.
 The [M1 data inventory](../research/m1-data-inventory.md) identifies candidate
-sources and deficits; a source listing or cached download is not ingest acceptance.
+sources and deficits; [PR #58 deficit candidates](../research/m1-deficit-sources.md) supply additional evidence/proposals, not owner decisions. A source listing or cached download is not ingest acceptance.
 
 ASSUMPTION: M1 proves ingest, network representation and runner activation, with
 runtime obligations staged as in the roadmap. FR-4's actual client/UI round trip,
 FR-5's optimised non-stationary schedules, NFR-1's solver reruns and NFR-2's
-MILP/price certificates remain later evidence, not waived criteria (Q-P-1).
+MILP/price certificates remain later evidence, not waived criteria (Q-R-1).
 No whole-requirement completion is inferred from foundation tests. Full FR-2
 release evidence remains M5; synthetic/reduced success cannot satisfy D-32/D-60.
 
@@ -44,6 +44,18 @@ values, residuals and diagnostics in the evidence bundle; redact credentials.
 
 ## Fixtures and numeric oracles
 
+Committed data fixtures, both synthetic and rights-verified real-source extracts,
+live only under `spikes/data/samples/*`, with registered `open-commercial`
+provenance in the sample manifest. Tests read these bounded samples there;
+crate-local fixture payload directories are not allowed by
+`xtask/policy/repository.toml`. Larger inputs stay outside git on the D-65 target.
+Exact allow-listed metadata paths are for metadata only. Generate ephemeral
+negative payloads in temporary storage; do not loosen CI to admit them.
+
+ASSUMPTION: [Q-R-4] NI 275/110 kV cells in F-NET and AT-M1-7 are synthetic
+coverage probes pending confirmation of D-32's Ireland voltage denominator.
+They do not silently expand FR-2.AC1 or establish an accepted FR-2.AC3 denominator.
+
 All payloads are newly authored synthetic data or separately rights-verified
 `open-commercial` snapshots. Every actual fixture dataset has a D-56 provenance
 manifest; synthetic origin and derivation are explicit. Synthetic negative tests
@@ -55,7 +67,7 @@ derivatives may enter git, test artifacts or redistributed evidence.
 | Fixture | Definition and source relationship |
 |---|---|
 | F-NET | Small synthetic bus/branch system: GB 400/275/132 kV, ROI 400/220/110 kV and NI 275/110 kV; two parallel circuits, transformer, generator, storage and GSP attachments; permanent UUIDs and separate source aliases. Seven external link stubs cover France (IFA/IFA2/ElecLink), Netherlands, Belgium, Norway and Denmark; three internal stubs cover Moyle, EWIC and Greenlink. This is no claim of observed topology. |
-| F-TIME | Synthetic 2023 and leap-2024 UTC grids, pinned IANA tzdata (`SRC-35`), Europe/London and Europe/Dublin mappings; synthetic operating/knowledge revisions and versioned holiday/calendar tables. |
+| F-TIME | Synthetic 2023 and leap-2024 UTC grids, pinned IANA tzdata 2024b (`SRC-35`; archive SHA-256 `70e754db126a8d0db3d16d6b4cb5f7ec1e04d5f261255e4558a67fe92d39e550`, canonical acquisition-plan pin), Europe/London and Europe/Dublin mappings; synthetic operating/knowledge revisions and versioned holiday/calendar tables. |
 | F-SERIES | Small synthetic demand, embedded wind/solar, weather, outages, availability, fuel/carbon, FX, constraint/curtailment and proxy rows, including nulls, revisions and deliberate errors. Real-source adapter probes may use rights-verified bounded extracts from `SRC-22`, `SRC-29`, `SRC-30`, `SRC-33`, `SRC-43`, `SRC-45`, `SRC-46`; pin exact bytes, terms and checksums, never live URLs. |
 | F-SCENARIO | Versioned synthetic TOML, pinned network/input/rules/calendar/transform/proxy/FX locks, execution profile, patch and schema-migration pairs; independently reviewed semantic hash vectors for ADR 0002 deterministic CBOR/SHA-256. |
 | F-RIGHTS | Entirely synthetic lineage graphs, licence records, download stubs and distinctive harmless payload markers; no real restricted extracts. |
@@ -84,14 +96,14 @@ ASSUMPTION: For these small data/arithmetic tests, local scale `S` is the maximu
 absolute MW term in the checked balance/recurrence or the applicable branch rating,
 never a whole-grid total. Non-aligned events/durations require an explicit,
 versioned rounding/resampling policy or rejection. These operational definitions
-and accumulated/currency-ledger tolerances require Q-P-3 disposition; they do not amend NFR-2 or
+and accumulated/currency-ledger tolerances require Q-R-3 disposition; they do not amend NFR-2 or
 approve an unspecified model rounding rule.
 
 ASSUMPTION: The synthetic reconstruction FX policy uses GBP per EUR, effective at
 00:00 UTC, carrying the last published valid rate across non-working days; the
 as-of variant may select only a rate published by its knowledge cut. This is a
 test policy, not a decision establishing real ECB timing or a project-wide FX
-convention (Q-P-2; relates to Q-N-1/Q-N-2).
+convention (Q-R-2; relates to Q-N-1/Q-N-2).
 
 ## Network and inventory tests
 
@@ -121,6 +133,10 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   Declared islands/missing parameters can be retained in a diagnostic draft with
   exact gap IDs, but cannot gain a complete/ready label or an unlimited rating.
   A clear diagnostic preserves the original source row/alias and reason.
+  Separately admit a diagnostic proxy variant with a 100 MW post-fault rating:
+  `ASSUMPTION: [Q-P-01]` continuous estimate `0.88 × 100 = 88 MW`, inferred
+  method/source and gap recorded. It must never count as a verified continuous
+  rating or satisfy baseline rating acceptance (see AT-M1-7/29).
 
 ### AT-M1-3 — Effective asset and market-rule transitions
 
@@ -169,15 +185,22 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   40/39/1 MWh. Sending equals receiving plus losses within epsP/epsE for each
   interval; joint ledger counts each loss once. Invalid variants reject or remain
   explicitly unready, never receive an invented zero/default physical loss.
+  Add a separate three-term variant `P_loss = P_standby + k1*abs(P) + k2*P²`
+  (Q-P-03): at zero transfer use synthetic `P_standby=2 MW` and declare GB as
+  the supplying endpoint. GB withdraws 2 MW (1 MWh over 30 min), SEM receives
+  zero, and the loss ledger records exactly 2 MW/1 MWh once, including in the
+  joint balance. The schema preserves all three coefficients and endpoint;
+  missing endpoint or duplicated standby charges reject. The earlier zero-idle
+  variant remains a distinct explicit model, never a universal loss assumption.
   These arbitrary synthetic coefficients establish no real-link loss factors.
 
 ### AT-M1-6 — Daily FX and declared external-boundary policy
 
 - **Covers:** FR-1.AC3/AC4; D-11, D-26, D-38, D-70, D-72.
 - **Level:** integration. **Light CI:** Yes.
-- **Preconditions/fixtures:** F-SERIES with synthetic GBP/EUR rates 0.80 and 0.90
+- **Preconditions/fixtures:** F-SERIES with synthetic rates 0.80 and 0.90 GBP per EUR
   on adjacent UTC days; weekend gap with a prior published rate; external boundary
-  flows and policy locks; Q-P-2 assumption explicitly selected.
+  flows and policy locks; Q-R-2 assumption explicitly selected.
 - **Steps:** Value 10 MWh at 100 EUR/MWh on each day; process midnight and weekend
   intervals; run reconstruction and publication-cut variants; omit rate/policy,
   reverse quote units, and request a freely optimised FX field in negative variants.
@@ -203,6 +226,8 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   unknown denominator is UNKNOWN, never 100%. Missing DNO areas fail complete
   coverage. Documented zero/non-applicable cells retain evidence and are not
   silently dropped. Every inferred parameter has source, method and gap status.
+  With AT-M1-2's Q-P-01 variant, report 88 MW as inferred only: the verified-rating
+  coverage numerator does not increase. Synthetic NI cells follow Q-R-4.
 
 ### AT-M1-8 — Equivalents, missing assets and full-network claim gate
 
@@ -247,12 +272,17 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   2023/2024 London/Dublin mapping tables; synthetic rows labelled with source period,
   local offset/fold and UTC interval. Versioned holiday tables have explicit region.
 - **Steps:** Construct half-hour UTC years; round-trip through local settlement
-  identifiers; process 2024-03-31 and 2024-10-27; remove a fold/offset discriminator;
+  identifiers; process 2023-03-26, 2023-10-29, 2024-03-31 and 2024-10-27; remove a fold/offset discriminator;
   change calendar/tzdata or a holiday table version and recompute identity.
 - **Pass/fail:** Exactly 17,520 and 17,568 contiguous unique UTC starts, leap day
   48 periods, both local spring days 46 and autumn days 50. Repeated autumn civil
   times remain distinct intervals with source IDs; no deduplication. Ambiguous
-  timestamps reject. Calendar/holiday/tzdata versions are pinned and affect the
+  timestamps reject. Use UTC offsets (+01:00 vs +00:00) and fold/UTC identity,
+  never `is_dst`, to distinguish repeated hours. Assert London and Dublin map
+  the same tested civil times to the same UTC offsets on both sides of each
+  transition even though Dublin's negative-DST `is_dst` convention is inverted;
+  an implementation that uses that flag as the offset must fail.
+  Calendar/holiday/tzdata versions are pinned and affect the
   input identity. Synthetic holidays prove mapping only, not actual Irish dates.
 
 ### AT-M1-11 — Operational input classes and vintage preservation
@@ -481,11 +511,15 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
   synthetic open-commercial control. Use a temporary repository, not project history.
 - **Steps:** Run research-mode ingest to an external cache; attempt to stage raw
   marker and derived extract or include them in export/test artifacts; retain
-  scripts and non-sensitive lineage evidence. Scan resulting package and git range.
+  scripts and non-sensitive lineage evidence. Scan the git range with
+  `cargo xtask provenance --base <base-sha> --head <head-sha>`; separately scan
+  the resulting export package with its lineage admission checks. In the
+  disposable repository, commit then delete a marker to exercise range detection.
 - **Pass/fail:** Raw/derived restricted simulations stay outside tracked/public
   outputs; attempted inclusion blocks publication. Allowed scripts/manifests carry
   no restricted rows or secrets. Open-commercial control is admitted with required
-  attribution. Export's lineage checks agree with git admission; missing external
+  attribution at a registered `spikes/data/samples/*` path; the same control
+  outside the allow-list is rejected. Export's lineage checks agree with git admission; missing external
   cache is a declared unavailable input, not a fabricated downloadable fixture.
 
 ### AT-M1-25 — Typed proxy definitions, cut-sets and missing-rule status
@@ -568,10 +602,17 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
 - **Preconditions/fixtures:** Synthetic 100 MVA base: 0.5 pu active power and
   10% impedance on that base; independently equivalent MW/pu representations;
   original-unit sending/receiving/demand values from AT-M1-5/AT-M1-12.
+  Add 17.424 ohms at 132 kV, 100 MVA: independent `Z_base=132²/100=174.24 ohms`,
+  hence `Z_pu=17.424/174.24=0.1`; retain original ohms/kV/MVA. Compare with
+  independently correctly rounded 0.1 pu within a documented binary64 rounding
+  bound (at most two ULP), and reject missing kV/MVA or a factor-of-100 base error.
+  Preserve AT-M1-2's inferred 88 MW rating and Q-P-01 method through conversion;
+  neither unit conversion nor rounding may relabel it as verified.
 - **Steps:** Convert and restore units; recompute endpoint/energy ledgers independently
   in MW/MWh; inject a factor-of-100 percentage error, wrong base and rounded output.
-- **Pass/fail:** Expected 50 MW and the independently correctly rounded canonical
-  binary64 value of 0.1 pu compare exactly; original units/base are retained. Physical residuals
+- **Pass/fail:** Expected 50 MW and the percentage conversion's independently
+  correctly rounded canonical binary64 value of 0.1 pu compare exactly; the
+  ohms conversion uses the two-ULP bound above. Original units/base are retained. Physical residuals
   satisfy epsP/epsE per row, not only aggregate cancellation. Every erroneous-base/
   percentage variant fails; unknown bases reject. Test evidence retains unrounded
   numeric values, never derives acceptance from rounded presentation strings.
@@ -582,12 +623,17 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
 - **Level:** unit. **Light CI:** Yes.
 - **Preconditions/fixtures:** Synthetic residual checks at local scale 100 MW;
   30-minute interval; exact arithmetic oracle and currency reference 1,000 GBP.
-  Q-P-3 scale/aggregation assumption is recorded.
+  Q-R-3 scale/aggregation assumption is recorded. Boundary comparison uses
+  `abs(residual) <= threshold` in binary64. Construct the 1.00× residual by copying
+  the exact binary64 threshold passed to the production comparator, not by
+  subtracting MW totals. Independently verify threshold computation against the
+  exact decimal oracle with its correctly rounded binary64 result. Use decimal
+  oracle values for 0.99×/1.01×, then round once to binary64; test both signs.
 - **Steps:** Evaluate residuals at 0.99, 1.00 and 1.01 times each tolerance; check a
   second row with the opposite sign; evaluate a short-interval energy case with
   dt=1/60 h and a multi-interval ledger including an intentionally missing interval.
 - **Pass/fail:** epsP=0.0011 MW, half-hour epsE=0.00055 MWh and epsC=0.011 GBP;
-  0.99× and exact-threshold residuals pass; 1.01× fails for each. Opposite errors cannot cancel row failures.
+  0.99× and copied-binary64-threshold residuals pass; 1.01× fails for each. Opposite errors cannot cancel row failures.
   Minute tolerance scales by 1/60, not 0.5. Missing interval prevents complete
   ledger acceptance. Record raw residual, local scale, dt and threshold. No MILP
   integrality/objective certificate or price-method pass is implied (AC4–AC6 later).
@@ -596,7 +642,11 @@ convention (Q-P-2; relates to Q-N-1/Q-N-2).
 
 ### AT-M1-31 — Exact-SHA admission and untrusted dispatch denial
 
-- **Covers:** NFR-12.AC1/AC2; D-17, D-22, D-28, D-43, D-65, D-72.
+- **Covers:** NFR-12.AC1/AC2; D-17, D-22, D-28, D-43, D-53, D-54, D-65, D-72.
+- **Pending policy reference:** PR #75 proposes the D-77 review-evidence exception.
+  It is not in the decisions log or gate policy at merged main `79a2d2e`.
+  Do not assume that exception is active; test the accepted gate policy and add
+  the review-evidence-only variant only after that policy is accepted and merged.
 - **Level:** integration. **Light CI:** No — actual D-65 admission boundary required.
 - **Preconditions/fixtures:** F-TARGET with coordinator-approved exact test head/base
   and trusted policy, independent review/adversarial triage evidence, audit log and
@@ -697,17 +747,17 @@ not itself make a requirement logically untestable or authorise a scope reductio
 
 | Gap | Requirement / issue | Classification and disposition |
 |---|---|---|
-| GAP-M1-1 | FR-4.AC2, FR-5.AC1/AC2, NFR-1.AC2, NFR-2.AC1/AC4–AC6 need components delivered after M1 | Sequencing. ASSUMPTION: use the staged input/foundation boundary above; contract tests do not complete later behaviour. Q-P-1 asks to confirm exact exit allocation. Track deferred evidence explicitly in the M1 report. |
-| GAP-M1-2 | FR-1.AC4 daily UTC FX does not fix quote direction, fixing/publication time, holiday/weekend/leading-gap or as-of carry policy | **Underspecified oracle / untestable in full as written.** Declaration can be checked; correctness of an undeclared effective policy cannot. ASSUMPTION: AT-M1-6 uses a declared synthetic policy only; Q-P-2 requests a versioned real policy. No future ECB fixing may leak into as-of selection. |
-| GAP-M1-3 | FR-5.AC1/AC2 duration rounding and NFR-2.AC1/AC2 “local MW scale”/multi-interval tolerance are not operationally defined | **Underspecified oracle / untestable at all boundaries as written.** ASSUMPTION: use the explicit local-scale, per-interval, accumulation and non-aligned-event rules above for draft tests only. Q-P-3 requests disposition; no test may use whole-network scale to hide local errors or silently round physical durations. |
-| GAP-M1-4 | FR-1.AC1/AC2/AC5; FR-2.AC1–AC4 dated commissioned inventory, denominators, ratings, BMU/GSP mappings and accepted equivalents | Evidence blocked. Inventory reports 2025/26/2026 forward snapshots rather than verified 2024 assets, missing DNO denominators, Irish zero ratings and crosswalk deficits. Obtain dated evidence and per-equivalent owner acceptance under D-71. AT-M1-3/7/8 synthetic passes prove only logic; full inventory acceptance stays M5. No new reduced-scope decision assumed (Q-N-3 already answered). |
-| GAP-M1-5 | FR-3 inputs: Irish embedded series, GSP allocation/boundaries, weather, costs, operational vintages, calendar and historic rules | Evidence blocked. Inventory records no ERA5 bytes, MÉRA ending 2019, missing SRMC parameters, unpinned rules/calendars and incomplete Irish decomposition. Pin rights-verified fixtures, transforms and known vintages; declare missing inputs. Raw research-only snapshots cannot become fixtures here. Acquired SEMO prices and a current code hub do not resolve these other deficits. |
-| GAP-M1-6 | FR-1.AC3 actual directional physical losses and metering conventions | Evidence blocked. All ten links' directional coefficients are MISSING; TLM candidate is unacquired and settlement multipliers cannot silently replace physical loss functions. Acquire per-link/date evidence; synthetic AT-M1-5 coefficients are not defaults. D-71 acquisition/provenance obligation remains, without inventing percentages. |
-| GAP-M1-7 | FR-21.AC1 / FR-3.AC2 electrical cut-sets, regional unit groups, inertia/SNSP rules and time-varying vintages | Evidence blocked. GIS boundaries provide no signed electrical cut-set, SNSP outturn supplies no ceiling and narrative floors are unverified. Acquire operational rule evidence and map memberships, with exact fallback coverage; unsupported rows remain gaps under D-55/D-71. |
+| GAP-M1-1 | FR-4.AC2, FR-5.AC1/AC2, NFR-1.AC2, NFR-2.AC1/AC4–AC6 need components delivered after M1 | Sequencing. ASSUMPTION: use the staged input/foundation boundary above; contract tests do not complete later behaviour. Q-R-1 asks to confirm exact exit allocation. Track deferred evidence explicitly in the M1 report. |
+| GAP-M1-2 | FR-1.AC4 daily UTC FX does not fix quote direction, fixing/publication time, holiday/weekend/leading-gap or as-of carry policy | **Underspecified oracle / untestable in full as written.** Declaration can be checked; correctness of an undeclared effective policy cannot. ASSUMPTION: AT-M1-6 uses a declared synthetic policy only; Q-R-2 requests a versioned real policy. No future ECB fixing may leak into as-of selection. |
+| GAP-M1-3 | FR-5.AC1/AC2 duration rounding and NFR-2.AC1/AC2 “local MW scale”/multi-interval tolerance are not operationally defined | **Underspecified oracle / untestable at all boundaries as written.** ASSUMPTION: use the explicit local-scale, per-interval, accumulation and non-aligned-event rules above for draft tests only. Q-R-3 requests disposition; no test may use whole-network scale to hide local errors or silently round physical durations. |
+| GAP-M1-4 | FR-1.AC1/AC2/AC5; FR-2.AC1–AC4 dated commissioned inventory, denominators, ratings, BMU/GSP mappings and accepted equivalents | Evidence blocked. PR #58 Candidate 1.1 supplies ETYS 2024 Appendix B as a historical candidate; 1.3 proposes November 2024 LTDS. These need commissioned-asset verification. Remaining gaps include missing DNO denominators, Irish zero ratings and crosswalk deficits. Exercise the Q-P-01 inferred-rating path (AT-M1-2/7) and 132 kV ohms-to-pu path (AT-M1-29); obtain dated evidence and per-equivalent owner acceptance under D-71. AT-M1-3/7/8 synthetic passes prove only logic; full inventory acceptance stays M5. No new reduced-scope decision assumed (Q-N-3 already answered). |
+| GAP-M1-5 | FR-3 inputs: Irish embedded series, GSP allocation/boundaries, weather, costs, operational vintages, calendar and historic rules | Evidence blocked. Inventory records no ERA5 bytes, MÉRA ending 2019, missing SRMC parameters, unpinned rules/calendars and incomplete Irish decomposition. PR #58 Candidate 3.1 identifies Sheffield Solar PV_Live; 3.3 supplies research-only ESB/SEAI endpoints, Q-P-02 interpolation remains proposed. Candidate 6.2 / Q-P-05 cover heat-rate/VOM proxies; Q-P-08 covers reconstruction interpolation versus as-of step-holding with imputation masks. Pin rights-verified fixtures, transforms and known vintages; declare missing inputs. Raw research-only snapshots cannot become fixtures here. Acquired SEMO prices and a current code hub do not resolve these other deficits. |
+| GAP-M1-6 | FR-1.AC3 actual directional physical losses and metering conventions | Evidence blocked. All ten links' directional coefficients are MISSING; TLM candidate is unacquired and settlement multipliers cannot silently replace physical loss functions. Q-P-03 proposes standby/linear/quadratic parameters; AT-M1-5 tests non-zero standby attribution separately. Acquire per-link/date evidence; synthetic AT-M1-5 coefficients are not defaults. D-71 acquisition/provenance obligation remains, without inventing percentages. |
+| GAP-M1-7 | FR-21.AC1 / FR-3.AC2 electrical cut-sets, regional unit groups, inertia/SNSP rules and time-varying vintages | Evidence blocked. GIS boundaries provide no signed electrical cut-set, SNSP outturn supplies no ceiling. PR #58 Candidate 2.1 cites the [EirGrid/SONI 2024 report](https://cms.eirgrid.ie/sites/default/files/publications/Annual-Renewable-Constraint-and-Curtailment-Report-2024-V1.0.pdf), §§3.3/5.1: 75% SNSP and 23,000 MW·s inertia throughout 2024; enduring minimum 3 NI + 4 ROI units from 7 April 2024. This is research-only evidence, not a suite fixture. For AT-M1-25/26 real-date variants, record the external report hash/citation, map memberships and test selection immediately before/at/after the evidenced effective instant; the exact intra-day instant and pre-April trial schedule remain UNVERIFIED. Only independently authored synthetic analogues run in this suite; real evidence claims remain blocked until permitted evidence and date precision are available. Acquire operational rule evidence and map memberships, with exact fallback coverage; unsupported rows remain gaps under D-55/D-71. |
 | GAP-M1-8 | NFR-12.AC1/AC2 actual separate target identity/access/configuration | Environment blocked. Q-N-7/Q-H-7 target details remain pending; D-48 sizing is not target identity. AT-M1-31–34 cannot be satisfied by mocks, policy prose or a coding-container run. Keep heavy B1 disabled until target provision and denial/isolation evidence pass (D-65). |
 
 Do not invent owner answers to close these gaps. Questions are recorded in
-[the questionnaire, section P](02-questionnaire.md#p-m1-acceptance-oracles-and-staged-evidence).
+[the questionnaire, section R](02-questionnaire.md#r-m1-acceptance-oracles-and-staged-evidence).
 Existing decisions/questions already cover data acquisition (D-71/Q-N-3), target
 provisioning (D-65/Q-N-7) and pre-commercial clearance (D-56); do not reopen them.
 The acceptance report must list 34 case outcomes/variants, the ten requirement
