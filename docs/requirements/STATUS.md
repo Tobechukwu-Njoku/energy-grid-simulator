@@ -16,6 +16,8 @@ being prepared separately on `fix/xtask-deferred-policy-followups` under D-75.
 blocked on trusted review/policy gates. The configured account is
 `automated-machines`; D-65 hardware is unconfirmed. This board is a dated work
 snapshot, not approving evidence or M0 sign-off.
+The board describes #75's evidence-publication policy as proposed, because its
+decision entry is not yet present on main; no decision is added by this refresh.
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published
