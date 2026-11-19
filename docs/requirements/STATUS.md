@@ -7,6 +7,22 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #60 adversarial triage and correction (2026-11-19 UTC):** published the
+one-file [triage PR #91](https://github.com/Tobechukwu-Njoku/energy-grid-simulator/pull/91)
+against `f4ecfa2ebf17e364c4cc3071198c00c54def1256`: one VALID-BLOCKING,
+two VALID-FOLLOW-UP and two INVALID findings. Merged main `a266a9b` before
+correcting the plan. MID is now explicitly research-only/never per stream and
+for inseparable raw bundles; register totals no longer imply blanket clearance.
+Also clarified delivery versus publication filters/reconstruction-only admission
+and 2024 fleet/network admission gates. Verified the existing SEMOpx archive's
+hash and 2024 auction rows without a new acquisition; retained its source and
+the Pink Sheet's existing series-rights gate. Added evidenced converter-count
+and cable-route-length acquisition fields from the verification follow-up,
+without adopting pending loss defaults. D-78–D-85 are still absent from main;
+their approval-status rewrites and citations remain deferred. No builds or
+tests run, no raw payloads committed and no M1 acceptance claimed. Fresh
+exact-head review is required after these changes.
+
 **PR #60 review revision (2026-11-19 UTC):** merged main `b13145f`, preserving both STATUS histories. Added PR #58 candidate dispositions, historical-edition acquisition pins, Irish rule evidence, sample-only raw-data contract, target-host storage prerequisites, decision traceability, EEX project-use gate, shared tzdata hash and Elexon publication filters. The decisions log still ends at D-76; no later decision or header is invented. No bulk acquisition or M1 acceptance is claimed. Validation: git diff --check passed; GitHub documentation/provenance gates passed on the substantive revision. Local cargo xtask docs was stopped during slow tooling compilation; no acceptance execution.
 
 **M1 public acquisition plan (2026-11-15 UTC):**

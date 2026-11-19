@@ -1,23 +1,27 @@
 # M1 acquisition plan: sources without credentials
 
 Publisher pages and catalogue/API documentation checked **2026-11-15 UTC**.
-Reconciled with main `b13145f` and PR #58 on **2026-11-19 UTC**; candidate
+Reconciled with main `a266a9b` and PR #58 on **2026-11-19 UTC**; candidate
 checks inherited from the linked analysis are not new payload verification.
 Based on the 54 external resource rows (`SRC-01`–`SRC-50`, including split IDs)
 in [m1-data-inventory.md](m1-data-inventory.md). This is an acquisition plan,
 not evidence of new acquisition, complete network coverage or M1 acceptance.
 No bulk or operational datasets were fetched for this document; public HTML
-pages, catalogue metadata and API specifications were read. The sole release
-payload check in this revision was the small IANA tzdata archive in temporary
-storage to verify the canonical hash (see candidate 8.3 below); it is not committed.
+pages, catalogue metadata and API specifications were read. The earlier release
+payload check was the small IANA tzdata archive in temporary storage to verify
+the canonical hash (see candidate 8.3 below); it is not committed. The adversarial
+triage also rechecked terms/OpenAPI and inspected the existing private SEMOpx
+archive's hash and 2024 delivery rows, without a new dataset acquisition.
 Previously recorded sizes come from
 committed manifests, not new dataset requests.
 
 ## Scope and interpretation
 
 The register covers 42 whole resource rows plus the public portion of `SRC-49`:
-**43 entries, 23 open-commercial and 20 research-only**, preserving the inventory's
-classifications. Eleven whole resource rows are excluded for credentials; the
+**43 entries: 22 wholly open-commercial, 20 wholly research-only and one mixed
+entry (SRC-43)**. SRC-43's MID stream retains the research-only classification
+in `spikes/data/sources.tsv`, overriding the inventory's umbrella BMRS label.
+Eleven whole resource rows are excluded for credentials; the
 gated portion of `SRC-49` is also excluded. `INT-01`/`INT-02` are internal
 specifications, not downloads. The appendix accounts for every excluded row.
 
@@ -275,7 +279,7 @@ are ingestion/interpretation dependencies unless specifically called a fetch gat
 - **URL/evidence:** [BritNed](https://www.britned.com/) and [ElecLink](https://www.eleclink.co.uk/), HTTP 200; ElecLink links its verified [loss-factor page](https://www.eleclink.co.uk/publications/loss-factor), HTTP 200, advertising a [loss guide PDF](https://cdn.prod.website-files.com/67b2dbc715938e08fe43fee1/67d9d09d90ce7e920a93ee31_ElecLink%20Loss%20Factor%20v2.pdf). Page states 2.9% end-to-end and 1.471% mid-interconnector; **2024 applicability, directional convention and converter/cable decomposition UNVERIFIED**. [Greenlink operations](https://greenlink.ie/operations/) returned 403. No complete 10-link parameter set verified.
 - **Format / cadence / size:** HTML/PDF guidance/filings; updates on operator changes, schedule and bytes **UNVERIFIED**.
 - **Rights / raw commit:** `research-only`, PC-5; **never**.
-- **Manifest / order / requirements:** C+N+R+T; **P3 after SRC-15**, before lossy balance fixtures. FR-1.AC3/5, FR-3.AC2, NFR-2. Keep IFA, IFA2, ElecLink, BritNed, Nemo, NSL, Viking, Moyle, EWIC and Greenlink separate, with both directions and sending/receiving metering boundaries. Do not apply ElecLink's current figures to other links or invent missing coefficients.
+- **Manifest / order / requirements:** C+N+R+T; **P3 after SRC-15**, before lossy balance fixtures. FR-1.AC3/5, FR-3.AC2, NFR-2. Keep IFA, IFA2, ElecLink, BritNed, Nemo, NSL, Viking, Moyle, EWIC and Greenlink separate, with both directions and sending/receiving metering boundaries. Acquire each link's evidenced converter count and cable route length in km, with route/segment definition, effective dates and source references; preserve unknowns rather than assume counts or substitute straight-line distance. These are acquisition fields, not approval of a fallback loss formula. Do not apply ElecLink's current figures to other links or invent missing coefficients.
 
 ### SRC-33 — GB/NI public holidays
 
@@ -351,7 +355,7 @@ are ingestion/interpretation dependencies unless specifically called a fetch gat
 
 - **URL/evidence:** [Publisher OpenAPI](https://data.elexon.co.uk/swagger/v1/swagger.json), HTTP 200, documents all routes in the table below. Use exact API root `https://data.elexon.co.uk/bmrs/api/v1`; braces are caller-supplied parameters, not literal requests. No market data was requested.
 - **Format / cadence / size:** JSON streams/daily batches; observations are settlement-period or event-driven (REMIT/notifications/acceptances), publication/revision timing varies and exact service latency is **UNVERIFIED**. Recorded **4.16 GiB (4,467,563,083 bytes)**, 3,673 files for the 12-stream capture, including SRC-20/30/31. It is not additional volume on top of those three rows.
-- **Rights / raw commit:** `open-commercial`, BMRS licence; **sample-only**. Keep the required data-year and reference-year copyright/database attribution; exclude unlicensed third-party/personal content.
+- **Rights / raw commit:** **Per stream, never inherited from an umbrella bundle.** MID is `research-only`, PC-5, **never**, consistent with `spikes/data/sources.tsv`; exchange-derived rights are unverified and the BMRS licence excludes third-party rights Elexon cannot license. Other separately evidenced BMRS streams remain `open-commercial`, **sample-only**, subject to the common admission contract. Keep the required data-year and reference-year copyright/database attribution; exclude unlicensed third-party/personal content. Any inseparable raw bundle containing MID is `research-only` / **never**. Record each stream's classification in C; the existing capture's blanket BMRS manifest label is not MID clearance.
 - **Manifest / order / requirements:** C+N+T+E, including stream/query/provider/BMU/run/revision dimensions and checksum indices; **P5 after SRC-35/15/20**, and SRC-26/27/28 before rule-dependent interpretation. FR-3.AC1/2/4, downstream FR-7.AC2 and FR-12. Acquire scarce rolling-publication histories early where possible, but freeze a comparable holdout only after coverage review.
 
 | Stream (12 total) | Exact documented endpoint under the API root | Batch/filter and recorded size |
@@ -361,7 +365,7 @@ are ingestion/interpretation dependencies unless specifically called a fetch gat
 | Fuel | `/datasets/FUELHH/stream?settlementDateFrom={d}&settlementDateTo={d}` | Settlement-date or `publishDateTimeFrom/To` windows; preserve publication vintages. Reuse SRC-31; 61.77 MB |
 | System prices | `/balancing/settlement/system-prices/{settlementDate}?format=json` | Settlement date/run; 15.64 MB |
 | Interconnector flows | `/generation/outturn/interconnectors?settlementDateFrom={d}&settlementDateTo={d}&format=json` | Settlement-date or `publishDateTimeFrom/To` windows, link ID and publication vintages; 40.90 MB |
-| Market Index Data | `/datasets/MID/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | Provider/product; 5.63 MB |
+| Market Index Data | `/datasets/MID/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | Provider/product; **research-only / never**, not an open-commercial sample; 5.63 MB |
 | REMIT | `/datasets/REMIT/stream?publishDateTimeFrom={start}&publishDateTimeTo={end}` | **Publication-time** window, event/revision lineage; 90.17 MB |
 | Acceptances | `/datasets/BOALF/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | BMU/acceptance flags/revisions; 1,389.49 MB |
 | MEL | `/datasets/MELS/stream?from={start}&to={end}&settlementPeriodFrom=1&settlementPeriodTo=50` | BMU/effective times; 795.83 MB |
@@ -376,6 +380,18 @@ uses the same convention. Preserve all 46/48/50 source periods. REMIT windows
 must include the pre-year publications needed to establish outages active on
 1 January 2024; an exclusively 2024 publication-window capture cannot prove that
 coverage. Full 2024 interval unions do not prove every BMU/message is complete.
+For **BOALF, BOD, PN, MELS and MILS**, `from`/`to` select delivery/effective
+time or settlement date/period, **not publication time**. With the period
+parameters shown, BOALF/BOD/MELS/MILS use settlement dates rather than the time
+portion of `from`/`to`; PN resolves the datetime to a settlement period. These
+five stream routes expose no `publishDateTimeFrom/To` filters. Batch them by
+delivery settlement day, not by a purported publication window. Preserve
+MELS/MILS `notificationTime`/`notificationSequence` and BOALF `acceptanceTime`
+when present, but do not treat them as proof of public availability or a complete
+revision history; PN/BOD schemas provide no equivalent publication field.
+Without independently evidenced archived publication vintages/revisions, admit
+these streams only as **reconstruction**, never as-of forecast validation.
+Acquisition timestamps and delivery filters cannot supply the missing evidence.
 MID is a volume-weighted reference across exchanges, not a day-ahead auction
 price. Bid/offer data serves historical comparison; it does not change D-59's
 cost-based redispatch design.
@@ -500,7 +516,10 @@ which preserves publisher URLs, rights evidence and verification limitations.
 
 Q-P-03 also changes the loss acquisition contract: seek directional dated standby
 MW, linear and quadratic coefficients with physical units and metering endpoint,
-not merely a percentage. Preserve missing terms as gaps, not invented zeros.
+not merely a percentage. Also retain evidenced per-link converter counts and
+cable route lengths in km under SRC-32, including source/effective-date and route
+definitions; collecting these inputs does not adopt a fallback formula or proxy
+default. Preserve missing terms as gaps, not invented zeros.
 Q-P-01 rating proxy and the 132 kV/100 MVA `Z_base=174.24 ohms` conversion
 need original ratings/types/bases plus inferred-method provenance. Q-P-05 and
 Q-P-08 require original cost cadence, unit/technology basis and publication
@@ -545,13 +564,22 @@ publisher's service terms; do not circumvent access controls.
 2. **P1 — Pin small clocks, currencies and identity inputs.** Fetch **SRC-35**
    first, then **SRC-33, SRC-46, SRC-15, SRC-20, SRC-17, SRC-18, SRC-19**.
    Discover **SRC-21** working public filenames in parallel; defer failed reports.
-   Prefer pinned historical registers if available; label current captures as
-   current and retain release/publication evidence. Clock/FX definitions precede
-   all time/currency transformations.
+   Keep current SRC-17/18/19 captures in a separate current/discovery namespace.
+   Before admitting fleet records to the 2024 holdout, pin release/resource
+   identity and hash, and establish evidenced 2024 commissioned/removed/planned
+   status and effective dates. Prefer historical register editions; a later
+   corrected release is admissible only as a declared reconstruction of proven
+   2024 asset state, never by importing its 2026 fleet/queue state. Missing
+   historic status remains an admission gap; current labels alone are not proof.
+   As-of use additionally requires publication evidence under D-70. Clock/FX
+   definitions precede all time/currency transformations.
 3. **P2 — Acquire topology and fleet crosswalk inputs.** Fetch **SRC-01, SRC-12,
    SRC-02, SRC-03, SRC-04, SRC-05**. For NGED, ingest node aliases before circuits
    and transformers, then reconcile same-edition CIM; map SEPD GSPs and Irish
-   ResourceNames to buses. Add **SRC-21** only if its public fetch gate passes.
+   ResourceNames to buses. For historical LTDS inputs, resolve and hash the
+   required November 2024 editions before admission, including SRC-05's tables;
+   current table/CIM locators are discovery inputs, not substitutes for absent
+   historical topology or commissioning evidence. Add **SRC-21** only if its public fetch gate passes.
    Inspect **SRC-13** public export metadata; fetch records only when no-account
    access is established. Record 14 DNO-area coverage dispositions and every
    absent denominator. A reduced model is not full-network completion.
@@ -571,8 +599,12 @@ publisher's service terms; do not circumvent access controls.
    vector without sourced heat rates, emissions, VOM and subsidy mappings.
 6. **P5 — Acquire historical comparison streams in increasing volume.** Reuse
    SRC-20/30/31 captures, then SRC-43 **system prices, MID, interconnector flows,
-   REMIT**, followed by **PN, MILS, MELS, BOD, BOALF** (daily/publication-window
-   batches; include needed pre-year REMIT history). Acquire **SRC-44** after
+   REMIT**, followed by **PN, MILS, MELS, BOD, BOALF**. Keep MID and inseparable
+   mixed raw bundles research-only/never, not eligible open-commercial samples.
+   Use delivery-day batches for the five operational streams and documented
+   publication windows only where supported; include needed pre-year REMIT
+   history. Lack of archived publication evidence means reconstruction only,
+   not as-of admission. Acquire **SRC-44** after
    resolving its public archive links, and **SRC-45** across both financial-year
    files. Reconcile product/timezone/provider/unit masks, up/down volumes and
    constraint-only costs; archive gaps are not passes. Fetching observations can
