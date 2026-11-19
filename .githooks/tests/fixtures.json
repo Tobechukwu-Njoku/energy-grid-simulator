@@ -1342,9 +1342,9 @@
   {
     "name": "r10-keep-2",
     "source": "R10 human/prose control",
-    "input": "fix: exercise message policy\n\nFixed by sweep\n",
+    "input": "fix: exercise message policy\n\nFixed by the parameter sweep\n",
     "exit": 0,
-    "expected": "fix: exercise message policy\n\nFixed by sweep\n"
+    "expected": "fix: exercise message policy\n\nFixed by the parameter sweep\n"
   },
   {
     "name": "r10-keep-3",
@@ -1545,9 +1545,9 @@
   {
     "name": "r12-keep-1",
     "source": "R12 human/prose control",
-    "input": "fix: exercise message policy\n\nTested by sweep\n",
+    "input": "fix: exercise message policy\n\nTested by the parameter sweep\n",
     "exit": 0,
-    "expected": "fix: exercise message policy\n\nTested by sweep\n"
+    "expected": "fix: exercise message policy\n\nTested by the parameter sweep\n"
   },
   {
     "name": "r12-keep-2",
