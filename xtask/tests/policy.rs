@@ -1275,3 +1275,23 @@ fn r15v5_credentials_reject_in_checkout_and_deleted_history() {
         );
     }
 }
+
+// `all` must not silently ignore a requested history range.
+#[test]
+fn all_honors_provenance_history_range() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_xtask"))
+        .current_dir(root())
+        .args([
+            "all",
+            "--head",
+            "refs/heads/xtask-missing-history-regression",
+        ])
+        .env_remove("GITHUB_EVENT_NAME")
+        .env_remove("GITHUB_EVENT_PATH")
+        .env_remove("GITHUB_ACTIONS")
+        .output()
+        .expect("run all");
+    assert!(!output.status.success());
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(error.contains("is not a commit"), "{error}");
+}
