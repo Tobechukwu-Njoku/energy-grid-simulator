@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-11-18_
+_Last updated: 2026-11-19_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
@@ -24,7 +24,7 @@ as detailed in the inventory and specification. Full FR-2 release evidence stays
 M5; client/runtime obligations stay at their allocated later stages. This session
 changes documentation only and does not alter decisions, requirements or roadmap.
 
-**PR #59 review revision (2026-11-18 UTC):** merged main `0b32d50`, preserving both STATUS histories. Fixed question collisions (section Q), data-path policy, standby/proxy/unit oracles, floating-point boundary, FX, NI assumption, DST and PR #58 evidence. D-53/D-54 cited; requested D-77 is absent from the source log (which ends D-76), so no D-77 decision or D-77 header is invented. Document checks pending; no M1 execution claimed.
+**PR #59 review revision (2026-11-19 UTC):** merged main `b13145f`, retaining both STATUS histories. Reconciled section-Q references, sample-only fixture placement, standby losses, inferred-rating and ohms/pu oracles, binary64 boundaries, FX units, NI assumption Q-Q-4, both years’ DST and PR #58 candidate evidence. D-53/D-54 cited; the requested later review-evidence decision is absent from the source log (which ends at D-76), so no decision or header is invented. Documentation checks recorded below; no M1 execution claimed.
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published

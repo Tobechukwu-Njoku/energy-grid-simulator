@@ -364,6 +364,8 @@ new target identity or completed milestone is inferred.
   boundary vectors before acceptance. Neither option changes the baseline
   numerical thresholds or permits whole-grid scaling to hide local errors.
 
+- [ ] **Q-Q-4 NI voltage coverage denominator.** ASSUMPTION: explicitly track NI 275/110 kV alongside ROI 400/220/110 kV; D-32/FR-2.AC1 list Ireland only as 400/220/110 kV. Confirm this interpretation before real coverage sign-off. **★ Recommended default:** retain separate NI cells and publish both denominators pending confirmation. Alternative: require an explicit requirement clarification before counting NI cells. Synthetic coverage does not approve a wider denominator.
+
 ## P. Candidate modelling assumptions and deficit proxies (PR #58)
 
 The following items record open engineering assumptions proposed in `docs/research/m1-deficit-sources.md` to resolve M1 data gaps under D-71. In accordance with AGENTS.md rule 1, these author proxies remain unapproved assumptions until evaluated or decided by the owner.
@@ -415,6 +417,3 @@ The following items record open engineering assumptions proposed in `docs/resear
   Monthly averages and auction observations require an imputation policy; see research Section 6. ASSUMPTION: resampled values are proxies, not observed spot prices.
   Options: (a) two-sided interpolation in reconstruction only, release-time step-holding for as-of · (b) release-time step-holding in both modes · (c) defer until daily observations are acquired.
   ★ (a), retaining original cadence and observed/imputed masks; every as-of value must have a verified publication timestamp no later than the knowledge cut, including auction-day observations.
-
-
-- [ ] **Q-Q-4 NI voltage coverage denominator.** ASSUMPTION: explicitly track NI 275/110 kV alongside ROI 400/220/110 kV; D-32/FR-2.AC1 list Ireland only as 400/220/110 kV. Confirm this interpretation before real coverage sign-off. **★ Recommended default:** retain separate NI cells and publish both denominators pending confirmation. Alternative: require an explicit requirement clarification before counting NI cells. Synthetic coverage does not approve a wider denominator.
