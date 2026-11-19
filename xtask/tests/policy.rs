@@ -1292,6 +1292,10 @@ fn all_honors_provenance_history_range() {
         .output()
         .expect("run all");
     assert!(!output.status.success());
-    let error = String::from_utf8_lossy(&output.stderr);
+    let error = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(error.contains("is not a commit"), "{error}");
 }

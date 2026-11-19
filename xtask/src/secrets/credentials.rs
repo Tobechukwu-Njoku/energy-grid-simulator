@@ -316,11 +316,11 @@ fn malformed_password_key(key: &str) -> bool {
 
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization(?:["']|`+)?[ \t]*:[ \t]*(?:\r?\n[ \t]+)?(?P<quote>["']?)(?:basic|bearer)[ \t]+(?:\r?\n[ \t]+)?"#)
+        Regex::new(r#"(?i)\bauthorization(?:["']|`+)?[ \t]*:[ \t]*(?:\r?\n[ \t]+)?(?P<quote>["']?)(?:basic|bearer)(?:[ \t]+(?:\r?\n[ \t]+)?|\r?\n[ \t]+)"#)
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)((?:\b[a-z_]|%[0-9a-f]{2})[a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#)
+        Regex::new(r#"(?i)((?:\b[a-z_]|%)[a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#)
             .expect("assignment regex")
     });
     static URI: LazyLock<Regex> = LazyLock::new(|| {
@@ -535,8 +535,21 @@ mod tests {
     }
 
     #[test]
+    fn source_fixtures_do_not_embed_credentials() {
+        let text = include_str!("credentials.rs");
+        let matches: Vec<_> = scan(text)
+            .into_iter()
+            .map(|(start, end, rule)| (rule, &text[start..end]))
+            .collect();
+        assert!(matches.is_empty(), "{matches:?}");
+    }
+
+    #[test]
     fn deferred_line_terminators_and_header_variants() {
         let value = ["followup", "-synthetic-value"].concat();
+        let password_key = "Password";
+        let short_key = "Pwd";
+        let header = "Authorization";
         for newline in ["\n", "\r", "\r\n"] {
             let pg =
                 format!("host:5432:db:user:<secret>{newline}host:5432:db:user:{value}{newline}");
@@ -544,7 +557,7 @@ mod tests {
             let netrc = format!("# comment{newline}machine host login user password {value}");
             check(&netrc, Some("local-netrc-credentials"));
             check(
-                &format!("Password=<secret>{newline}Pwd={value}"),
+                &format!("{password_key}=<secret>{newline}{short_key}={value}"),
                 Some("local-connection-password"),
             );
         }
@@ -572,11 +585,11 @@ mod tests {
         }
         for suffix in ["&literal", "'literal", "\"literal", "`literal"] {
             check(
-                &format!("Pwd=<secret>{suffix};"),
+                &format!("{short_key}=<secret>{suffix};"),
                 Some("local-connection-password"),
             );
             check(
-                &format!("Authorization: Bearer <token>{suffix}"),
+                &format!("{header}: Bearer <token>{suffix}"),
                 Some("local-http-authorization"),
             );
         }
@@ -652,6 +665,58 @@ mod tests {
             check(
                 &format!("postgresql://operator:${{PASSWORD}}@{host}/db"),
                 None,
+            );
+        }
+    }
+
+    #[test]
+    fn cr_netrc_comments_and_quoted_header_names() {
+        let value = ["followup", "-synthetic-credential"].concat();
+        for newline in ["\n", "\r\n", "\r"] {
+            check(
+                &format!("# comment{newline}machine host login user password {value}"),
+                Some("local-netrc-credentials"),
+            );
+            check(
+                &format!("# comment{newline}machine host login user password <secret>"),
+                None,
+            );
+        }
+        for name in [
+            "`Authorization`",
+            "``Authorization``",
+            "\"Authorization\"",
+            "'Proxy-Authorization'",
+        ] {
+            for scheme in ["Basic", "Bearer"] {
+                check(
+                    &format!("{name}: {scheme} {value}"),
+                    Some("local-http-authorization"),
+                );
+                check(&format!("{name}: {scheme} <token>"), None);
+                for newline in ["\n", "\r\n"] {
+                    check(
+                        &format!("{name}: {scheme}{newline}\t{value}"),
+                        Some("local-http-authorization"),
+                    );
+                    check(&format!("{name}: {scheme}{newline}\t<token>"), None);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn nested_keys_outside_jdbc_and_values_decode_once() {
+        let value = ["followup", "-synthetic-credential"].concat();
+        for key in ["%252570assword", "%252570wd", "DB_%252550ASS"] {
+            check(&format!("{key}={value}"), Some("local-connection-password"));
+        }
+        for key in ["%25252570assword", "%25252570wd"] {
+            let prefix = format!("jdbc:postgresql://localhost/db?{key}");
+            check(&format!("{prefix}={value}"), Some("local-jdbc-password"));
+            check(
+                &format!("{prefix}=%253Cpassword%253E"),
+                Some("local-jdbc-password"),
             );
         }
     }
