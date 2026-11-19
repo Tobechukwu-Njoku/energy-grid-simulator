@@ -24,7 +24,7 @@ as detailed in the inventory and specification. Full FR-2 release evidence stays
 M5; client/runtime obligations stay at their allocated later stages. This session
 changes documentation only and does not alter decisions, requirements or roadmap.
 
-**PR #59 review revision (2026-11-19 UTC):** merged main `b13145f`, retaining both STATUS histories. Reconciled section-Q references, sample-only fixture placement, standby losses, inferred-rating and ohms/pu oracles, binary64 boundaries, FX units, NI assumption Q-Q-4, both years’ DST and PR #58 candidate evidence. D-53/D-54 cited; the requested later review-evidence decision is absent from the source log (which ends at D-76), so no decision or header is invented. Documentation checks recorded below; no M1 execution claimed.
+**PR #59 review revision (2026-11-19 UTC):** merged main `b13145f`, retaining both STATUS histories. Reconciled section-Q references, sample-only fixture placement, standby losses, inferred-rating and ohms/pu oracles, binary64 boundaries, FX units, NI assumption Q-Q-4, both years’ DST and PR #58 candidate evidence. D-53/D-54 cited; the requested later review-evidence decision is absent from the source log (which ends at D-76), so no decision or header is invented. Validation: git diff --check and GitHub documentation/provenance gates passed on the substantive revision. Local cargo xtask docs was stopped during slow tooling compilation; no M1 execution claimed.
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published
