@@ -7,6 +7,8 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #60 review revision (2026-11-19 UTC):** merged main `b13145f`, preserving both STATUS histories. Added PR #58 candidate dispositions, historical-edition acquisition pins, Irish rule evidence, sample-only raw-data contract, target-host storage prerequisites, decision traceability, EEX project-use gate, shared tzdata hash and Elexon publication filters. The decisions log still ends at D-76; no later decision or header is invented. No bulk acquisition or M1 acceptance is claimed. Documentation checks recorded below.
+
 **M1 public acquisition plan (2026-11-15 UTC):**
 [m1-acquisition-plan.md](../research/m1-acquisition-plan.md) covers 42 whole
 inventory rows plus the public portion of SRC-49 (43 entries); 11 whole rows and
