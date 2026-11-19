@@ -1,8 +1,8 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-19_
 
-**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-85 (D-77 pending in PR #81) (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
