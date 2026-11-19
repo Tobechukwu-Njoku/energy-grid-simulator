@@ -8,3 +8,6 @@ node_modules/
 /spikes/data/output/
 /spikes/data/__pycache__/
 /spikes/data/.venv/
+# Python bytecode is never tracked (D-73, ADV23-11).
+__pycache__/
+*.py[cod]

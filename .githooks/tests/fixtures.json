@@ -77,18 +77,20 @@
     "expected": "fix: exercise message policy\n\nThe formulation was authored by Claude Shannon in 1948.\n"
   },
   {
-    "name": "keep-12",
+    "name": "strip-footer-any-qualifier-1",
     "source": "claude §C / gemini ADV4-R2-01",
     "input": "fix: exercise message policy\n\nGenerated with GPT tokenizer fixtures\n",
     "exit": 0,
-    "expected": "fix: exercise message policy\n\nGenerated with GPT tokenizer fixtures\n"
+    "expected": "fix: exercise message policy\n\n",
+    "note": "R4 policy: after a known name any trailing words are attribution in a footer (ADV23R4-05..10)"
   },
   {
-    "name": "keep-13",
+    "name": "strip-footer-any-qualifier-2",
     "source": "claude §C / gemini ADV4-R2-01",
     "input": "fix: exercise message policy\n\nPowered by cursor movement hooks\n",
     "exit": 0,
-    "expected": "fix: exercise message policy\n\nPowered by cursor movement hooks\n"
+    "expected": "fix: exercise message policy\n\n",
+    "note": "R4 policy: after a known name any trailing words are attribution in a footer (ADV23R4-05..10)"
   },
   {
     "name": "keep-14",
@@ -916,5 +918,754 @@
     "input": "fix: exercise message policy\n\n🤖️ Generated with [Claude Code](https://claude.com/claude-code)\n",
     "exit": 0,
     "expected": "fix: exercise message policy\n\n"
+  },
+  {
+    "name": "r4-strip-1",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436c617564652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-2",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436c617564652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-3",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820446565705365656b2d52310a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-4",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20446565705365656b2d52310a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-5",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820437572736f72204167656e740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-6",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20437572736f72204167656e740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-7",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820416e7469677261766974790a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-8",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20416e746967726176697479203c616e74696772617669747940676f6f676c652e636f6d3e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-9",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682047656d696e6920416476616e6365640a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-10",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682047656d696e6920322e3020466c617368205468696e6b696e670a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-11",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436f70696c6f7420576f726b73706163650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-strip-12",
+    "source": "gemini ADV23R4-05..10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436f70696c6f7420436861740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r4-keep-1",
+    "source": "R4 human-credit control",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Claude Monet <monet@example.fr>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Claude Monet <monet@example.fr>\n"
+  },
+  {
+    "name": "r4-keep-2",
+    "source": "R4 human-credit control",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Devin Smith <devin@example.org>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Devin Smith <devin@example.org>\n"
+  },
+  {
+    "name": "r4-keep-3",
+    "source": "R4 human-credit control",
+    "input": "fix: exercise message policy\n\nThe status bar shows a cursor agent icon.\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThe status bar shows a cursor agent icon.\n"
+  },
+  {
+    "name": "r5-strip-1",
+    "source": "gemini ADV23R5-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642076696120436c6175646520436f64650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-2",
+    "source": "gemini ADV23R5-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a50726f647563656420627920436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-3",
+    "source": "gemini ADV23R5-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682068656c702066726f6d20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-4",
+    "source": "gemini ADV23R5-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e20776974682074686520617373697374616e6365206f6620436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-5",
+    "source": "gemini ADV23R5-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820536f75726365677261706820436f64790a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-6",
+    "source": "gemini ADV23R5-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436f6479203c636f647940736f7572636567726170682e636f6d3e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-7",
+    "source": "gemini ADV23R5-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820416d617a6f6e20436f64655768697370657265720a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-8",
+    "source": "gemini ADV23R5-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820474c4d2d340a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-9",
+    "source": "gemini ADV23R5-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436f6d6d616e6420522b0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-10",
+    "source": "gemini ADV23R5-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a50726f6d707465642062793a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-strip-11",
+    "source": "gemini ADV23R5-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496d706c656d656e7465642062793a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r5-keep-1",
+    "source": "R5 human/prose control",
+    "input": "fix: exercise message policy\n\nGenerated via the build script\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nGenerated via the build script\n"
+  },
+  {
+    "name": "r5-keep-2",
+    "source": "R5 human/prose control",
+    "input": "fix: exercise message policy\n\nPhoto by: Claude Monet\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nPhoto by: Claude Monet\n"
+  },
+  {
+    "name": "r5-keep-3",
+    "source": "R5 human/prose control",
+    "input": "fix: exercise message policy\n\nPrompted by: the outage report\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nPrompted by: the outage report\n"
+  },
+  {
+    "name": "r6-strip-1",
+    "source": "gemini ADV23R6-05",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a2041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-2",
+    "source": "gemini ADV23R6-05",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a204c4c4d0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-3",
+    "source": "gemini ADV23R6-05",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d617574686f7265642d62793a20414920417373697374616e740a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-4",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820476f6f676c652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-5",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642077697468204d6574612041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-6",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642077697468204170706c6520496e74656c6c6967656e63650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-7",
+    "source": "gemini ADV23R6-06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20476f6f676c652041490a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-8",
+    "source": "gemini ADV23R6-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a506169722d70726f6772616d6d6564207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-9",
+    "source": "gemini ADV23R6-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e20696e20636f6c6c61626f726174696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-10",
+    "source": "gemini ADV23R6-07",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207468616e6b7320746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-11",
+    "source": "gemini ADV23R6-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e207769746820436c6175646527732068656c700a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-12",
+    "source": "gemini ADV23R6-08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a4275696c74207769746820436c61756465277320617373697374616e63650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-13",
+    "source": "gemini ADV23R6-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a48656c702066726f6d3a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-14",
+    "source": "gemini ADV23R6-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a417373697374616e63652066726f6d3a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-15",
+    "source": "gemini ADV23R6-09",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f64652066726f6d3a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-16",
+    "source": "gemini ADV23R6-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820526f6f20436f64650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-17",
+    "source": "gemini ADV23R6-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564207769746820436f6e74696e75650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-strip-18",
+    "source": "gemini ADV23R6-10",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420776974682053757065726d6176656e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r6-keep-1",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nCo-authored-by: Ai Nakamura <ai@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCo-authored-by: Ai Nakamura <ai@example.com>\n"
+  },
+  {
+    "name": "r6-keep-2",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nHelp from: Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nHelp from: Jane Doe\n"
+  },
+  {
+    "name": "r6-keep-3",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nBuilt with Google Cloud Build\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nBuilt with Google Cloud Build\n"
+  },
+  {
+    "name": "r6-keep-4",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nWritten in collaboration with the grid operator\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nWritten in collaboration with the grid operator\n"
+  },
+  {
+    "name": "r6-keep-5",
+    "source": "R6 human/prose control",
+    "input": "fix: exercise message policy\n\nGenerated with continued fractions\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nGenerated with continued fractions\n"
+  },
+  {
+    "name": "r10-strip-1",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a576974682068656c702066726f6d20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-2",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a2053776565700a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-3",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20426c61636b626f780a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-4",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a54657374656420627920436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-5",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a416e616c79736564207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-6",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792053746172436f646572320a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-strip-7",
+    "source": "gemini ADV23R10-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920436f64654c6c616d610a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r10-keep-1",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nWith help from Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nWith help from Jane Doe\n"
+  },
+  {
+    "name": "r10-keep-2",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nFixed by sweep\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nFixed by sweep\n"
+  },
+  {
+    "name": "r10-keep-3",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nTested with a blackbox harness\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nTested with a blackbox harness\n"
+  },
+  {
+    "name": "r10-keep-4",
+    "source": "R10 human/prose control",
+    "input": "fix: exercise message policy\n\nTested by the CI matrix\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nTested by the CI matrix\n"
+  },
+  {
+    "name": "r11-strip-1",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920426c61636b626f780a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-strip-2",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792053776565700a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-strip-3",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5468616e6b7320746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-strip-4",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f757274657379206f6620436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-strip-5",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a4372656469743a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-strip-6",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a437265646974656420746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-strip-7",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920436f6465476565580a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-strip-8",
+    "source": "R11-02, gemini ADV23R11-03..06",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792049424d204772616e6974650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r11-keep-1",
+    "source": "R11 human/prose control",
+    "input": "fix: exercise message policy\n\nGenerated by the parameter sweep\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nGenerated by the parameter sweep\n"
+  },
+  {
+    "name": "r11-keep-2",
+    "source": "R11 human/prose control",
+    "input": "fix: exercise message policy\n\nTested with black-box inputs\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nTested with black-box inputs\n"
+  },
+  {
+    "name": "r11-keep-3",
+    "source": "R11 human/prose control",
+    "input": "fix: exercise message policy\n\nThanks to Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThanks to Jane Doe\n"
+  },
+  {
+    "name": "r11-keep-4",
+    "source": "R11 human/prose control",
+    "input": "fix: exercise message policy\n\nCredit: Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nCredit: Jane Doe\n"
+  },
+  {
+    "name": "r12-strip-1",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920436f646547656d6d610a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-2",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792057697a617264436f6465720a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-3",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e6572617465642062792059692d436f6465720a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-4",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5468616e6b20796f7520746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-5",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a4b75646f7320746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-6",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a53686f75746f757420746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-7",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a41636b6e6f776c6564676d656e743a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-8",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a576974682061636b6e6f776c6564676d656e7420746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-9",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496e20636f6e73756c746174696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-10",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5772697474656e20696e20636f6e73756c746174696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-11",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a526576696577656420627920426c61636b626f780a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-12",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5465737465642062792053776565700a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-13",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5468616e6b7320746f204772616e6974650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-strip-14",
+    "source": "R12-02, gemini ADV23R12-03..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a4669786564206279204772616e6974650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r12-keep-1",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nTested by sweep\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nTested by sweep\n"
+  },
+  {
+    "name": "r12-keep-2",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nThank you to Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThank you to Jane Doe\n"
+  },
+  {
+    "name": "r12-keep-3",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nAcknowledgment: Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nAcknowledgment: Jane Doe\n"
+  },
+  {
+    "name": "r12-keep-4",
+    "source": "R12 human/prose control",
+    "input": "fix: exercise message policy\n\nIn consultation with the system operator\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nIn consultation with the system operator\n"
+  },
+  {
+    "name": "r13-strip-1",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e65726174656420627920436f64655177656e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-2",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a436f2d417574686f7265642d42793a20436f64655177656e203c6e6f7265706c7940616c69626162612e636f6d3e0a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-3",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a47656e657261746564206279205265666163742e61690a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-4",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5769746820617070726563696174696f6e20746f20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-5",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496e20617070726563696174696f6e206f6620436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-6",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a5468616e6b733a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-7",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a41492d417373697374616e63653a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-8",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a41492d47656e6572617465643a20436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-9",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a496e2064697363757373696f6e207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-strip-10",
+    "source": "gemini ADV23R13-04..08",
+    "exit": 0,
+    "input_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a446973637573736564207769746820436c617564650a",
+    "expected_hex": "6669783a206578657263697365206d65737361676520706f6c6963790a0a"
+  },
+  {
+    "name": "r13-keep-1",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nThanks: Jane Doe\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nThanks: Jane Doe\n"
+  },
+  {
+    "name": "r13-keep-2",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nAppreciation to Ada Lovelace\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nAppreciation to Ada Lovelace\n"
+  },
+  {
+    "name": "r13-keep-3",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nIn discussion with the grid operator\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nIn discussion with the grid operator\n"
+  },
+  {
+    "name": "r13-keep-4",
+    "source": "R13 human/prose control",
+    "input": "fix: exercise message policy\n\nAssistance: Jane Doe <jane@example.com>\n",
+    "exit": 0,
+    "expected": "fix: exercise message policy\n\nAssistance: Jane Doe <jane@example.com>\n"
   }
 ]
