@@ -1,11 +1,23 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-18_
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**Task board refresh (2026-11-18 UTC):** merged current main and refreshed
+[the task board](../process/TASKS.md) with all six open PRs (#53, #57, #59, #60,
+#75, #78), the active review/repair threads and #78's ordered M0–M1 backlog.
+PR #23 merged as `3cf6a3f` after verify-6 ATTEST. Deferred scanner/hook work is
+being prepared separately on `fix/xtask-deferred-policy-followups` under D-75.
+#59/#60 have request-changes reviews on main and repairs underway; #75 remains
+blocked on trusted review/policy gates. The configured account is
+`automated-machines`; D-65 hardware is unconfirmed. This board is a dated work
+snapshot, not approving evidence or M0 sign-off.
+The board describes #75's evidence-publication policy as proposed, because its
+decision entry is not yet present on main; no decision is added by this refresh.
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published
