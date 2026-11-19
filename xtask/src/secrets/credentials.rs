@@ -94,7 +94,10 @@ impl Tokens<'_> {
             if bytes.get(self.offset) != Some(&b'#') {
                 break;
             }
-            while bytes.get(self.offset).is_some_and(|byte| !matches!(*byte, b'\r' | b'\n')) {
+            while bytes
+                .get(self.offset)
+                .is_some_and(|byte| !matches!(*byte, b'\r' | b'\n'))
+            {
                 self.offset += 1;
             }
         }
@@ -374,7 +377,12 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         // Keep the original byte length so finding ranges remain exact.
         let mut unfolded = raw.as_bytes().to_vec();
         for (index, byte) in raw.bytes().enumerate() {
-            if byte == b'\n' && raw.as_bytes().get(index + 1).is_some_and(|b| matches!(b, b' ' | b'\t')) {
+            if byte == b'\n'
+                && raw
+                    .as_bytes()
+                    .get(index + 1)
+                    .is_some_and(|b| matches!(b, b' ' | b'\t'))
+            {
                 unfolded[index] = b' ';
                 if index > 0 && unfolded[index - 1] == b'\r' {
                     unfolded[index - 1] = b' ';
@@ -530,25 +538,47 @@ mod tests {
     fn deferred_line_terminators_and_header_variants() {
         let value = ["followup", "-synthetic-value"].concat();
         for newline in ["\n", "\r", "\r\n"] {
-            let pg = format!("host:5432:db:user:<secret>{newline}host:5432:db:user:{value}{newline}");
+            let pg =
+                format!("host:5432:db:user:<secret>{newline}host:5432:db:user:{value}{newline}");
             check(&pg, Some("local-pgpass-credentials"));
             let netrc = format!("# comment{newline}machine host login user password {value}");
             check(&netrc, Some("local-netrc-credentials"));
-            check(&format!("Password=<secret>{newline}Pwd={value}"), Some("local-connection-password"));
+            check(
+                &format!("Password=<secret>{newline}Pwd={value}"),
+                Some("local-connection-password"),
+            );
         }
-        for field in ["Authorization", "authorization", "Proxy-Authorization", "`Authorization`", "\"Authorization\""] {
+        for field in [
+            "Authorization",
+            "authorization",
+            "Proxy-Authorization",
+            "`Authorization`",
+            "\"Authorization\"",
+        ] {
             for gap in [" ", "\t", "\r\n "] {
                 for scheme in ["Basic", "Bearer"] {
                     let prefix = format!("{field}:{gap}{scheme}{gap}");
-                    check(&format!("{prefix}{value}"), Some("local-http-authorization"));
+                    check(
+                        &format!("{prefix}{value}"),
+                        Some("local-http-authorization"),
+                    );
                     check(&format!("{prefix}<token>"), None);
-                    check(&format!("{prefix}<token>\r\n {value}"), Some("local-http-authorization"));
+                    check(
+                        &format!("{prefix}<token>\r\n {value}"),
+                        Some("local-http-authorization"),
+                    );
                 }
             }
         }
         for suffix in ["&literal", "'literal", "\"literal", "`literal"] {
-            check(&format!("Pwd=<secret>{suffix};"), Some("local-connection-password"));
-            check(&format!("Authorization: Bearer <token>{suffix}"), Some("local-http-authorization"));
+            check(
+                &format!("Pwd=<secret>{suffix};"),
+                Some("local-connection-password"),
+            );
+            check(
+                &format!("Authorization: Bearer <token>{suffix}"),
+                Some("local-http-authorization"),
+            );
         }
     }
 
