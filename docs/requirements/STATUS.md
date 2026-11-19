@@ -18,7 +18,7 @@ and 2024 fleet/network admission gates. Verified the existing SEMOpx archive's
 hash and 2024 auction rows without a new acquisition; retained its source and
 the Pink Sheet's existing series-rights gate. Added evidenced converter-count
 and cable-route-length acquisition fields from the verification follow-up,
-without adopting pending loss defaults. D-78–D-85 are still absent from main;
+without adopting pending loss defaults. the Q-P-01–Q-P-08 owner decisions in PR #87 are not yet on main;
 their approval-status rewrites and citations remain deferred. No builds or
 tests run, no raw payloads committed and no M1 acceptance claimed. Fresh
 exact-head review is required after these changes.
