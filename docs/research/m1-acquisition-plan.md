@@ -6,8 +6,11 @@ checks inherited from the linked analysis are not new payload verification.
 Based on the 54 external resource rows (`SRC-01`–`SRC-50`, including split IDs)
 in [m1-data-inventory.md](m1-data-inventory.md). This is an acquisition plan,
 not evidence of new acquisition, complete network coverage or M1 acceptance.
-No datasets were fetched for this document; only public HTML pages, catalogue
-metadata and API specifications were read. Previously recorded sizes come from
+No bulk or operational datasets were fetched for this document; public HTML
+pages, catalogue metadata and API specifications were read. The sole release
+payload check in this revision was the small IANA tzdata archive in temporary
+storage to verify the canonical hash (see candidate 8.3 below); it is not committed.
+Previously recorded sizes come from
 committed manifests, not new dataset requests.
 
 ## Scope and interpretation
@@ -23,7 +26,7 @@ HTTP 403 is not silently treated as an account requirement. **UNVERIFIED** means
 the stated location, access, content, cadence, size or rights could not be
 confirmed by reading publisher material. A verified catalogue link establishes
 that a publisher advertises a resource; it does not establish that the download
-works, has the expected contents or reproduces an earlier capture. No dataset
+works, has the expected contents or reproduces an earlier capture. No operational dataset
 payload endpoint was called to make such a claim.
 
 The governing sources are [D-30 (per-dataset rights/share-alike ban), D-56
