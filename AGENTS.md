@@ -23,6 +23,9 @@ recorded in PR #95). At most two delegates at once; respect occupied review slot
 Existing cross-provider review, adversarial triage and exact-head owner approval
 gates still apply. See `docs/process/team.md` for the full review process.
 
+Create every new checkout under the git-ignored workspace `worktrees/` directory,
+never directly in the root. Do not move/delete existing active checkouts.
+
 One PR per thread. For Codex: plan first; record a short handoff, then execute
 in a fresh thread with target files, expected behavior, exact verification
 commands and an explicit finish line. Do not change model mid-thread.

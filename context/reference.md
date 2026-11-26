@@ -34,7 +34,9 @@ Heavy builds, databases and benchmarks run on the qualified D-65 target.
 
 `HANDOFF.md` is coordinator-owned, workspace-local, ignored and at most 80 lines.
 Do not edit its contents from a task thread. `context/threads.md`, if present, is
-local navigation read on demand. Worktrees use one branch per concern; protect
+local navigation read on demand. Create all new checkouts under the workspace
+root's git-ignored `worktrees/` directory, never directly in the root. Use one
+branch per concern. Do not move or delete existing active checkouts; protect
 live checkouts and active reviews. Before removing a stale worktree, inspect T3
 activity, push policy-clean keepers, and record discards in the monthly archive.
 If salvage cannot safely pass policy, retain the checkout and record exact paths.

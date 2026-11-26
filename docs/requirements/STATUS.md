@@ -19,8 +19,9 @@ data/adversarial work and at most two delegates (`D-86`, pending PR #95).
 No merge gate is waived. Current-head checks/reviews must be re-read before acting.
 
 - #95 records team direction and authorized #92 history repair; reviews pending.
-- #92 authorized squash pushed at `b27c66f55f96117c1863056b9ad0aa75fc2954c8`;
-  full-range CI, fresh Claude/Gemini evidence, GPT triage and owner approval remain.
+- #92 owner correction: rebuild only the original PR net diff onto current main,
+  preserving newer main review docs; replaces `b27c66f` (`D-88`, pending #95).
+  Full-range CI, fresh reviews, GPT triage and exact-head owner approval remain.
 - #81 needs fresh independent/adversarial evidence, triage and exact-head owner
   approval. Do not merge on green build/scanning checks alone.
 - #83 conflicts; preserve immutable review evidence during repair. #87 has failing
