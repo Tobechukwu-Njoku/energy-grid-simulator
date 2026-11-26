@@ -11,3 +11,9 @@ node_modules/
 # Python bytecode is never tracked (D-73, ADV23-11).
 __pycache__/
 *.py[cod]
+# Workspace-local coordinator state and nested task checkouts.
+/HANDOFF.md
+/context/threads.md
+/worktrees/
+/docs-token-efficiency-2-a8ca93f2b12e2ab9/
+/fix-pr92-history-repair-9940c19feaa9aeef/
