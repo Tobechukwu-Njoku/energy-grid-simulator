@@ -8,7 +8,9 @@ blobs are retained. Local all/full-range provenance pass; fresh gates and review
 remain. Independent content reviews of #95/#96 are recorded; hold #96 until #95
 and its #81/#87 prerequisites land. Fresh #81 independent review approves the code;
 a new valid adversarial report and triage remain required. Legacy worktree removal
-is deferred for audits.
+is deferred for audits. #95/#96 adversarial reports and verified triage are
+recorded separately; dependency holds remain. #92 replacement build/scanning
+checks all pass, with current-head review and owner approval still outstanding.
 
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
