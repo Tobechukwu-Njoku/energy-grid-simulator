@@ -9,8 +9,8 @@ delegates at once. D-78–D-85 remain pending in PR #87; D-86 records the new ow
 
 Live queue confirmed on 2026-11-26: #81 is mergeable but lacks current independent/
 adversarial evidence and exact-head owner policy approval; build/scanning checks pass.
-#83 conflicts; #87 fails independent-review and documentation gates. #92 needs
-provenance/history repair, current reviews and policy approval. #59/#60 await #87's
+#83 conflicts; #87 fails independent-review and documentation gates. #92 is being rebuilt with only its original net changes on current main (D-88),
+preserving newer review documents; provenance, fresh reviews and policy approval remain required. #59/#60 await #87's
 decisions. #78/#57/#53 remain open for relevance assessment. No failing gate is waived;
 the coordinator must not merge #81. See `context/threads.md` and `HANDOFF.md` for recovery work.
 
