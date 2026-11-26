@@ -54,8 +54,8 @@ never into chat, repository files or logs.
 ## Next steps (agents may do now)
 
 Finish current-head review evidence and policy repair; verify required-check
-rollout; then refresh the M0/M1 backlog. Retained worktree salvage paths and
-removal evidence are in the linked triage record. HANDOFF is local and coordinator-owned.
+rollout; then refresh the M0/M1 backlog. M1 keepers are on `salvage/2026-11/` branches;
+unsafe legacy edits remain intact in the linked triage record. HANDOFF is local and coordinator-owned.
 
 <a id="snapshot-of-whats-decided"></a>
 <a id="still-open-non-blocking"></a>

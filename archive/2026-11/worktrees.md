@@ -526,3 +526,39 @@ D  xtask/tests/hook.rs
 D  xtask/tests/policy.rs
 D  xtask/tests/range.rs
 ```
+
+## Publication results and finish line
+
+Both unpublished ranges passed `cargo xtask provenance` using the tracked local
+remote snapshots as bases. A normal acquisition push was rejected because the
+live remote had advanced. No force push or merge was attempted. Preserve these
+local versions for later comparison with the newer PR heads:
+
+| Published salvage branch | Exact preserved head |
+|---|---|
+| `salvage/2026-11/m1-acquisition-plan` | `c36ef371964bcb44ff3a633d12b44339e86c0417` |
+| `salvage/2026-11/m1-acceptance-tests` | `e6fd14914fc3e2062023016eabb1f9b97b3346b7` |
+
+Live remote heads at publication were `3f224a24f313291de83a61d328651d403bc6b340`
+(acquisition) and `aba7687ef43caa1fd92d0d0faf34f959c62d1822` (acceptance).
+The inventory's unpublished counts describe the original local snapshots only.
+Current PR branches were left untouched; no extra PR was created for salvage.
+The two original M1 checkouts remain intact, along with every dirty path above.
+
+Safe cleanup completed: the root's two untracked nested checkout entries are
+ignored with exact clone-local patterns, backed by committed ignore rules;
+HANDOFF is ignored; policy-clean M1 keepers are pushed to salvage branches.
+Further removal is deferred because remaining local-only changes need individual
+content/provenance audits, especially scanner fixtures and report deletions.
+The exact remaining paths above are the handoff for that audit. No data loss.
+
+Documentation validation: `cargo xtask docs` (all six checks),
+`cargo xtask provenance`, `cargo xtask provenance --base origin/main --head HEAD`
+and `git diff --check` passed at the initial docs commit. The complete original
+STATUS bytes (including its final newline) were compared to the archive's fenced
+payload from `git show d888c47:docs/requirements/STATUS.md`; its SHA-256 matches
+the archive header. Original headings retain anchors in live STATUS, and no
+tracked incoming STATUS fragment links were found. AGENTS <5,000 bytes;
+STATUS <4,000 bytes. CLAUDE's compact block exactly matches playbook section 4.
+HANDOFF was verified ignored and under 80 lines; its contents were never edited.
+Final docs/range validation is repeated after this publication record is committed.
