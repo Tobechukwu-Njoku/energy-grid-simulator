@@ -2,6 +2,13 @@
 
 _Last updated: 2026-11-16_
 
+Coordinator update (2026-11-26): #92 was repaired and pushed at `7a0eb12` as one
+commit containing only its original net diff on current main; four newer review
+blobs are retained. Local all/full-range provenance pass; fresh gates and reviews
+remain. Independent content reviews of #95/#96 are recorded; hold #96 until #95
+and its #81/#87 prerequisites land. Legacy worktree removal is deferred for audits.
+
+
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
