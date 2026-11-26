@@ -56,6 +56,29 @@ fn setup() -> (Repo, TempDir, String) {
 }
 
 #[test]
+fn lowercase_bare_names_reject_messages_metadata_and_additions() {
+    for name in ["blackbox", "sweep", "granite"] {
+        let (repo, policy, base) = setup();
+        let credit = format!("{} {name}", j(&["Tested", " with"]));
+        repo.write("src/lib.rs", &format!("// {credit}\n"));
+        let head = repo.commit(&format!("fix: exercise policy\n\n{credit}"));
+        let ctx = Ctx {
+            repo: repo.path().to_path_buf(),
+            policy: policy.path().to_path_buf(),
+        };
+        let range = Range {
+            base: Some(base),
+            head,
+            title: Some(credit.clone()),
+            body: Some(credit),
+            body_history: None,
+        };
+        let (findings, _) = scan_range(&ctx, &range).expect("scan");
+        assert_eq!(findings.len(), 4, "{name}: {findings:?}");
+    }
+}
+
+#[test]
 fn clean_range_passes() {
     let (repo, policy, base) = setup();
     repo.write("src/lib.rs", "// ordinary comment\n");

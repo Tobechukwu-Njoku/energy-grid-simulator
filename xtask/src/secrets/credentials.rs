@@ -94,7 +94,10 @@ impl Tokens<'_> {
             if bytes.get(self.offset) != Some(&b'#') {
                 break;
             }
-            while bytes.get(self.offset).is_some_and(|byte| *byte != b'\n') {
+            while bytes
+                .get(self.offset)
+                .is_some_and(|byte| !matches!(*byte, b'\r' | b'\n'))
+            {
                 self.offset += 1;
             }
         }
@@ -130,11 +133,20 @@ impl Tokens<'_> {
     }
 
     fn skip_macro(&mut self) {
-        let rest = &self.text[self.offset..];
-        self.offset += rest.find('\n').map_or(rest.len(), |length| length + 1);
+        // Consume CRLF as one terminator; CR-only files use the same grammar.
+        let next_line = |rest: &str| {
+            rest.find(['\r', '\n']).map_or(rest.len(), |end| {
+                end + if rest[end..].starts_with("\r\n") {
+                    2
+                } else {
+                    1
+                }
+            })
+        };
+        self.offset += next_line(&self.text[self.offset..]);
         while self.offset < self.text.len() {
             let rest = &self.text[self.offset..];
-            let length = rest.find('\n').map_or(rest.len(), |length| length + 1);
+            let length = next_line(rest);
             self.offset += length;
             if rest[..length].trim().is_empty() {
                 break;
@@ -267,13 +279,57 @@ fn percent_decode(text: &str) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
+// Key normalization is deliberately conservative, not a driver parser. Decode
+// nested escapes only while the byte length shrinks; values still decode once
+// so an encoded literal cannot turn into an exempt placeholder.
+fn credential_key(raw: &str) -> String {
+    let mut key = raw.to_ascii_lowercase();
+    loop {
+        let decoded = percent_decode(&key).to_ascii_lowercase();
+        if decoded.len() >= key.len() {
+            break;
+        }
+        key = decoded;
+    }
+    key
+}
+
+fn password_key(key: &str) -> bool {
+    ["password", "pwd", "pass", "passphrase"].contains(&key)
+        || ["_pass", "_pwd", "_password", "_passphrase"]
+            .iter()
+            .any(|suffix| key.ends_with(suffix))
+}
+
+fn malformed_password_key(key: &str) -> bool {
+    // Reject credential names with invalid/incomplete escapes or decoded
+    // delimiters. These spellings need not authenticate to expose a literal.
+    let mut skeleton = String::new();
+    let mut chars = key.chars().peekable();
+    while let Some(character) = chars.next() {
+        if character == '%' {
+            for _ in 0..2 {
+                if chars.peek().is_some_and(char::is_ascii_alphanumeric) {
+                    chars.next();
+                }
+            }
+        } else if character.is_ascii_alphanumeric() || character == '_' {
+            skeleton.push(character);
+        }
+    }
+    password_key(&skeleton)
+        || key
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .any(password_key)
+}
+
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization["']?[ \t]*:[ \t]*(?P<quote>["']?)(?:basic|bearer)[ \t]+"#)
+        Regex::new(r#"(?i)\bauthorization(?:["']|`+)?[ \t]*:[ \t]*(?:\r?\n[ \t]+)?(?P<quote>["']?)(?:basic|bearer)(?:[ \t]+(?:\r?\n[ \t]+)?|\r?\n[ \t]+)"#)
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)((?:\b[a-z_]|%[0-9a-f]{2})[a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#)
+        Regex::new(r#"(?i)((?:\b[a-z_]|%)[a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#)
             .expect("assignment regex")
     });
     static URI: LazyLock<Regex> = LazyLock::new(|| {
@@ -299,7 +355,7 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         found.push((0, text.len(), id));
     }
     let mut offset = 0;
-    for line in text.split_inclusive('\n') {
+    for line in text.split_inclusive(['\r', '\n']) {
         if let Some(fields) = pgpass(line.trim_end_matches(['\r', '\n']))
             && (fields[1] == "*" || fields[1].parse::<u16>().is_ok())
             && !fields[0].contains(['\'', '"', '`'])
@@ -326,7 +382,44 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         } else {
             &raw[..raw.find(quote).unwrap_or(raw.len())]
         };
-        let (value, length) = grammar_value(raw, "");
+        // Only deeper indentation continues this header, including folds
+        // consumed by AUTH before the value. Bound allocation to this value.
+        let line_start = text[..matched.start()]
+            .rfind(['\r', '\n'])
+            .map_or(0, |i| i + 1);
+        let indent = text[line_start..]
+            .bytes()
+            .take_while(|b| matches!(b, b' ' | b'\t'))
+            .count();
+        let continues = |after: &str| {
+            after
+                .bytes()
+                .take_while(|b| matches!(b, b' ' | b'\t'))
+                .count()
+                > indent
+        };
+        if text[matched.start()..matched.end()]
+            .split('\n')
+            .skip(1)
+            .any(|after| !continues(after))
+        {
+            continue;
+        }
+        let mut end = raw.len();
+        for (index, byte) in raw.bytes().enumerate() {
+            if byte == b'\n' && !continues(&raw[index + 1..]) {
+                end = index - usize::from(index > 0 && raw.as_bytes()[index - 1] == b'\r');
+                break;
+            }
+            if byte == b'\r' && raw.as_bytes().get(index + 1) != Some(&b'\n') {
+                end = index;
+                break;
+            }
+        }
+        let raw = &raw[..end];
+        // Preserve byte lengths so finding offsets still refer to the input.
+        let unfolded = raw.replace(['\r', '\n'], " ");
+        let (value, length) = grammar_value(&unfolded, "");
         let value = value.trim_end_matches(r"\n").trim_end_matches(r"\r");
         if literal(value) {
             found.push((
@@ -337,12 +430,19 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         }
     }
     for capture in ASSIGNMENT.captures_iter(text) {
-        let key = percent_decode(&capture[1]).to_ascii_lowercase();
-        if ["password", "pwd", "pass", "passphrase"].contains(&key.as_str())
-            || ["_pass", "_pwd", "_password", "_passphrase"]
-                .iter()
-                .any(|suffix| key.ends_with(suffix))
+        // A batch expansion on the left of == is a value, not a key.
+        let raw_key = &capture[1];
+        if raw_key.len() > 2
+            && raw_key.starts_with('%')
+            && raw_key.ends_with('%')
+            && raw_key[1..raw_key.len() - 1]
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_')
         {
+            continue;
+        }
+        let key = credential_key(raw_key);
+        if password_key(&key) || (capture[1].contains('%') && malformed_password_key(&key)) {
             let matched = capture.get(0).expect("whole match");
             let prefix = &text[..matched.start()];
             let line = prefix.rsplit(['\r', '\n', '\'', '"']).next().unwrap_or("");
@@ -475,6 +575,144 @@ mod tests {
     }
 
     #[test]
+    fn indented_headers_preserve_boundaries_and_fold_offsets() {
+        let header = "Authorization";
+        for newline in ["\n", "\r\n"] {
+            for prefix in ["headers:\n", "", "- item\n  ```http\n"] {
+                for indent in ["  ", "    ", "\t"] {
+                    let text = format!(
+                        "{prefix}{indent}{header}: Bearer <token>{newline}{indent}Accept: application/json"
+                    );
+                    check(&text, None);
+                    check(
+                        &format!("{indent}{header}:{newline}{indent}Bearer tokens are rotated"),
+                        None,
+                    );
+                    let text = format!(
+                        "{indent}{header}: Bearer <token>{newline}{indent}  suffix{newline}{indent}Accept: application/json"
+                    );
+                    let hits = scan(&text);
+                    let hit = hits
+                        .iter()
+                        .find(|hit| hit.2 == "local-http-authorization")
+                        .expect("folded literal");
+                    assert_eq!(
+                        &text[hit.0..hit.1],
+                        format!("{header}: Bearer <token>{newline}{indent}  suffix")
+                    );
+                }
+            }
+        }
+        let block = format!("{header}: Bearer <token>\nAccept: application/json\n").repeat(10_000);
+        check(&block, None);
+    }
+
+    #[test]
+    fn batch_expansions_and_netrc_macros() {
+        for key in ["PASSWORD", "DB_PASS"] {
+            check(&format!("if \"%{key}%\"==\"\" echo missing"), None);
+        }
+        let key = "password";
+        for newline in ["\r", "\n", "\r\n"] {
+            let text = format!(
+                "machine initial login user {key} <secret>{newline}macdef setup{newline}echo ignored{newline}{newline}machine host login user {key} <secret>{newline}"
+            );
+            check(&text, None);
+            let text = text.replace(
+                &format!("machine host login user {key} <secret>"),
+                &format!("machine host login user {key} synthetic-value"),
+            );
+            check(&text, Some("local-netrc-credentials"));
+        }
+    }
+
+    #[test]
+    fn source_fixtures_do_not_embed_credentials() {
+        let text = include_str!("credentials.rs");
+        let matches: Vec<_> = scan(text)
+            .into_iter()
+            .map(|(start, end, rule)| (rule, &text[start..end]))
+            .collect();
+        assert!(matches.is_empty(), "{matches:?}");
+    }
+
+    #[test]
+    fn deferred_line_terminators_and_header_variants() {
+        let value = ["followup", "-synthetic-value"].concat();
+        let password_key = "Password";
+        let short_key = "Pwd";
+        let header = "Authorization";
+        for newline in ["\n", "\r", "\r\n"] {
+            let pg =
+                format!("host:5432:db:user:<secret>{newline}host:5432:db:user:{value}{newline}");
+            check(&pg, Some("local-pgpass-credentials"));
+            let netrc = format!("# comment{newline}machine host login user password {value}");
+            check(&netrc, Some("local-netrc-credentials"));
+            check(
+                &format!("{password_key}=<secret>{newline}{short_key}={value}"),
+                Some("local-connection-password"),
+            );
+        }
+        for field in [
+            "Authorization",
+            "authorization",
+            "Proxy-Authorization",
+            "`Authorization`",
+            "\"Authorization\"",
+        ] {
+            for gap in [" ", "\t", "\r\n "] {
+                for scheme in ["Basic", "Bearer"] {
+                    let prefix = format!("{field}:{gap}{scheme}{gap}");
+                    check(
+                        &format!("{prefix}{value}"),
+                        Some("local-http-authorization"),
+                    );
+                    check(&format!("{prefix}<token>"), None);
+                    check(
+                        &format!("{prefix}<token>\r\n {value}"),
+                        Some("local-http-authorization"),
+                    );
+                }
+            }
+        }
+        for suffix in ["&literal", "'literal", "\"literal", "`literal"] {
+            check(
+                &format!("{short_key}=<secret>{suffix};"),
+                Some("local-connection-password"),
+            );
+            check(
+                &format!("{header}: Bearer <token>{suffix}"),
+                Some("local-http-authorization"),
+            );
+        }
+    }
+
+    #[test]
+    fn deferred_encoded_and_malformed_credential_keys() {
+        let value = ["followup", "-synthetic-value"].concat();
+        for key in [
+            "%2570assword",
+            "%2570%2577%2564",
+            "p%2561ssword",
+            "password%",
+            "password%2",
+            "password%GG",
+            "pass%ZZword",
+            "%ZZpassword",
+            "password%3D",
+            "password%26",
+            "pass%00word",
+        ] {
+            let prefix = format!("jdbc:postgresql://host/db?{key}");
+            check(&format!("{prefix}={value}"), Some("password"));
+            check(&format!("{prefix}=<secret>"), None);
+        }
+        for key in ["sslmode", "%2573slmode", "compass", "password_hint"] {
+            check(&format!("jdbc:postgresql://host/db?{key}=require"), None);
+        }
+    }
+
+    #[test]
     fn r15v5_01_encoded_uri_hosts_and_text_encodings() {
         let synthetic = ["r15v5", "-synthetic-credential"].concat();
         for host in ["%2Fvar%2Frun%2Fpostgresql", "%68ost", "_host", "[::1]"] {
@@ -519,6 +757,58 @@ mod tests {
             check(
                 &format!("postgresql://operator:${{PASSWORD}}@{host}/db"),
                 None,
+            );
+        }
+    }
+
+    #[test]
+    fn cr_netrc_comments_and_quoted_header_names() {
+        let value = ["followup", "-synthetic-credential"].concat();
+        for newline in ["\n", "\r\n", "\r"] {
+            check(
+                &format!("# comment{newline}machine host login user password {value}"),
+                Some("local-netrc-credentials"),
+            );
+            check(
+                &format!("# comment{newline}machine host login user password <secret>"),
+                None,
+            );
+        }
+        for name in [
+            "`Authorization`",
+            "``Authorization``",
+            "\"Authorization\"",
+            "'Proxy-Authorization'",
+        ] {
+            for scheme in ["Basic", "Bearer"] {
+                check(
+                    &format!("{name}: {scheme} {value}"),
+                    Some("local-http-authorization"),
+                );
+                check(&format!("{name}: {scheme} <token>"), None);
+                for newline in ["\n", "\r\n"] {
+                    check(
+                        &format!("{name}: {scheme}{newline}\t{value}"),
+                        Some("local-http-authorization"),
+                    );
+                    check(&format!("{name}: {scheme}{newline}\t<token>"), None);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn nested_keys_outside_jdbc_and_values_decode_once() {
+        let value = ["followup", "-synthetic-credential"].concat();
+        for key in ["%252570assword", "%252570wd", "DB_%252550ASS"] {
+            check(&format!("{key}={value}"), Some("local-connection-password"));
+        }
+        for key in ["%25252570assword", "%25252570wd"] {
+            let prefix = format!("jdbc:postgresql://localhost/db?{key}");
+            check(&format!("{prefix}={value}"), Some("local-jdbc-password"));
+            check(
+                &format!("{prefix}=%253Cpassword%253E"),
+                Some("local-jdbc-password"),
             );
         }
     }
