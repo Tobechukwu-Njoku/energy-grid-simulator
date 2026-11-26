@@ -9,7 +9,8 @@ remain. Independent content reviews of #95/#96 are recorded; hold #96 until #95
 and its #81/#87 prerequisites land. Fresh #81 independent review approves the code;
 a new valid adversarial report and triage remain required. Legacy worktree removal
 is deferred for audits. #95/#96 adversarial reports and verified triage are
-recorded separately; dependency holds remain. #92 replacement build/scanning
+recorded separately; dependency holds remain. Fresh #81/#92 adversarial reviews
+report no new findings, with OpenAI verification recorded. #92 replacement build/scanning
 checks all pass, with current-head review and owner approval still outstanding.
 
 
