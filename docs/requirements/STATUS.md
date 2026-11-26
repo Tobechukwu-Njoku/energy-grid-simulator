@@ -1,6 +1,18 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-26_
+
+**Coordinator recovery (2026-11-26, D-86):** GPT 6.1 Sol now leads the bulk of work,
+including code. Claude is reserved for focused cross-provider reviews of GPT PRs;
+Gemini gathers data and supplies adversarial reviews, verified by GPT. Maximum two
+delegates at once. D-78–D-85 remain pending in PR #87; D-86 records the new owner instruction.
+
+Live queue confirmed on 2026-11-26: #81 is mergeable but lacks current independent/
+adversarial evidence and exact-head owner policy approval; build/scanning checks pass.
+#83 conflicts; #87 fails independent-review and documentation gates. #92 needs
+provenance/history repair, current reviews and policy approval. #59/#60 await #87's
+decisions. #78/#57/#53 remain open for relevance assessment. No failing gate is waived;
+the coordinator must not merge #81. See `context/threads.md` and `HANDOFF.md` for recovery work.
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
