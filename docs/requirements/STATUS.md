@@ -4,7 +4,7 @@ _Last updated: 2026-11-26_
 
 **Coordinator recovery (2026-11-26, D-86):** GPT 6.1 Sol now leads the bulk of work,
 including code. Claude is reserved for focused cross-provider reviews of GPT PRs;
-Gemini gathers data and supplies adversarial reviews, verified by GPT. Maximum two
+Gemini gathers data and supplies adversarial reviews; GPT verifies that output. Maximum two
 delegates at once. D-78–D-85 remain pending in PR #87; D-86 records the new owner instruction.
 
 Live queue confirmed on 2026-11-26: #81 is mergeable but lacks current independent/
