@@ -5,6 +5,8 @@
 - **Linked decisions:** D-3, D-8, D-16, D-17, D-19, D-20, D-22, D-28, D-29, D-31, D-43, D-48, D-51–D-54, D-56, D-58, D-61, D-62, D-65, D-73, D-74.
 - **Related requirements:** FR-4, FR-13–FR-19; NFR-1–NFR-4, NFR-7–NFR-12.
 
+The [2026-11-27 addendum](#addendum--2026-11-27-review-tiers) supersedes the earlier review gates.
+
 ## Context and authority
 
 Requirements are not baselined. Only the D-31 data spike and the explicitly requested
@@ -292,7 +294,7 @@ reviews (F1, F2; ADV23R-08). It adds no decision beyond D-73 and D-74.
   pass, and the gate says so.
 - **Review evidence.** The role/vendor matrix of D-28, D-51, D-53 and D-54 is the
   trusted file `xtask/policy/review.toml`. Every adversarial finding needs a closing
-  disposition in a current triage record (format in `docs/requirements/REVIEW-BRIEF.md`).
+  disposition in a current triage record (format in `archive/reviews/REVIEW-BRIEF.md`).
 
 Residual risks, not closed by code:
 
@@ -822,3 +824,17 @@ The existing extension/binary historical limitation remains, except that CSV/TSV
 extensions are now data even after removal. The lowercase ambiguous bare-tool
 attribution tradeoff (R14-04) remains a follow-up; it is outside the requested CORE
 repairs and preserves existing ordinary-prose controls.
+
+
+## Addendum — 2026-11-27: review tiers
+
+The [team process](../../process/team.md) defines the three review tiers.
+`trusted-gates.yml` now runs the `review-tier` job from main. It classifies
+the net merge changes against current main, reads current-head reviews through
+the GitHub API, and checks that `feat` and `fix` PRs add or modify a test file.
+The job publishes the `review-tier` commit status on the PR head and GitHub's
+test merge commit using its dedicated `statuses: write` permission. PR code stays in read-only jobs.
+
+`review-tier` replaces `independent-review` and `policy-approval`. Main requires
+`merge-gates` and `review-tier`. Enable repository auto-merge. The previous
+review reports and triage records are preserved in the [archive](../../../archive/reviews/).

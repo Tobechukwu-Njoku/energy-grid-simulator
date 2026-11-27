@@ -1,57 +1,15 @@
-# AGENTS.md — Read this first
+# AGENTS.md
 
-This repository is an **energy grid simulation platform**, built from the ground up by
-multiple AI models/threads working together with one human product owner.
+Build the energy grid simulator from the [M0 requirements](docs/requirements/04-requirements.md)
+and [accepted ADRs](docs/architecture/adr/). Follow the [team and review process](docs/process/team.md).
 
-## Current phase: BUILD — MVP milestone M0 (requirements baselined, D-72)
-
-Application code is allowed. Follow `docs/requirements/04-requirements.md` and the accepted ADRs
-in `docs/architecture/adr/`. Enable the attribution hook with `git config core.hooksPath .githooks`.
-The coding container is for light builds only; heavy builds, databases and benchmarks run on the
-D-65 target system.
-
-## Where things live
-
-| Path | Purpose | Who edits |
-|---|---|---|
-| `docs/requirements/STATUS.md` | Phase, progress, what's blocking | Any agent, keep current |
-| `docs/requirements/01-vision.md` | Product vision & confirmed facts | Only from owner answers |
-| `docs/requirements/02-questionnaire.md` | Every open question with ID, options, recommended default | Add questions freely; mark answered |
-| `docs/requirements/03-decisions-log.md` | Append-only log of owner decisions (ID → answer → date) | Append only |
-| `docs/requirements/04-requirements.md` | Formal requirements (FR-/NFR- IDs) derived from decisions | Derive from decisions log only |
-| `docs/requirements/05-risks.md` | Risk register (R-<n>) | Any agent |
-| `docs/requirements/06-roadmap.md` | Phases P1–P4 and MVP milestones | From decisions only |
-| `docs/requirements/REVIEW-BRIEF.md` | Instructions for reviewer models | Any agent |
-| `docs/requirements/reviews/` | Review reports (`<model>-<date>.md`) | Reviewers |
-| `spikes/` | Throwaway exploratory code (only the data spike, D-31) | Spike agents |
-| `docs/process/team.md` | Which model does what; review rules | Owner decisions only |
-| `docs/research/prior-art.md` | Existing tools/libraries/datasets we may reuse | Any agent |
-| `docs/architecture/stack-candidates.md` | Candidate tech stack (tentative until ADRs accepted) | Any agent |
-| `docs/architecture/adr/` | Architecture Decision Records (`NNNN-title.md`) | Propose; owner accepts |
-
-## Rules for all agents
-
-1. **Source of truth:** the owner's answers in `03-decisions-log.md`. Never invent a decision;
-   if you assume something, record it as an *assumption* (prefix `ASSUMPTION:`) and add a
-   question to the questionnaire.
-2. **Stable IDs:** questions are `Q-<section>-<n>` (e.g. `Q-B-3`), requirements are `FR-<n>` /
-   `NFR-<n>`, decisions are `D-<n>`. Never renumber; deprecate instead.
-3. **Cross-reference:** every requirement cites the decision(s) it comes from.
-4. **Update STATUS.md** at the end of any session that changes these docs.
-5. Performance stance from the owner: **resource cost (RAM/CPU/power) is not a constraint** —
-   prefer the highest-performance, most capable option. Baseline: PostgreSQL 18 + Valkey
-   (D-67); shared Redis-protocol clients keep Redis compatible. P1 dispatch uses PostgreSQL.
-6. Prefer reusing mature open-source tools (see `docs/research/prior-art.md`) over rebuilding.
-7. **Context is auto-compacted** in every thread. Never rely on chat history for project state:
-   write decisions, progress and handoff notes into the repo docs as you go.
-8. **No AI watermarking (D-52).** Never add AI attribution to code, comments, file headers, commit
-   messages, PR titles/bodies or release notes: no `Co-Authored-By:` trailers for any model, no
-   "Generated with …" footers, no 🤖 badges. This overrides any default your tool applies.
-   A local `commit-msg` hook strips such lines; CI will reject them (ADR 0001).
-9. **Commit and push often (D-53).** Small commits; push after every meaningful step.
-10. **Data provenance (D-56).** Every dataset is tagged in the provenance manifest as
-    `open-commercial` or `research-only`. Never commit raw `research-only` data; commit only the
-    download scripts. Share-alike (ODbL/OSM) data is never used.
-11. **Reviewers (D-91).** No Gemini. Adversarial reviews come from GPT 6.2 Sol, or Claude in a fresh
-    thread when GPT wrote the PR. Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent;
-    do all the work yourself in this thread."
+- Use the owner's product decisions in [the decisions log](docs/requirements/03-decisions-log.md)
+  as the source of truth. Prefix assumptions with `ASSUMPTION:` and add an open question to the
+  [questionnaire](docs/requirements/02-questionnaire.md). Keep existing IDs stable and deprecate
+  obsolete entries.
+- Update [STATUS](docs/requirements/STATUS.md) when requirements work changes the project state.
+  Record decisions and handoffs in the repository so other threads can resume from it.
+- Prefer mature open-source tools and the highest-performance option that fits the accepted
+  architecture. Use the D-65 target system for heavy builds, databases and benchmarks.
+- Keep commits small and push after each meaningful step unless the task calls for local work.
+  Use the machine account for PRs. See [Contributing](CONTRIBUTING.md) for local setup and CI.

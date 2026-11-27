@@ -713,4 +713,4 @@ in §3/§6 describe the original pinned snapshot. All eight weather variables we
 previously checked against the CDS enum; the request remains unexecuted.
 No ENTSO-E token, authenticated weather job, full electrical solve or independent
 re-audit of PR #10/#11/#12 is claimed. Detailed dispositions and remaining owner
-actions are in [the response](../../docs/requirements/reviews/response-pr5-2026-11-13.md).
+actions are in [the response](../../archive/reviews/response-pr5-2026-11-13.md).

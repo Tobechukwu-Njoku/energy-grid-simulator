@@ -536,7 +536,7 @@ In accordance with ADR 0002, the pending internal implementation (`INT-01`) must
 
 ## 11. Changes in Response to Review
 
-This section documents revisions made to resolve reviewer findings across Round 1 ([gpt-2026-11-15-pr58-deficit-sources.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources.md)) and Round 2 ([gpt-2026-11-15-pr58-deficit-sources-r2.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md)).
+This section documents revisions made to resolve reviewer findings across Round 1 ([gpt-2026-11-15-pr58-deficit-sources.md](../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources.md)) and Round 2 ([gpt-2026-11-15-pr58-deficit-sources-r2.md](../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md)).
 
 ### Round 1 Review Corrections (F-01 through F-16)
 
@@ -561,7 +561,7 @@ This section documents revisions made to resolve reviewer findings across Round 
 
 ### Round 2 Review Corrections (R2-01 through R2-07)
 
-This revision addresses R2-01–R2-07; the round-3 corrections C-01–C-06 from [gpt-2026-11-15-pr58-deficit-sources-r3.md](../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources-r3.md) are applied:
+This revision addresses R2-01–R2-07; the round-3 corrections C-01–C-06 from [gpt-2026-11-15-pr58-deficit-sources-r3.md](../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources-r3.md) are applied:
 
 | Finding ID | Severity | Finding Summary | Action Taken / Fix in This Revision |
 |:---:|:---:|---|---|
@@ -571,4 +571,4 @@ This revision addresses R2-01–R2-07; the round-3 corrections C-01–C-06 from 
 | **R2-04** | Medium | Interpolated price inputs lacked provenance, cadence masks, and as-of policy | Registered explicit resampling, cadence, and as-of policy under Section 6: declared two-sided linear interpolation between monthly/fortnightly points as an assumption valid strictly in `reconstruction` mode (D-70); required forward step-holding from verified release timestamp in `as-of` backtest mode (D-70 / ADR 0002); mandated boolean `is_imputed` / `observed_mask` flag in schema; explicitly separated UKA (ICE) from EUA (EEX) and marked EUA auction series unacquired / unresolved. |
 | **R2-05** | Medium | Live SEMOpx schedule presented as pinned 2024 baseline without dated procedure | Reclassified SEMOpx schedule (IDA1 17:30 D-1, IDA2 08:00 D, IDA3 14:00 D) as a **current publisher reference**; marked historical 2024 applicability (including IDC horizon, clock convention, and price boundaries) as `UNVERIFIED / pending historical pinning` due to presence of post-2024 material on live portal; updated Section 5 recommendation and Summary Row 5 accordingly. |
 | **R2-06** | Medium | HVDC loss formula had no fixed term while text claimed "fixed plus linear" | Replaced contradictory wording with exact description: "constant fractional exploratory proxy with omitted standby losses" ($0.75\%$ per converter station, $0.30\%/100\text{ km}$ cable); stated that **no applicable CIGRE source has been identified** prescribing this pair; disclosed that true converters have fixed standby losses at zero transfer as well as linear/quadratic terms and cables have $I^2 R$ losses; aligned Summary Row 4 and Section 4 disclosures. |
-| **R2-07** | Low | ADR 0002 and review links resolved outside `docs/` | Corrected relative links from `m1-deficit-sources.md`: fixed ADR 0002 link to `../architecture/adr/0002-network-and-scenario-data-model.md` and review link to `../requirements/reviews/gpt-2026-11-15-pr58-deficit-sources.md`. Replaced blanket resolution claim with accurate two-round disposition. |
+| **R2-07** | Low | ADR 0002 and review links resolved outside `docs/` | Corrected relative links from `m1-deficit-sources.md`: fixed ADR 0002 link to `../architecture/adr/0002-network-and-scenario-data-model.md` and review link to `../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources.md`. Replaced blanket resolution claim with accurate two-round disposition. |

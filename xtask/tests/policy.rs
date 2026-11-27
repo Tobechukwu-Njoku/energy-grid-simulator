@@ -915,7 +915,7 @@ fn only_the_pinned_vendored_ruleset_is_not_scanned() {
 // below it with a real key still passed. Exemptions now hash the whole block.
 #[test]
 fn r13_01_exempt_header_does_not_admit_a_new_key_body() {
-    const REPORT: &str = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md";
+    const REPORT: &str = "archive/reviews/gemini-2026-11-14-pr23-r12.md";
     let text = std::fs::read_to_string(root().join(REPORT)).expect("report");
     let repo = Repo::new();
     repo.write("data/manifest.toml", MANIFEST);
@@ -1124,7 +1124,7 @@ fn r13_03_secrets_and_data_added_then_removed_in_a_range_fail() {
     repo.write("docs/a.md", "two\n");
     repo.commit("docs: b");
     assert!(history(&repo, &base).is_empty());
-    const REPORT: &str = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md";
+    const REPORT: &str = "archive/reviews/gemini-2026-11-14-pr23-r12.md";
     let text = std::fs::read_to_string(root().join(REPORT)).expect("report");
     let (repo, base) = start();
     repo.write(REPORT, &text);

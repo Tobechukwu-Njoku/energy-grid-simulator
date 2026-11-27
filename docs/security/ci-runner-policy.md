@@ -27,8 +27,9 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    `xtask/policy/gates.toml`; its jobs may not set a checkout `ref` or `repository`,
    use a local action or a cache. PR code runs with a read-only token and no secrets.
 2. An explicit top-level `permissions:` block; every workflow and job permission is `read`
-   or `none`, in block or flow (`{contents: write}`) form. Any write scope needs a
-   separately reviewed exception in this document.
+   or `none`, in block or flow form. The trusted `review-tier` job on main may use
+   `statuses: write` to publish its result on the PR head and GitHub's test merge commit. It needs this scope
+   because the trusted workflow runs in the base branch context.
 3. Every third-party action is pinned to a full 40-character commit SHA; the tag goes in a
    comment. Updating a pin is a reviewed policy change.
 4. `actions/checkout` always sets `persist-credentials: false`.
@@ -63,10 +64,10 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    and a later step can only fail the job (ADV23R6-03).
 6. No `secrets.*` other than `GITHUB_TOKEN`, no `secrets: inherit`; only the hosted
    labels `ubuntu-24.04` and `macos-15` before M1; no `container:` or `services:`.
-7. **Trusted gates.** `independent-review` and `policy-approval` run from `main`
-   (`.github/workflows/trusted-gates.yml`, `pull_request_target`). They build `main`'s
-   xtask in a checkout of `main`, fetch the PR head only as Git data, and never check
-   out, build or run PR code. Both compare against the current tip of `main`.
+7. **Trusted review.** `review-tier` runs from main
+   (`.github/workflows/trusted-gates.yml`, `pull_request_target` scoped to main).
+   It runs main's xtask, fetches the PR head only as Git data, and checks GitHub
+   reviews against the current head.
 8. **Trusted policy for PR jobs.** Every policy job loads the current tip of `main`
    (`.github/actions/trusted-policy/load.sh`), not the event's base, and runs that
    tree's `xtask` with its policy files (`xtask/policy/`,
@@ -76,17 +77,10 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    `main` in `docs/process/ci-bootstrap.toml` as `seed_sha = "<40 hex>"`.
 9. **Policy changes.** `.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
    `Cargo.toml`, `rust-toolchain.toml` and `docs/security/` are owned by the policy owner
-   in `.github/CODEOWNERS` (checked with GitHub's last-match rule). The trusted
-   `policy-approval` gate fails until the owner's latest review is APPROVED on the exact
-   head, then needs a re-run. Agents open PRs from the machine account named
-   `agent_account` in `xtask/policy/repository.toml` (D-74); a policy PR opened by the
-   owner cannot pass because GitHub forbids self-approval. Because workflow and action
-   files are protected, a PR cannot change what its jobs run without that approval,
-   and a PR job reusing a gate's job id or published check name fails the gate. The
-   `merge-gates` aggregator must publish that name and run exactly main's steps,
-   which evaluate every `needs` result (ADV23R9-02). Branch protection should
-   require `merge-gates`, `independent-review` and `policy-approval`; the owner
-   configures that. Residual risks are listed in ADR 0001's 2026-11-13 addendum.
+   in `.github/CODEOWNERS` (checked with GitHub's last-match rule). These are Tier 2
+   paths under the [team process](../process/team.md). Reserved gate names cannot
+   be reused by another job. The `merge-gates` aggregator publishes that name
+   and runs main's steps, which evaluate every `needs` result (ADV23R9-02).
 
 No caches are written by M0 workflows. If caching is added, PR jobs may only read caches
 written by trusted `main` runs, and caches are keyed by toolchain, platform, lockfile and flags.

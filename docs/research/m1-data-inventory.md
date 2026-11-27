@@ -1,6 +1,6 @@
 # M1 Data Ingest and Network Model: Data Inventory & Ingest Preparation
 
-Revised and verified on **2026-11-14** following independent verification report [docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md). Prepares data gathering and ingestion for milestone **M1** (data ingest and network model) of the GB + all-island Ireland grid simulator per [06-roadmap.md](../requirements/06-roadmap.md) and [04-requirements.md](../requirements/04-requirements.md) (FR-1–5, FR-19, FR-21, NFR-1/2). Follows [AGENTS.md](../../AGENTS.md) Rule 10 and owner decision D-56: every candidate source is classified strictly as `open-commercial` or `research-only`. Share-alike (ODbL / OSM) data is strictly excluded across all layers (including PyPSA-GB coordinates or reduced networks, per FR-19.AC3). Raw restricted research data is never committed to the repository; download scripts, manifests, and verification reports only.
+Revised and verified on **2026-11-14** following independent verification report [archive/reviews/gpt-2026-11-14-pr52-m1-inventory.md](../../archive/reviews/gpt-2026-11-14-pr52-m1-inventory.md). Prepares data gathering and ingestion for milestone **M1** (data ingest and network model) of the GB + all-island Ireland grid simulator per [06-roadmap.md](../requirements/06-roadmap.md) and [04-requirements.md](../requirements/04-requirements.md) (FR-1–5, FR-19, FR-21, NFR-1/2). Follows [AGENTS.md](../../AGENTS.md) Rule 10 and owner decision D-56: every candidate source is classified strictly as `open-commercial` or `research-only`. Share-alike (ODbL / OSM) data is strictly excluded across all layers (including PyPSA-GB coordinates or reduced networks, per FR-19.AC3). Raw restricted research data is never committed to the repository; download scripts, manifests, and verification reports only.
 
 ---
 
@@ -904,7 +904,7 @@ To replace unsupported readiness conclusions (Findings 9, 18), input categories 
 
 ### 6.1 Round 1 Verification Disposition Summary (PR #52 Round 1 Report)
 
-The independent verification report for round 1 ([docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory.md)) identified 18 findings. As evaluated in the round 2 re-check ([docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md)), 9 findings were applied at the inventory/planning level in the first revision, and 9 were partially applied. The round 1 disposition table below truthfully reflects those outcomes, with each partial finding fully resolved in revision 2:
+The independent verification report for round 1 ([archive/reviews/gpt-2026-11-14-pr52-m1-inventory.md](../../archive/reviews/gpt-2026-11-14-pr52-m1-inventory.md)) identified 18 findings. As evaluated in the round 2 re-check ([archive/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md](../../archive/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md)), 9 findings were applied at the inventory/planning level in the first revision, and 9 were partially applied. The round 1 disposition table below truthfully reflects those outcomes, with each partial finding fully resolved in revision 2:
 
 | Finding ID | Title / Topic | Round 1 Disposition | Final Resolution & Cross-Reference |
 |---|---|---|---|
@@ -929,7 +929,7 @@ The independent verification report for round 1 ([docs/requirements/reviews/gpt-
 
 ### 6.2 Round 2 Verification Response Table (PR #52 Round 2 Report, R2-01 through R2-07)
 
-The independent re-check report ([docs/requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md](../requirements/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md)) delivered a verdict of **must-fix** with 7 remaining findings (`R2-01` through `R2-07`). Every remaining finding has been evaluated and applied in this second revision:
+The independent re-check report ([archive/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md](../../archive/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md)) delivered a verdict of **must-fix** with 7 remaining findings (`R2-01` through `R2-07`). Every remaining finding has been evaluated and applied in this second revision:
 
 | Finding ID | Topic / Key Blocker | Disposition | Action Applied in Revision 2 |
 |---|---|---|---|

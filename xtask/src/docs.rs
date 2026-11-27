@@ -21,7 +21,7 @@ use crate::util::{Finding, tracked};
 const REQUIREMENTS: &str = "docs/requirements/04-requirements.md";
 const DECISIONS: &str = "docs/requirements/03-decisions-log.md";
 const ADR_DIR: &str = "docs/architecture/adr/";
-const REVIEWS: &str = "docs/requirements/reviews/";
+const REVIEWS: &str = "archive/reviews/";
 
 fn regex(pattern: &str) -> Regex {
     Regex::new(pattern).unwrap_or_else(|error| panic!("built-in regex {pattern}: {error}"))

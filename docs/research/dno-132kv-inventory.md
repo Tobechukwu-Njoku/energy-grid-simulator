@@ -2,7 +2,7 @@
 
 Verified against live publisher sources on **2026-11-13**. Supports D-60; provenance
 classification follows D-56. This is also the **provenance manifest** for the datasets
-listed here. See the [verification report](../requirements/reviews/verify-pr10-2026-11-13.md).
+listed here. See the [verification report](../../archive/reviews/verify-pr10-2026-11-13.md).
 
 ## Evidence limits
 

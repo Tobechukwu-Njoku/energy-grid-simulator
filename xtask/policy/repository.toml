@@ -1,5 +1,5 @@
 # Trusted repository policy (D-56, D-73, ADR 0001). Read from the base branch in CI.
-# Changing it needs the policy owner's review (.github/CODEOWNERS, policy-approval).
+# Changing it needs the policy owner's review (.github/CODEOWNERS, review-tier).
 
 # GitHub login whose approval protected-path changes need (D-74).
 policy_owner = "Tobechukwu-Njoku"
@@ -88,12 +88,12 @@ data_metadata_files = [
 
 
 [[secret_exemption]]
-path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+path = "archive/reviews/gemini-2026-11-14-pr23-r13.md"
 block_blob = "147aff8b0be9e23931730b7cf5741a2320fe646f"
 reason = "ADV23R13-01 description: example connection URI with a placeholder password"
 
 [[secret_exemption]]
-path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+path = "archive/reviews/gemini-2026-11-14-pr23-r13.md"
 block_blob = "bd0a83fa433fe96c29df354d962464125c27f805"
 reason = "ADV23R13-01 description: the URI syntax with placeholder user and password"
 
@@ -102,27 +102,27 @@ reason = "ADV23R13-01 description: the URI syntax with placeholder user and pass
 
 
 [[secret_exemption]]
-path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r13.md"
+path = "archive/reviews/gemini-2026-11-14-pr23-r13.md"
 block_blob = "cab0353426e20dfead33a2a5724689d69527a328"
 reason = "ADV23R13-03 description: netrc syntax with placeholders"
 
 [[secret_exemption]]
-path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+path = "archive/reviews/gemini-2026-11-14-pr23-r12.md"
 block_blob = "87391005cfa29cbd4678c85032f1af0676b4ac7c"
 reason = "ADV23R12-01 header syntax with redacted key data; complete block through EOF"
 
 [[secret_exemption]]
-path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+path = "archive/reviews/gemini-2026-11-14-pr23-r12.md"
 block_blob = "8c423614b644d19c94f96a6cb78065b033ecac8a"
 reason = "ADV23R12-01 header syntax with redacted key data; complete block through EOF"
 
 [[secret_exemption]]
-path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+path = "archive/reviews/gemini-2026-11-14-pr23-r12.md"
 block_blob = "f193daccf1597619393178d449bf4eec5fc402b6"
 reason = "ADV23R12-01 header syntax with redacted key data; complete block through EOF"
 
 [[secret_exemption]]
-path = "docs/requirements/reviews/gemini-2026-11-14-pr23-r12.md"
+path = "archive/reviews/gemini-2026-11-14-pr23-r12.md"
 block_blob = "dd7e65f230e68772401ac31aae29802a51258331"
 reason = "ADV23R12-01 header syntax with redacted key data; complete block through EOF"
 
@@ -134,7 +134,7 @@ reason = "ADV23R12-01 header syntax with redacted key data; complete block throu
 # whose library, binary and test targets may allow unsafe code. Each entry names
 # the exact Cargo package AND its repository directory; both must match. A new
 # adapter, or any change here, is a change to this protected file and needs the
-# policy owner's exact-head approval (D-74). Build scripts are never exempt.
+# policy owner's current-head approval (D-74). Build scripts are never exempt.
 [[adapter]]
 package = "egs-solver-highs"
 path = "crates/solver-highs"

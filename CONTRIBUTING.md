@@ -38,8 +38,7 @@ Perl and Git:
     cargo xtask attribution --base origin/main --head HEAD   # D-52 scan of your branch
     cargo nextest run -p xtask                        # policy tests, commit-msg hook fixtures
 
-In CI each check runs from the base revision's `xtask` and policy files (`--policy`), so a
-pull request is judged by the rules it started from. Python is allowed only in `spikes/`
+In CI the policy checks use the current main branch's `xtask` and policy files (`--policy`). Python is allowed only in `spikes/`
 and allow-listed offline reference validators; CI rejects it elsewhere.
 
 The coding container is for light builds only. Heavy builds, databases and benchmarks run
@@ -76,11 +75,6 @@ on the separate target system (D-65).
   A synthetic example quoted in a review needs a `[[secret_exemption]]` in
   `xtask/policy/repository.toml` naming the whole detected block (its lines, and for a
   private key everything through the key's end marker) by `git hash-object` of its text.
-- **Policy paths** (`.github/`, `.githooks/`, `.cargo/`, `xtask/`, `deny.toml`,
-  `Cargo.toml`, `rust-toolchain.toml`, `docs/security/`) need the policy owner's APPROVED
-  review on the exact head. Agents push and open pull requests from the machine account
-  in `xtask/policy/repository.toml` (`agent_account`, D-74); the owner cannot approve a
-  pull request they opened, so an owner-opened policy change cannot pass.
 - **Unsafe code:** every crate root of a package that is not a reviewed adapter (and
   every build script) starts with `#![forbid(unsafe_code)]`: the bare Rust lint, not a
   tool-qualified one such as `clippy::unsafe_code` (R3-01). Every library root also
@@ -91,11 +85,8 @@ on the separate target system (D-65).
   frameworks listed in `xtask/policy/gates.toml` (`link_libraries`, `link_frameworks`)
   plus Rust's own artifacts; a new native dependency is a protected policy change.
 
-Checks to require on `main` (branch protection is configured by the owner; it is not
-on yet): `merge-gates` (all automated gates, listing the ones not yet applicable),
-`independent-review` and `policy-approval` (both in `trusted-gates.yml`, which runs from
-`main` and never runs pull-request code). The last two fail until the review evidence,
-triage or owner approval exists for the current head; re-run them after it lands.
+Follow the [team and review process](docs/process/team.md) for review requirements
+and required checks on main.
 
 ## Updating the gitleaks ruleset
 

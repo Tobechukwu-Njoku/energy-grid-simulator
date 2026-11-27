@@ -11,7 +11,7 @@ MVP inputs have been obtained. No continental-European dataset was downloaded.
 - **16 `open-commercial`, 14 `research-only`**; evidence URLs, terms,
   verification date and obligations are recorded per entry in `manifest.toml`.
   A research-only tag is not a licence grant or permission to redistribute.
-- Review: `docs/requirements/reviews/verify-pr11-2026-11-13.md`. The PR branch
+- Review: `archive/reviews/verify-pr11-2026-11-13.md`. The PR branch
   contains no raw files; **a separate local checkpoint ref retains two ETYS
   raw originals and 31 worksheet CSV exports**, so repository-wide raw-data
   safety is not yet clear.

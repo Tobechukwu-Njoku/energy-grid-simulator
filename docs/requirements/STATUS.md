@@ -1,6 +1,12 @@
 # STATUS
 
-_Last updated: 2026-11-26_
+_Last updated: 2026-11-27_
+
+**M0 focus:** Build features from the [baselined requirements](04-requirements.md),
+with tests in each feature PR. The [review-tier process](../process/team.md) applies
+after the reform lands on main and branch protection is updated.
+
+## Prior updates
 
 **Coordinator recovery (2026-11-26, D-86):** GPT 6.2 Sol now leads the bulk of work,
 including code. Claude is reserved for focused cross-provider reviews of GPT PRs;
@@ -29,13 +35,13 @@ checks all pass, with current-head review and owner approval still outstanding.
 Owner decisions D-89–D-91 (2026-11-27): Gemini removed; GPT/Claude adversarial reviews (D-91). #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock (no standing gate exception); GPT 6.2 Sol replaces 6.1 for all GPT roles.
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-91 (D-5 superseded by D-23).
-Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
+Fable review (`../../archive/reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published
-[triage record](reviews/triage-gemini-2026-11-16-pr71.md); no implementation
+[triage record](../../archive/reviews/triage-gemini-2026-11-16-pr71.md); no implementation
 changes required. The trusted gate requires this record even for zero findings.
 
 **PR #71 independent code review (2026-11-16 UTC):** reviewed exact head
@@ -44,7 +50,7 @@ account policy, operational status and policy-backed integration expectation
 are consistent. Remaining old-name literals are test fixtures or historical
 records. `cargo test -j 2` passed with a worktree-local target directory and
 space-free TMPDIR; no blocking findings. Review evidence is published separately
-against `main`: [report](reviews/gpt-2026-11-16-pr71.md).
+against `main`: [report](../../archive/reviews/gpt-2026-11-16-pr71.md).
 
 **PR #23 revision 15 sixth verification (2026-11-16 UTC):** exact head
 `260d5f9410ca9f6fff832752c8146e253765f796`; verdict **ATTEST** under D-75.
@@ -58,7 +64,7 @@ against both `112de8d` and `f666c59`, a bounded 40-case decoder matrix and
 45 fresh CLI checks. No old-reject/new-accept case was found; unsupported
 double-encoded/invalid key spellings remain FOLLOW-UP. Report and STATUS are
 scanned before publication. PR #23 and bootstrap records remain unchanged.
-[Sixth-verification report](reviews/gpt-2026-11-16-pr23-r15-verify-6.md).
+[Sixth-verification report](../../archive/reviews/gpt-2026-11-16-pr23-r15-verify-6.md).
 
 **PR #23 R15V5 blocking repairs (2026-11-16 UTC):** the value-first scanner
 now recognizes leading and fully percent-encoded JDBC password keys before
@@ -224,7 +230,7 @@ assignment, and add-then-delete PR history is not scanned for secrets/data. Do n
 attest this head as the one-time bootstrap seed. R13-04's lowercase attribution
 coverage and documented bounded follow-ups need not block independently.
 Evidence, regressions, adversarial triage and M0 assessment:
-[revision-13 report](reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
+[revision-13 report](../../archive/reviews/gpt-2026-11-14-pr23-r13.md). PR #23 was not modified.
 
 **PR #23 revision 15 fifth verification (2026-11-16 UTC):** exact head
 `f19551e0da7b9178fea0b35fc53af3aaf4bdd0d9`; verdict **NOT ATTEST**.
@@ -240,7 +246,7 @@ checkout and added-then-deleted history incorrectly pass in a full candidate
 clone. **R15V5-02/03** additionally regress versus `f666c59`: leading encoded
 JDBC keys and inert inner backticks of enclosing CommonMark spans lose findings.
 The report is scanned before publication; PR #23 and bootstrap records are unchanged.
-[Fifth-verification report](reviews/gpt-2026-11-15-pr23-r15-verify-5.md).
+[Fifth-verification report](../../archive/reviews/gpt-2026-11-15-pr23-r15-verify-5.md).
 
 **PR #23 revision 15 fourth verification (2026-11-15 UTC):** exact head
 `f666c598ac157fec464923ead444873af29524d0`; verdict **NOT ATTEST**.
@@ -258,7 +264,7 @@ the blocker directly restores the fixed truncation mechanism, while distinct
 format limitations remain **FOLLOW-UP** under D-75. The new report independently
 passes the candidate scanner; exact synthetic fixtures remain only in ignored
 scratch files. PR #23 and the bootstrap seed are unchanged.
-[Fourth-verification report](reviews/gpt-2026-11-15-pr23-r15-verify-4.md).
+[Fourth-verification report](../../archive/reviews/gpt-2026-11-15-pr23-r15-verify-4.md).
 
 **PR #23 revision 15 third verification (2026-11-15 UTC):** exact head
 `6ed8bc713ef531110f92c392ac1d66a816d7f9c4`; verdict **NOT ATTEST**.
@@ -278,7 +284,7 @@ obvious bypass of the fixed item, while distinct alternate-terminator and
 unvalidated header-syntax cases are **FOLLOW-UP** under D-75, not another review
 round. Do not attest this merged head. PR #23, its policy and bootstrap records
 remain unchanged. Evidence and item table:
-[third verification report](reviews/gpt-2026-11-15-pr23-r15-verify-3.md).
+[third verification report](../../archive/reviews/gpt-2026-11-15-pr23-r15-verify-3.md).
 
 **PR #23 revision 15 second verification (2026-11-15 UTC):** exact head
 `e993dfec5c5d0ca73ac765f6fc74897f2f1d7636`; verdict **NOT ATTEST**.
@@ -294,7 +300,7 @@ Do not attest this head until that repair regression is fixed and verified.
 Bare scheme-less authority text is accepted at both heads, a pre-existing
 coverage limit rather than a new repair regression. PR #23 and bootstrap records
 are unchanged. Evidence, item table and constrained validation:
-[second verification report](reviews/gpt-2026-11-15-pr23-r15-verify-2.md).
+[second verification report](../../archive/reviews/gpt-2026-11-15-pr23-r15-verify-2.md).
 
 **PR #23 revision-15 final verification (2026-11-15 UTC, D-75):** exact head
 `60bef0d07bc41882d24be7de4c98e7d97deac302`; verdict **NOT ATTEST**.
@@ -308,10 +314,10 @@ checks and the compiler-enforced build gate pass; the workspace suite completes
 with 236 passed and 3 failed (self-policy plus two temporary-path fixtures).
 Temporary-path fixture failures are separately isolated with a
 passing no-space control. PR #23, policy and bootstrap records remain unchanged.
-Evidence: [final verification](reviews/gpt-2026-11-15-pr23-r15-verify.md).
+Evidence: [final verification](../../archive/reviews/gpt-2026-11-15-pr23-r15-verify.md).
 
 **PR #58 M1 deficit-sources revision 2 (2026-11-15 UTC):**
-Revised `docs/research/m1-deficit-sources.md` and `docs/requirements/02-questionnaire.md` to address R2-01–R2-07; round-3 corrections C-01–C-06 (GPT final re-check) applied from GPT's R2 review (`reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md`). Added questions Q-P-01..Q-P-07 to questionnaire Section P; repaired all broken publisher and licence URLs (ETYS archive, MIDAS Open collection UUID with v202407 coverage caveat, ERA5 CDS API CC-BY-4.0 licence, ENTSO-E CGMES library); reconciled summary licence classes with body (rows 3, 7, 8); registered explicit price interpolation and as-of policy under D-70/ADR 0002; qualified live SEMOpx trading schedule as current reference pending historical 2024 pinning; harmonised HVDC loss proxy description as constant fractional exploratory proxy with omitted standby losses; and fixed repository relative links to ADR 0002 and earlier reviews.
+Revised `docs/research/m1-deficit-sources.md` and `docs/requirements/02-questionnaire.md` to address R2-01–R2-07; round-3 corrections C-01–C-06 (GPT final re-check) applied from GPT's R2 review (`../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md`). Added questions Q-P-01..Q-P-07 to questionnaire Section P; repaired all broken publisher and licence URLs (ETYS archive, MIDAS Open collection UUID with v202407 coverage caveat, ERA5 CDS API CC-BY-4.0 licence, ENTSO-E CGMES library); reconciled summary licence classes with body (rows 3, 7, 8); registered explicit price interpolation and as-of policy under D-70/ADR 0002; qualified live SEMOpx trading schedule as current reference pending historical 2024 pinning; harmonised HVDC loss proxy description as constant fractional exploratory proxy with omitted standby losses; and fixed repository relative links to ADR 0002 and earlier reviews.
 
 **PR #58 M1 deficit-sources final re-check (2026-11-15 UTC):** exact head
 `739bb70d0e1bb772ceae49f3afe99353a054b10c`; verdict **accept-with-corrections**.
@@ -322,7 +328,7 @@ and introduces no ID clashes. STATUS conflicts with main; preserve review histor
 GitHub has three current unresolved threads (partial 132 kV coverage, IDC closure,
 input hash exclusion), plus fourteen outdated unresolved threads. Six bounded
 corrections recorded; PR #58 unchanged, no acquisition or baseline approval.
-[Round-3 report](reviews/gpt-2026-11-15-pr58-deficit-sources-r3.md).
+[Round-3 report](../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources-r3.md).
 
 **PR #58 M1 deficit-sources round-2 re-check (2026-11-15 UTC):** exact head
 `67a9d3d84091dd329ae212f8f2333e59dca4cdbb`; verdict **reject**.
@@ -333,7 +339,7 @@ price interpolation/as-of policy, unpinned 2024 SEMOpx schedules, inconsistent
 HVDC proxy wording and broken repository references. No datasets downloaded;
 PR #58 unchanged. No deficit closure, modelling-default approval or commercial
 clearance claimed. Evidence and suggested fixes:
-[round-2 report](reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md).
+[round-2 report](../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources-r2.md).
 
 **PR #58 M1 deficit-sources review (2026-11-15 UTC):** exact head
 `db59b5b44adec4835fdd1d82d9ba8b94ebfec861`; verdict **reject**.
@@ -346,7 +352,7 @@ coverage, BSC version mapping, plant parameters and exact fleet figures remain
 unverified or need correction. Item 9 is internal implementation, not an external
 dataset. PR #58 unchanged; no deficit closure or commercial clearance claimed.
 Evidence and suggested corrections:
-[review report](reviews/gpt-2026-11-15-pr58-deficit-sources.md).
+[review report](../../archive/reviews/gpt-2026-11-15-pr58-deficit-sources.md).
 
 **PR #52 M1 inventory final re-check (2026-11-14 UTC):** exact revised head
 `8af069ca0af0712f29b9645810282070b02e45a4`; verdict **accept-with-corrections**.
@@ -359,7 +365,7 @@ the corrected ND-plus-embedded starting identity without another pumping
 subtraction. New/split candidate classes checked; no identified share-alike
 source admitted. Inventory unchanged; no acquisition, commercial clearance or
 M1 acceptance claimed. Evidence:
-[round-3 final re-check](reviews/gpt-2026-11-14-pr52-m1-inventory-r3.md).
+[round-3 final re-check](../../archive/reviews/gpt-2026-11-14-pr52-m1-inventory-r3.md).
 
 **PR #52 M1 inventory re-check (2026-11-14 UTC):** exact revised head
 `e5ec7171e2d1b57ec9c89bee6343cbbbcd7264f2`; verdict **must-fix**.
@@ -370,7 +376,7 @@ evidence/access claims, inconsistent Greenlink interpretations and unreconciled
 source counts. Changed public endpoints and weather/licence terms spot-checked;
 corrected demand CSV and both cached SEMO archives match committed hashes.
 Inventory unchanged; no M1 acceptance or heavy work claimed. Evidence:
-[round-2 re-check](reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md).
+[round-2 re-check](../../archive/reviews/gpt-2026-11-14-pr52-m1-inventory-r2.md).
 
 **PR #52 M1 inventory review (2026-11-14 UTC):** exact head
 `e7e992e3f213a8d8645bb5e58ea1d7592c55a908` independently checked under D-51;
@@ -380,7 +386,7 @@ committed hashes. Unsupported commercial-clearance labels, broken/misdirected
 dataset links, incorrect FUELHH/TLM claims and overstated M1 completeness must
 be corrected before reliance. Gated sources and missing dated rules/losses/
 decomposition remain explicit gaps. No inventory edits or M1 acceptance claimed.
-Evidence and corrections: [review report](reviews/gpt-2026-11-14-pr52-m1-inventory.md).
+Evidence and corrections: [review report](../../archive/reviews/gpt-2026-11-14-pr52-m1-inventory.md).
 
 **PR #23 revision-14 review:** exact head `112de8d2b7452ecfcb45b79f91d96841add16954`
 re-reviewed; verdict **must-fix**. Original round-13 CORE and adversarial
@@ -390,7 +396,7 @@ kubeconfig private keys pass, and valid pgpass/netrc record variants pass. Do no
 attest this head as the one-time bootstrap seed. The retained lowercase attribution
 gap and bounded ADR wording/decoder disclosures are PERIPHERAL follow-ups.
 Evidence, mapped regressions, adversarial triage and M0 assessment:
-[revision-14 report](reviews/gpt-2026-11-14-pr23-r14.md). PR #23 was not modified.
+[revision-14 report](../../archive/reviews/gpt-2026-11-14-pr23-r14.md). PR #23 was not modified.
 
 ## Snapshot of what's decided
 
@@ -519,7 +525,7 @@ The rebuilt revision-11 checker rejects that exact file. Do not attest this head
 as the bootstrap seed. **PERIPHERAL** R12-02 (bare-tool verification/gratitude
 footers) is a safe tracked post-merge follow-up after the CORE fix and re-review.
 Reproductions, round-11 mappings/triage and M0 limitation assessment:
-[revision-12 report](reviews/gpt-2026-11-14-pr23-r12.md). PR #23 was not modified.
+[revision-12 report](../../archive/reviews/gpt-2026-11-14-pr23-r12.md). PR #23 was not modified.
 
 **PR #23 revision-11 review (2026-11-14 UTC):** exact head
 `d71cf40d1fdae6eb62de28c366ce925ec3108579` re-reviewed; verdict **must-fix**.
@@ -532,7 +538,7 @@ The BOM-bearing UTF-16 fixture also passes xtask all and remains undetected afte
 being committed in a disposable clone. No live credential or restricted data was
 used. Do not attest this head as the one-time bootstrap seed until that defect is
 fixed and the resulting head reviewed. Reproductions, round-10 mappings/triage and
-the M0 limitation assessment: [revision-11 report](reviews/gpt-2026-11-14-pr23-r11.md).
+the M0 limitation assessment: [revision-11 report](../../archive/reviews/gpt-2026-11-14-pr23-r11.md).
 PR #23 was not modified.
 
 **PR #23 revision-10 review (2026-11-14 UTC):** exact head
@@ -547,7 +553,7 @@ kept human PR-body lines to the bot; that item can be a tracked, owner-accepted
 follow-up, with the ADR guarantee corrected. Do not attest this head as the
 one-time bootstrap seed until the CORE defect is fixed and the new head reviewed.
 Reproductions, all round-9 mappings/triage and M0 limitation assessment:
-[revision-10 report](reviews/gpt-2026-11-14-pr23-r10.md). PR #23 was not modified.
+[revision-10 report](../../archive/reviews/gpt-2026-11-14-pr23-r10.md). PR #23 was not modified.
 
 **PR #23 revision-9 review (2026-11-14 UTC):** exact head
 `e64acc5cfb7343485e660436cfd9fb8da1a0e5dd` re-reviewed; verdict **must-fix**.
@@ -561,7 +567,7 @@ Historical restoration of genuinely bot-originated text is consistent with D-61;
 whole-block novelty does not prove each line's origin. Risk 11 is accurate, while
 risk 12 omits that inherited-content path. Do not attest this head as the one-time
 bootstrap seed. Reproductions, controls, round-8 triage and the M0 assessment:
-[revision-9 report](reviews/gpt-2026-11-14-pr23-r9.md). PR #23 was not modified.
+[revision-9 report](../../archive/reviews/gpt-2026-11-14-pr23-r9.md). PR #23 was not modified.
 
 **PR #23 revision-8 review (2026-11-14 UTC):** exact head
 `bcd4b2c7aa933662ad952f3656b1a1f408057fc3` re-reviewed; verdict **must-fix**.
@@ -573,7 +579,7 @@ the integration is withdrawn. Standard OS library roots are reasonable M0 locati
 trust under the documented job-tampering limit; hosted passwordless sudo means they
 are not process isolation. Do not attest this head as the one-time bootstrap seed.
 Evidence, regression matrix and required correction:
-[revision-8 report](reviews/gpt-2026-11-14-pr23-r8.md). PR #23 was not modified.
+[revision-8 report](../../archive/reviews/gpt-2026-11-14-pr23-r8.md). PR #23 was not modified.
 
 **PR #23 revision-7 review (2026-11-14 UTC):** exact head
 `f986bbc48b23390ca50f4b22065313bcb08d94ea` re-reviewed; verdict **must-fix**.
@@ -585,7 +591,7 @@ also escapes the shared attribution patterns (ATTRIBUTION-SPELLING). The first
 two gaps are outside the ADR's stated tampering/multi-feature limitations.
 Do not attest this head as the one-time bootstrap seed. Reproductions, controls,
 the finding/test matrix and M0 assessment:
-[revision-7 report](reviews/gpt-2026-11-14-pr23-r7.md). PR #23 was not modified.
+[revision-7 report](../../archive/reviews/gpt-2026-11-14-pr23-r7.md). PR #23 was not modified.
 
 **PR #23 revision-6 review (2026-11-14 UTC):** exact head
 `68a583d88276cd4339c0d08cebf6f0c8367ca76a` re-reviewed; verdict **must-fix**.
@@ -596,7 +602,7 @@ wrapper, response-file quoting hides a native library name, all-features builds
 omit default-feature link code, and doctests do not inherit the claimed root
 unsafe forbid. Do not attest this head as the one-time bootstrap seed.
 Reproductions, controls, regression matrix and M0 limitation assessment:
-[revision-6 report](reviews/gpt-2026-11-13-pr23-r6.md). PR #23 was not modified.
+[revision-6 report](../../archive/reviews/gpt-2026-11-13-pr23-r6.md). PR #23 was not modified.
 
 **PR #23 revision 6 (implementation, 2026-11-13):** R5-01..04 (GPT) and ADV23R5-01..10
 (Gemini) addressed by a change of approach (coordinator decision): the static Rust
@@ -621,7 +627,7 @@ real offline Cargo compilation and a rejection control, expose a substring-based
 OUT_DIR include exemption, an aliased include macro, Cargo member-glob mismatch
 and lost build context through a local patch. Do not attest this head as the
 one-time trusted bootstrap seed. Evidence and finding-by-finding regression
-assessment: [revision-5 report](reviews/gpt-2026-11-13-pr23-r5.md).
+assessment: [revision-5 report](../../archive/reviews/gpt-2026-11-13-pr23-r5.md).
 PR #23 was not modified.
 
 **PR #23 revision-4 review:** exact head `dc3093ea100ace554ad3a7c11a9f77927f2776a7`
@@ -630,7 +636,7 @@ round-3 concrete inputs are fixed. Four new STRUCTURAL probes demonstrate a
 production target escaping through `spikes/`, incorrect `**/` CODEOWNERS coverage,
 nested-array provenance loss and ignored extensionless manifests. Do not attest
 this head as the one-time trusted bootstrap seed. Reproductions, regression
-assessments and activation limits: [revision-4 report](reviews/gpt-2026-11-13-pr23-r4.md).
+assessments and activation limits: [revision-4 report](../../archive/reviews/gpt-2026-11-13-pr23-r4.md).
 PR #23 was not modified.
 
 **PR #23 revision 4 (implementation, 2026-11-13):** R3-01..04 (GPT) and ADV23R3-01..07
@@ -649,13 +655,13 @@ F1–F9 / ADV23R-01..09 inputs are addressed (D-74 account/approval activation
 remains operational), but four independent probes expose remaining unsafe-lint,
 Cargo-target, review-currentness and CODEOWNERS gaps. Do not attest this head as
 the trusted policy seed. Evidence and finding-by-finding regression assessment:
-[revision-3 report](reviews/gpt-2026-11-13-pr23-r3.md). PR #23 was not modified.
+[revision-3 report](../../archive/reviews/gpt-2026-11-13-pr23-r3.md). PR #23 was not modified.
 
 **PR #23 revision-2 review:** exact head `b38db0675fa3b2eb6a05600fc6fb22d85e0dd8cd`
 re-reviewed; verdict **must-fix**. All 81 submitted tests pass, but nine remaining
 enforcement findings require correction and exact-head re-review. Evidence and
 R1–R8 / ADV23-01..18 dispositions:
-[revision-2 report](reviews/gpt-2026-11-13-pr23-r2.md). PR #23 was not modified.
+[revision-2 report](../../archive/reviews/gpt-2026-11-13-pr23-r2.md). PR #23 was not modified.
 
 **PR #23 revision 3 (implementation, 2026-11-13):** F1–F9 and ADV23R-01..09 addressed with
 mapped regression tests (finding→test table in the PR body). Trusted gates now run from
@@ -663,7 +669,7 @@ mapped regression tests (finding→test table in the PR body). Trusted gates now
 action before CI can pass:** commit `docs/process/ci-bootstrap.toml` with
 `seed_sha = "<final PR #23 head>"` to `main` and re-run CI; then GPT re-review, Gemini
 adversarial re-check and a triage record for every adversarial finding (format in
-REVIEW-BRIEF.md). The D-74 machine account `automated-machines` was created on 2026-11-16; agents push and open PRs from it with a classic `public_repo` token (90-day expiry, rotate by 2027-02-14).
+archive/reviews/REVIEW-BRIEF.md). The D-74 machine account `automated-machines` was created on 2026-11-16; agents push and open PRs from it with a classic `public_repo` token (90-day expiry, rotate by 2027-02-14).
 
 **Merged to main:** GB data catalogue (PR #1, verified), IE/weather/dependency-licence catalogues (PR #2,
 verified), reviews and triage for requirements, PR #4 and PR #5 (PRs #3, #6, #7, #8, #9).

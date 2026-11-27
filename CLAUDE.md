@@ -1,1 +1,4 @@
-See @AGENTS.md — it is the shared instruction file for every model working in this repo.
+Read [AGENTS.md](AGENTS.md) and [Team and review](docs/process/team.md) first.
+Use a fresh thread for a GitHub PR review of the current head. For a Tier 2
+adversarial review, post findings as a PR comment. Do the review in this thread
+without sub-agents.

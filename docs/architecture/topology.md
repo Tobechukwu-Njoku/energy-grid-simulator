@@ -171,7 +171,7 @@ implementation. Architecture qualification plans are deliberately post-baseline.
 ## Coordinator handoff
 
 Revisions and finding dispositions are recorded in the
-[PR #17 response](../requirements/reviews/response-pr17-2026-11-13.md).
+[PR #17 response](../../archive/reviews/response-pr17-2026-11-13.md).
 The canonical questionnaire records the four answered product choices and
 mapped/deprecated IDs. STATUS.md and the decisions log are inherited from main
 without edits; the coordinator owns any session status update.
