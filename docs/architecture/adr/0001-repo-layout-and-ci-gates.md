@@ -68,7 +68,7 @@ Every gate emits pass/fail or explicit N/A with reason and evidence; missing is 
 
 | Profile | Applicable quality evidence | Explicit non-applicability / transition |
 |---|---|---|
-| B0 — current documentation/data spike | Traceability and Markdown/local-link checks; spike tests if present; D-52, secrets/data/provenance, current-head independent review and adversarial triage | Rust/TS fmt/lint/build/reference/bench/GPU are N/A only while their implementation targets do not exist. A spike change runs its own applicable checks. |
+| B0 — current documentation/data spike | Traceability and Markdown/local-link checks; spike tests if present; D-52, secrets/data/provenance, current-head independent review and adversarial triage (review part superseded by the review-tier addendum) | Rust/TS fmt/lint/build/reference/bench/GPU are N/A only while their implementation targets do not exist. A spike change runs its own applicable checks. |
 | B1 — CPU implementation (M1 target-runner activation onward, after baseline) | fmt, clippy, nextest, licence/advisory closure, numerical reference, mutation scope, CPU benchmark, Linux CPU and applicable macOS build, plus all B0 policy gates | A new component must seed applicable tests/reference evidence in its first implementation PR. No blanket first-code exemption. GPU N/A without an enabled/touched GPU adapter. |
 | B2 — optional native/GPU feature | All B1 gates plus changed-adapter conformance, actual-device numerical/benchmark evidence and licence/device checks | Missing REQUIRED supported device/runner blocks the feature PR; CPU-only P1 is not blocked by an absent optional adapter. |
 
@@ -102,9 +102,10 @@ successful; a protected classifier's explicit N/A is different from a skipped jo
 | reference-integrity/mutation | External fixture ownership, provenance and mutation policy below |
 | provenance/secrets/data | Research-only raw/derived restricted data never committed; ODbL/share-alike excluded; manifests tagged open-commercial/research-only and publication preconditions scanned before D-58 visibility change |
 | attribution-policy | PR-range messages, metadata and added-line checks below; no silent rewriting by CI |
-| independent-review | Current-head role-compatible independent evidence plus adversarial findings and verified triage |
+| independent-review | ~~Current-head role-compatible independent evidence plus adversarial findings and verified triage~~ Superseded by the review-tier addendum: see `review-tier`. |
 | gpu-validation | Actual installed supported device for relevant implemented feature, otherwise protected-classifier N/A |
 
+*(Branch protection and approval rules in this paragraph are superseded by the review-tier addendum.)*
 Protect main with a single required merge-gates check and strict up-to-date branch
 requirement after D-58 preconditions permit it. Use required status evidence, NOT
 GitHub approving-review counts: a shared owner identity cannot approve its own PR.
@@ -266,10 +267,13 @@ are deployed in this repository. Verify pinned tooling and plan capabilities at 
 
 ## Addendum — 2026-11-13: trusted gates and owner approval (D-74, PR #23 revision 3)
 
+*The independent-review, policy-approval and review.toml parts of this addendum are
+superseded by the review-tier addendum below.*
+
 This addendum records how the M0 implementation meets this ADR after the PR #23
 reviews (F1, F2; ADV23R-08). It adds no decision beyond D-73 and D-74.
 
-- **Trusted entry point.** `independent-review` and `policy-approval` run from
+- **Trusted entry point.** *(Superseded by the review-tier addendum.)* `independent-review` and `policy-approval` run from
   `.github/workflows/trusted-gates.yml` on `main` via `pull_request_target`. That
   workflow builds `main`'s xtask in a checkout of `main` and fetches the pull-request
   head only as Git objects; it never checks out, builds or runs pull-request code,
@@ -280,19 +284,19 @@ reviews (F1, F2; ADV23R-08). It adds no decision beyond D-73 and D-74.
   Their workflow and action files are defined by the pull request, but they are
   protected paths: the trusted `policy-approval` gate fails for any change to them
   without the owner's exact-head approval, and rejects a pull-request job that
-  reuses a trusted gate's name.
+  reuses a trusted gate's name. *(policy-approval superseded by the review-tier addendum.)*
 - **Bootstrap.** The only exception to failing closed is the first B0 activation
   described above: an exact head SHA the coordinator attests on `main` in
   `docs/process/ci-bootstrap.toml` (`seed_sha = "<40 hex>"`). An absent policy is
   never a fallback.
-- **Owner approval (D-74).** Agents push and open pull requests from a separate
+- **Owner approval (D-74).** *(Superseded by the review-tier addendum.)* Agents push and open pull requests from a separate
   machine account (`agent_account` in `xtask/policy/repository.toml`; placeholder
   until created). The owner approves from `Tobechukwu-Njoku`; an APPROVED review on
   the exact head is the policy-approval and code-owner evidence. For policy approval
   this replaces "a shared owner identity cannot approve its own PR" above; required
   status checks remain the merge gate. A policy change opened by the owner cannot
   pass, and the gate says so.
-- **Review evidence.** The role/vendor matrix of D-28, D-51, D-53 and D-54 is the
+- **Review evidence.** *(Superseded by the review-tier addendum.)* The role/vendor matrix of D-28, D-51, D-53 and D-54 is the
   trusted file `xtask/policy/review.toml`. Every adversarial finding needs a closing
   disposition in a current triage record (format in `archive/reviews/REVIEW-BRIEF.md`).
 
@@ -532,7 +536,7 @@ as already written and adds no other decision beyond D-52, D-56, D-73 and D-74.
   gates) and each `required_checks` entry of `gates.toml` is protected in all
   workflows, trusted ones included. Only the owning workflow's job with exactly that id may carry
   the name. `cargo xtask policy` and the trusted policy-approval gate both apply this
-  rule.
+  rule (policy-approval superseded by the review-tier addendum; `review-tier` applies it).
 - **Dynamic-loader variables (ADV23R8-02).** A workflow `env:` (workflow, job or
   step) may not set any `LD_*` or `DYLD_*` variable; `allowed_env` cannot allow one.
   The build gate's Cargo, the C driver probe and the linker also run without them.
@@ -594,7 +598,7 @@ adds no decision.
   the published name of every gate job and aggregator are reserved in every
   workflow, compared case-insensitively. Only the owning job (same file, same id)
   may carry them, and it must publish exactly the trusted name. The
-  policy-approval gate uses the same list.
+  policy-approval gate uses the same list (superseded by the review-tier addendum).
 - **Aggregator integrity (ADV23R9-02).** The aggregator must publish its trusted
   name (`merge-gates`), may set only `name`, `if`, `needs`, `runs-on`,
   `timeout-minutes` and `steps`, and its `steps` must equal the aggregator steps
