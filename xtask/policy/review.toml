@@ -31,15 +31,20 @@ author_vendors = ["openai"]
 reviewer_roles = ["independent review", "independent code review", "code review", "document review"]
 reviewer_vendors = ["anthropic"]
 
-# Adversarial review (D-53): Gemini tries to break the change. It never approves.
+# Adversarial review (D-53 as amended by D-91): GPT 6.2 Sol (OpenAI) tries to break
+# the change; when OpenAI wrote the pull request, Claude (Anthropic) does. It never
+# approves, and the gate rejects an adversarial reviewer from the author's vendor.
+# Gemini (Google) takes no new role (D-91); "google" stays only so existing Gemini
+# reports on main keep counting for the heads they cite.
 [adversarial]
 reviewer_roles = ["adversarial review"]
-reviewer_vendors = ["google"]
+reviewer_vendors = ["openai", "anthropic", "google"]
 
-# Triage of adversarial findings (D-53): by GPT or the coordinator, never Gemini.
+# Triage of adversarial findings (D-53, D-91): by the coordinator, never Gemini.
 # Every finding ID of every adversarial report on the pull request needs one of the
 # closing dispositions, in a triage record whose reviewed head is still current.
 [triage]
 roles = ["triage", "adversarial triage", "coordinator triage"]
-vendors = ["openai"]
+# D-91: the coordinator (OpenAI or Anthropic) triages adversarial findings.
+vendors = ["openai", "anthropic"]
 dispositions = ["fixed", "rejected", "deferred", "duplicate", "not-applicable"]

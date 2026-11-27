@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-11-26 UTC_
+_Last updated: 2026-11-27 UTC_
 
 **Phase:** Build, M0 partial; code allowed under D-72. Requirements baselined;
 ADRs 0001–0006 accepted. M0 closure still needs required-check deployment and
@@ -14,22 +14,20 @@ The archive preserves historical claims, including superseded hardware/team stat
 
 ## Current queue
 
-Coordinator directs GPT authorship, Claude independent review, verified Gemini
-data/adversarial work and at most two delegates (`D-86`, pending PR #95).
-No merge gate is waived. Current-head checks/reviews must be re-read before acting.
+GPT 6.2 Sol authors and gathers data; Claude reviews GPT work; adversarial reviews
+come from GPT, or Claude in a fresh thread for GPT-authored PRs; no Gemini (`D-90`,
+`D-91`). At most two delegates (`D-86`). No merge gate is waived. Current-head
+checks/reviews must be re-read before acting.
 
-- #95 records team direction and authorized #92 history repair; reviews pending.
-- #92 owner correction: rebuild only the original PR net diff onto current main,
-  preserving newer main review docs; replaces `b27c66f` (`D-88`, pending #95).
-  Full-range CI, fresh reviews, GPT triage and exact-head owner approval remain.
-- #81 needs fresh independent/adversarial evidence, triage and exact-head owner
-  approval. Do not merge on green build/scanning checks alone.
-- #83 conflicts; preserve immutable review evidence during repair. #87 has failing
-  review/docs gates and waits on #81. Decisions `D-78`–`D-85` are reserved in #87.
-- #59/#60 await #87 decisions; #60 also has four optional Claude wording fixes.
-- #53/#78 need relevance refresh; #78 must drop claims superseded by #81.
+- On main: #81, #97 and #99 (with #87, #95, #98 carried by the #99 squash). #97, #99
+  and #100 were owner-authorised admin merges (`D-89`, `D-92`). Decisions run D-1 … D-92.
+- #92 (credential/attribution scanner fixes) needs a GPT independent re-review, an
+  adversarial review and exact-head owner approval.
+- GPT is unavailable until ChatGPT is re-linked (t3code#39101); reviews wait on it.
+- #59/#60 need refresh against the new decisions; #60 also has four optional Claude
+  wording fixes. #53/#78 need relevance refresh; #78 must drop claims superseded by #81.
 - This token-efficiency PR needs independent/adversarial review via the coordinator.
-  Close #57 only after its outstanding owner tasks below are preserved on main.
+  #57 is closed; its owner tasks are kept below.
 
 ## Waiting on the owner
 
