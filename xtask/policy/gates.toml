@@ -18,7 +18,7 @@ runner_labels = ["ubuntu-24.04", "macos-15"]
 # GIT_*, ...) are rejected even if listed here.
 allowed_env = [
     "CARGO_TERM_COLOR", "CARGO_INCREMENTAL", "CARGO_DENY_VERSION", "NEXTEST_VERSION",
-    "TRUSTED", "MAIN", "GH_TOKEN", "NEEDS", "NUMBER", "HEAD_SHA", "REVIEW_RESULT",
+    "TRUSTED", "MAIN", "GH_TOKEN", "NEEDS", "NUMBER", "HEAD_SHA",
 ]
 # Lines a `run:` script may contain that name a GitHub Actions file-command
 # file ($GITHUB_ENV, $GITHUB_PATH, $GITHUB_OUTPUT, $GITHUB_STATE,
@@ -91,5 +91,3 @@ file = ".github/workflows/trusted-gates.yml"
 jobs = ["review-tier"]
 triggers = ["pull_request_target"]
 trusted = true
-[workflow.names]
-review-tier = "evaluate review tier"

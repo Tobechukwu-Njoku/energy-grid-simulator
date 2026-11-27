@@ -20,26 +20,16 @@ env:
 
 jobs:
   review-tier:
-    name: evaluate review tier
+    name: review-tier
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: read
-      statuses: write
+    # The required check is this job's own result. It posts no commit status.
+    # pull_request_review is not a trigger: it would run the PR's copy of this
+    # workflow, so re-run this job after a review (docs/process/team.md).
     steps:
-      # pull_request_target runs on main's SHA. Publish on the PR head and
-      # GitHub's test merge commit, which can carry the required CI checks.
-      - name: Mark the PR head pending
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          printf '%s\n' "$HEAD_SHA" | grep -Eqx '[0-9a-f]{40}'
-          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
-            -f context=review-tier -f state=pending \
-            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -62,10 +52,6 @@ jobs:
           merge="$(git rev-parse refs/remotes/pull/merge)"
           test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA"
           test "$(git show -s --format=%P "$merge")" = "$main $HEAD_SHA"
-          git update-ref refs/review-tier/test-merge "$merge"
-          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$merge" \
-            -f context=review-tier -f state=pending \
-            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
           git checkout --quiet --detach "$main"
       - name: Install main's pinned toolchain
         run: rustup toolchain install && rustc --version
@@ -74,19 +60,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: cargo run --locked --quiet -p xtask -- review-tier --main refs/remotes/origin/main
-      - name: Publish review-tier on the PR head and test merge commit
-        if: ${{ always() && !cancelled() }}
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          GH_TOKEN: ${{ github.token }}
-          REVIEW_RESULT: ${{ steps.evaluate.outcome == 'success' && 'success' || 'failure' }}
-        run: |
-          set -euo pipefail
-          printf '%s\n' "$HEAD_SHA" | grep -Eqx '[0-9a-f]{40}'
-          merge="$(git rev-parse --verify --quiet refs/review-tier/test-merge || true)"
-          for sha in "$HEAD_SHA" "$merge"; do
-            if [ -z "$sha" ]; then continue; fi
-            gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$sha" \
-              -f context=review-tier -f state="$REVIEW_RESULT" \
-              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
-          done
