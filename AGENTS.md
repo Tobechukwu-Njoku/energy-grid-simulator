@@ -52,3 +52,6 @@ D-65 target system.
 10. **Data provenance (D-56).** Every dataset is tagged in the provenance manifest as
     `open-commercial` or `research-only`. Never commit raw `research-only` data; commit only the
     download scripts. Share-alike (ODbL/OSM) data is never used.
+11. **Reviewers (D-91).** No Gemini. Adversarial reviews come from GPT 6.2 Sol, or Claude in a fresh
+    thread when GPT wrote the PR. Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent;
+    do all the work yourself in this thread."

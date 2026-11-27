@@ -44,9 +44,10 @@ The gate runs from `main` (`trusted-gates.yml`) and checks, against the trusted 
 - **Independent review:** the author and reviewer vendors differ (vendors, not model
   names: two Anthropic models do not count) and the role pair is allowed, for example
   `code generation / Anthropic` reviewed by `independent code review / OpenAI`.
-  Gemini never supplies independent review.
+  Gemini supplies no review at all (D-91).
 - **Adversarial review:** at least one report with `Reviewer role/provider: adversarial
-  review / Google` cites a commit of the pull request. Every adversarial report on the
+  review / OpenAI` (or `/ Anthropic` when OpenAI wrote the PR; never the author's vendor, D-91)
+  cites a commit of the pull request. Existing Gemini reports on main still count for their heads. Every adversarial report on the
   pull request (by that role or a file name containing `adversarial`) must be triaged.
   Finding IDs are the first token of `###` (or deeper) headings, such as `ADV23R-01`.
 - **Triage record** (GPT or coordinator, D-53), first 40 lines:

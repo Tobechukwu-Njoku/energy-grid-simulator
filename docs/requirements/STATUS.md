@@ -4,7 +4,7 @@ _Last updated: 2026-11-26_
 
 **Coordinator recovery (2026-11-26, D-86):** GPT 6.2 Sol now leads the bulk of work,
 including code. Claude is reserved for focused cross-provider reviews of GPT PRs;
-Gemini gathers data and supplies adversarial reviews; GPT verifies that output. Maximum two
+Gemini is removed (D-91); GPT gathers data and does adversarial reviews (Claude for GPT-authored PRs). Maximum two
 delegates at once. D-78–D-85 remain pending in PR #87; D-86 records the new owner instruction.
 
 Live queue confirmed on 2026-11-26: #81 is mergeable but lacks current independent/
@@ -26,7 +26,7 @@ report no new findings, with OpenAI verification recorded. #92 replacement build
 checks all pass, with current-head review and owner approval still outstanding.
 
 
-Owner decisions D-89/D-90 (2026-11-27): #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock (no standing gate exception); GPT 6.2 Sol replaces 6.1 for all GPT roles.
+Owner decisions D-89–D-91 (2026-11-27): Gemini removed; GPT/Claude adversarial reviews (D-91). #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock (no standing gate exception); GPT 6.2 Sol replaces 6.1 for all GPT roles.
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-91 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
@@ -407,7 +407,7 @@ The owner's core questions are listed in D-40.
 PostgreSQL 18 + Redis. Linux machine: Ryzen 5900X / 128 GB, consumer NVIDIA GPU, so the **CPU
 path is primary** (R-14). Pluggable solvers. Future commercial SaaS, so **no share-alike data**.
 Team (`docs/process/team.md`): Claude Opus 5.5 codes, GPT 6.2 Sol architects and reviews,
-Gemini Flash does checked donkey work. Strict merge gates (D-28).
+Gemini has no role (D-91). Strict merge gates (D-28).
 
 ## Still open (non-blocking)
 
