@@ -1,6 +1,6 @@
 # 02 — Requirements Questionnaire
 
-_Last updated: 2026-11-15_
+_Last updated: 2026-11-18_
 
 Each question has a stable ID, why it matters, options, and a **recommended default** (★) that
 agents may assume *only* if the owner explicitly says "use defaults" for that section.
@@ -210,6 +210,18 @@ they are not marked answered without an owner decision or explicit baseline adop
   within an accepted ADR)?
 - [x] **Q-K-4 Quality gates:** required test coverage, CI, benchmarks, validation against
   reference cases (e.g. pglib-opf, IEEE cases, PyPSA results) before merge?
+
+- [ ] **Q-K-5 Confirm D-77 implementation boundaries (PR #75 replacement).**
+  ASSUMPTION: classify paths by diffing current main against Git's actual merge
+  result (including multiple merge bases); conflicting merges fail closed. Direct
+  publication permits only regular, single-component review Markdown files and
+  STATUS, immutable existing evidence, exact lowercase full SHAs, recognized
+  independent verdicts (including request changes), non-empty triage references,
+  and no duplicate header fields. STATUS-only updates remain allowed.
+  Options: (a) confirm these validation details without changing D-77's path scope
+  · (b) specify different boundaries before merge.
+  ★ (a). This is an implementation assumption, not an owner decision or a change
+  to the trusted role/vendor pairing matrix.
 
 ## L. Non-functional: security, licensing, validation
 
