@@ -317,3 +317,555 @@ fn r3_03_review_directory_change_invalidates_review() {
         review_gates::independent_review(&review_ctx(&repo), &main, &reviewed).expect("gate");
     assert!(found.is_empty(), "{found:?}");
 }
+
+// Review-evidence publication PRs (containing only docs/requirements/reviews/*.md
+// and docs/requirements/STATUS.md) are verified for valid headers and immutability
+// of existing review evidence, without circular self-dependency.
+#[test]
+fn review_evidence_pr_passes_without_prior_evidence_on_main() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    let target_sha = "a".repeat(40);
+    repo.write(
+        "docs/requirements/STATUS.md",
+        "# STATUS\nUpdated with PR review record\n",
+    );
+    repo.write(
+        &format!("{REVIEW_DIR}/gpt-review-pr99.md"),
+        &format!(
+            "# Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n\nNo blocking findings.\n"
+        ),
+    );
+    let head = repo.commit("docs: publish PR 99 review");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(found.is_empty(), "unexpected findings: {found:?}");
+}
+
+#[test]
+fn review_evidence_pr_with_invalid_header_is_rejected() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    let target_sha = "a".repeat(40);
+    repo.write(
+        &format!("{REVIEW_DIR}/same-vendor.md"),
+        &format!(
+            "# Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / Anthropic\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n"
+        ),
+    );
+    let head = repo.commit("docs: invalid review");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(!found.is_empty(), "invalid header was accepted");
+    let messages: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
+    assert!(
+        messages.iter().any(|m| m.contains("pairing invalid")),
+        "{messages:?}"
+    );
+}
+
+#[test]
+fn review_evidence_pr_modifying_existing_review_on_main_is_rejected() {
+    let repo = Repo::new();
+    let target_sha = "a".repeat(40);
+    repo.write(
+        &format!("{REVIEW_DIR}/original.md"),
+        &format!(
+            "# Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n"
+        ),
+    );
+    let main = repo.commit("docs: initial review evidence");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    repo.write(
+        &format!("{REVIEW_DIR}/original.md"),
+        &format!(
+            "# Modified Review\n- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{target_sha}`\n- Verdict: **approve**\n"
+        ),
+    );
+    let head = repo.commit("docs: tamper with existing evidence");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(!found.is_empty(), "modified review was accepted");
+    let messages: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
+    assert!(
+        messages.iter().any(|m| m.contains("cannot be modified")),
+        "{messages:?}"
+    );
+}
+
+#[test]
+fn review_evidence_pr_with_non_markdown_file_is_not_exempt() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+
+    repo.write(
+        &format!("{REVIEW_DIR}/payload.rs"),
+        "pub fn secret() -> u32 { 42 }\n",
+    );
+    let head = repo.commit("chore: add non-markdown file in reviews");
+    let found = review_gates::independent_review(&review_ctx(&repo), &main, &head).expect("gate");
+    assert!(!found.is_empty(), "non-markdown review file was exempt");
+    let messages: Vec<&str> = found.iter().map(|f| f.message.as_str()).collect();
+    assert!(
+        messages
+            .iter()
+            .any(|m| m.contains("no approving, role-compatible independent review")),
+        "{messages:?}"
+    );
+}
+
+fn pr75_setup() -> (Repo, String) {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    repo.write("docs/requirements/STATUS.md", "# Status\n");
+    let main = repo.commit("chore: main");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+    (repo, main)
+}
+
+fn pr75_report(head: &str) -> String {
+    format!(
+        "- Author role/provider: code generation / Anthropic\n- Reviewer role/provider: independent code review / OpenAI\n- Reviewed head: `{head}`\n- Verdict: **approve**\n"
+    )
+}
+
+fn pr75_findings(repo: &Repo, main: &str, head: &str) -> Vec<xtask::util::Finding> {
+    review_gates::independent_review(&review_ctx(repo), main, head).expect("gate")
+}
+
+#[test]
+fn pr75_current_main_advance_does_not_delete_evidence() {
+    for main_path in [
+        "docs/requirements/reviews/later-main-report.md",
+        "src/main-only.rs",
+    ] {
+        let (repo, base) = pr75_setup();
+        repo.write(&format!("{REVIEW_DIR}/pr-report.md"), &pr75_report(&base));
+        let head = repo.commit("docs: branch review");
+        repo.git(&["checkout", "-q", "main"]);
+        repo.write(main_path, &pr75_report(&base));
+        let main = repo.commit("docs: independent main change");
+        let found = pr75_findings(&repo, &main, &head);
+        assert!(found.is_empty(), "main-only path {main_path}: {found:?}");
+    }
+}
+
+#[test]
+fn pr75_existing_evidence_remains_immutable() {
+    for variant in ["modify", "delete", "rename", "mode"] {
+        let (repo, base) = pr75_setup();
+        let original = format!("{REVIEW_DIR}/original.md");
+        repo.write(&original, &pr75_report(&base));
+        let main = repo.commit("docs: original evidence");
+        match variant {
+            "modify" => repo.write(&original, &format!("{}\nchanged\n", pr75_report(&base))),
+            "delete" => {
+                repo.git(&["rm", "-q", &original]);
+            }
+            "rename" => {
+                repo.git(&["mv", &original, &format!("{REVIEW_DIR}/renamed.md")]);
+            }
+            "mode" => {
+                repo.git(&["update-index", "--chmod=+x", &original]);
+            }
+            _ => unreachable!(),
+        }
+        let head = if variant == "mode" {
+            repo.git(&["commit", "-q", "-m", "docs: mode"]);
+            repo.git(&["rev-parse", "HEAD"])
+        } else {
+            repo.commit("docs: change existing evidence")
+        };
+        assert!(!pr75_findings(&repo, &main, &head).is_empty(), "{variant}");
+    }
+}
+
+#[test]
+fn pr75_touched_evidence_is_compared_with_current_main() {
+    for identical in [false, true] {
+        let (repo, base) = pr75_setup();
+        let path = format!("{REVIEW_DIR}/report.md");
+        repo.write(&path, &pr75_report(&base));
+        let head = repo.commit("docs: branch review");
+        repo.git(&["checkout", "-q", "main"]);
+        let text = if identical {
+            pr75_report(&base)
+        } else {
+            format!("{}\nmain evidence\n", pr75_report(&base))
+        };
+        repo.write(&path, &text);
+        let main = repo.commit("docs: main review");
+        let result = review_gates::independent_review(&review_ctx(&repo), &main, &head);
+        if identical {
+            assert!(result.expect("identical merge").is_empty());
+        } else {
+            assert!(result.is_err(), "conflicting evidence must fail closed");
+        }
+    }
+}
+
+#[test]
+fn pr75_classifier_rejects_nested_and_noncanonical_paths() {
+    for path in [
+        "docs/requirements/reviews/nested/report.md",
+        "docs/requirements/reviews/./report.md",
+        "docs/requirements/reviews/../report.md",
+        "docs/requirements/reviews//report.md",
+        "./docs/requirements/reviews/report.md",
+        "docs/requirements/reviews/nested\\report.md",
+        "docs/requirements/reviews/.md",
+    ] {
+        assert!(!review_gates::is_review_document_path(path), "{path}");
+    }
+    for path in [
+        "docs/requirements/reviews/report.md",
+        "docs/requirements/STATUS.md",
+    ] {
+        assert!(review_gates::is_review_document_path(path), "{path}");
+    }
+}
+
+#[test]
+fn pr75_nested_report_is_not_exempt_end_to_end() {
+    let (repo, main) = pr75_setup();
+    repo.write(
+        &format!("{REVIEW_DIR}/nested/report.md"),
+        &pr75_report(&main),
+    );
+    let head = repo.commit("docs: nested report");
+    assert!(!pr75_findings(&repo, &main, &head).is_empty());
+}
+
+#[test]
+fn pr75_rejects_malformed_sha_headers() {
+    for variant in [
+        "hex-suffix",
+        "text-suffix",
+        "peel",
+        "short",
+        "nonhex",
+        "uppercase",
+        "extra-tick",
+    ] {
+        let (repo, main) = pr75_setup();
+        let sha = match variant {
+            "hex-suffix" => format!("{main}a"),
+            "text-suffix" => format!("{main}not-a-sha"),
+            "peel" => format!("{main}^{{}}"),
+            "short" => main[..7].to_owned(),
+            "nonhex" => "z".repeat(40),
+            "uppercase" => "A".repeat(40),
+            "extra-tick" => format!("`{main}"),
+            _ => unreachable!(),
+        };
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &pr75_report(&sha));
+        let head = repo.commit("docs: malformed reference");
+        assert!(!pr75_findings(&repo, &main, &head).is_empty(), "{variant}");
+    }
+}
+
+#[test]
+fn pr75_rejects_empty_or_unknown_independent_verdict() {
+    for verdict in ["", "   ", "****", "**unknown**", "**request bananas**"] {
+        let (repo, main) = pr75_setup();
+        let text = pr75_report(&main).replace("**approve**", verdict);
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &text);
+        let head = repo.commit("docs: invalid verdict");
+        assert!(!pr75_findings(&repo, &main, &head).is_empty(), "{verdict}");
+    }
+}
+
+#[test]
+fn pr75_rejects_empty_triaged_report() {
+    for reference in ["", "   ", "``"] {
+        let (repo, main) = pr75_setup();
+        let text = format!(
+            "- Triager role/provider: triage / OpenAI\n- Reviewed head: `{main}`\n- Triaged report: {reference}\n"
+        );
+        repo.write(&format!("{REVIEW_DIR}/triage.md"), &text);
+        let head = repo.commit("docs: blank triage reference");
+        assert!(
+            !pr75_findings(&repo, &main, &head).is_empty(),
+            "{reference}"
+        );
+    }
+}
+
+#[test]
+fn pr75_accepts_recognized_publication_verdicts() {
+    for verdict in [
+        "approve",
+        "approved",
+        "merge-ready",
+        "request changes",
+        "request-changes",
+        "must-fix",
+    ] {
+        let (repo, main) = pr75_setup();
+        let text = pr75_report(&main).replace("**approve**", &format!("**{verdict}**"));
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &text);
+        let head = repo.commit("docs: valid verdict");
+        let found = pr75_findings(&repo, &main, &head);
+        assert!(found.is_empty(), "{verdict}: {found:?}");
+    }
+}
+
+#[test]
+fn pr75_documents_must_be_regular_files() {
+    for path in [
+        "docs/requirements/STATUS.md",
+        "docs/requirements/reviews/report.md",
+    ] {
+        for mode in ["120000", "160000"] {
+            let (repo, main) = pr75_setup();
+            let object = if mode == "160000" {
+                main.clone()
+            } else {
+                repo.write("target.md", &pr75_report(&main));
+                repo.git(&["hash-object", "-w", "target.md"])
+            };
+            repo.git(&[
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                &format!("{mode},{object},{path}"),
+            ]);
+            repo.git(&["commit", "-q", "-m", "chore: nonregular document"]);
+            let head = repo.git(&["rev-parse", "HEAD"]);
+            let found = pr75_findings(&repo, &main, &head);
+            assert!(
+                found
+                    .iter()
+                    .any(|finding| finding.message.contains("regular file")),
+                "{mode} {path}: {found:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn pr75_status_only_is_explicitly_allowed_by_d77() {
+    let (repo, main) = pr75_setup();
+    repo.write("docs/requirements/STATUS.md", "# Status\nupdated\n");
+    let head = repo.commit("docs: status");
+    assert!(pr75_findings(&repo, &main, &head).is_empty());
+}
+
+#[test]
+fn pr75_google_author_output_requires_owner_authorized_pairing() {
+    let (repo, main) = pr75_setup();
+    let text =
+        pr75_report(&main).replace("code generation / Anthropic", "code generation / Google");
+    repo.write(&format!("{REVIEW_DIR}/report.md"), &text);
+    let head = repo.commit("docs: review Google output");
+    let found = pr75_findings(&repo, &main, &head);
+    assert!(!found.is_empty(), "unauthorized pairing accepted");
+}
+
+fn owner_policy_findings(
+    repo: &Repo,
+    main: &str,
+    head: &str,
+) -> Result<Vec<xtask::util::Finding>, String> {
+    review_gates::policy_approval(
+        &review_ctx(repo),
+        main,
+        &PullRequest {
+            repository: "example/repo".to_owned(),
+            number: 1,
+            head: head.to_owned(),
+            author: "Tobechukwu-Njoku".to_owned(),
+        },
+        &[],
+    )
+}
+
+fn criss_cross(revert: bool, report: bool) -> (Repo, String, String) {
+    let (repo, base) = pr75_setup();
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("xtask/gate.rs", "safe\n");
+    repo.commit("test: initial gate");
+    repo.git(&["checkout", "-q", "-b", "feature"]);
+    repo.write("xtask/gate.rs", "hardened\n");
+    repo.commit("test: harden gate");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("main.txt", "work\n");
+    let first = repo.commit("test: independent work");
+    repo.git(&[
+        "merge",
+        "-q",
+        "--no-ff",
+        "feature",
+        "-m",
+        "test: merge feature",
+    ]);
+    let main = repo.git(&["rev-parse", "HEAD"]);
+    repo.git(&["checkout", "-q", "-B", "pr", &first]);
+    if revert {
+        repo.git(&[
+            "merge",
+            "-q",
+            "-s",
+            "ours",
+            "feature",
+            "-m",
+            "test: discard hardening",
+        ]);
+    } else {
+        repo.git(&[
+            "merge",
+            "-q",
+            "--no-ff",
+            "feature",
+            "-m",
+            "test: preserve hardening",
+        ]);
+    }
+    if report {
+        repo.write(&format!("{REVIEW_DIR}/report.md"), &pr75_report(&base));
+        repo.commit("test: publish report");
+    }
+    let head = repo.git(&["rev-parse", "HEAD"]);
+    assert_eq!(
+        repo.git(&["merge-base", "--all", &main, &head])
+            .lines()
+            .count(),
+        2
+    );
+    (repo, main, head)
+}
+
+#[test]
+fn pr75_criss_cross_reverts_require_both_gates() {
+    for report in [false, true] {
+        let (repo, main, head) = criss_cross(true, report);
+        assert!(!pr75_findings(&repo, &main, &head).is_empty());
+        assert!(
+            !owner_policy_findings(&repo, &main, &head)
+                .expect("policy gate")
+                .is_empty()
+        );
+        assert!(!review_gates::still_current(repo.path(), &main, &main, &head).expect("freshness"));
+    }
+}
+
+#[test]
+fn pr75_criss_cross_noop_preserves_main() {
+    for report in [false, true] {
+        let (repo, main, head) = criss_cross(false, report);
+        assert!(pr75_findings(&repo, &main, &head).is_empty());
+        assert!(
+            owner_policy_findings(&repo, &main, &head)
+                .expect("policy gate")
+                .is_empty()
+        );
+    }
+}
+
+#[test]
+fn pr75_single_base_revert_requires_both_gates() {
+    let (repo, _) = pr75_setup();
+    repo.write("xtask/gate.rs", "safe\n");
+    repo.commit("test: initial gate");
+    repo.write("xtask/gate.rs", "hardened\n");
+    let main = repo.commit("test: harden gate");
+    repo.git(&["revert", "--no-edit", &main]);
+    let head = repo.git(&["rev-parse", "HEAD"]);
+    assert!(!pr75_findings(&repo, &main, &head).is_empty());
+    assert!(
+        !owner_policy_findings(&repo, &main, &head)
+            .expect("policy gate")
+            .is_empty()
+    );
+}
+
+#[test]
+fn pr75_conflicting_merges_fail_both_gates_closed() {
+    let (repo, _) = pr75_setup();
+    repo.write("README.md", "branch\n");
+    let head = repo.commit("test: branch change");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("README.md", "main change\n");
+    let main = repo.commit("test: conflicting main change");
+    assert!(review_gates::independent_review(&review_ctx(&repo), &main, &head).is_err());
+    assert!(owner_policy_findings(&repo, &main, &head).is_err());
+}
+
+#[test]
+fn pr81_unrelated_malformed_main_report_does_not_block_ordinary_pr() {
+    let repo = Repo::new();
+    repo.write("README.md", "main\n");
+    let base = repo.commit("chore: main");
+    let mut malformed = evidence(&base).remove(0).1;
+    malformed.push_str("- Verdict: request changes\n");
+    assert!(!review_gates::parse_header(&malformed).errors.is_empty());
+    repo.write(&format!("{REVIEW_DIR}/unrelated.md"), &malformed);
+    repo.commit("docs: unrelated malformed report");
+    repo.git(&["checkout", "-q", "-b", "pr"]);
+    repo.write("run.sh", "echo ok\n");
+    let reviewed = repo.commit("feat: script");
+    repo.git(&["checkout", "-q", "main"]);
+    for (path, text) in evidence(&reviewed) {
+        repo.write(&path, &text);
+    }
+    let main = repo.commit("docs: review evidence");
+    let findings =
+        review_gates::independent_review(&review_ctx(&repo), &main, &reviewed).expect("gate");
+    assert!(findings.is_empty(), "{findings:?}");
+}
+
+#[test]
+fn pr75_duplicate_headers_reject_publication_and_trusted_evidence() {
+    for field in [
+        "Reviewed head",
+        "Verdict",
+        "Author role/provider",
+        "Reviewer role/provider",
+        "Triaged report",
+        "Triager role/provider",
+    ] {
+        for invalid in [false, true] {
+            let (repo, main) = pr75_setup();
+            let mut text = pr75_report(&main);
+            if field.starts_with("Triag") {
+                text.push_str(
+                    "- Triager role/provider: triage / OpenAI\n- Triaged report: `report.md`\n",
+                );
+            }
+            let original = text
+                .lines()
+                .find(|line| line.starts_with(&format!("- {field}:")))
+                .expect("field");
+            let duplicate = if invalid {
+                format!("- {field}: garbage")
+            } else {
+                original.to_owned()
+            };
+            text.push_str(&format!("{duplicate}\n"));
+            let parsed = review_gates::parse_header(&text);
+            assert!(!parsed.errors.is_empty(), "{field} invalid={invalid}");
+            let reports = vec![(format!("{REVIEW_DIR}/report.md"), text.clone())];
+            let matrix =
+                review_gates::Matrix::parse(include_str!("../policy/review.toml")).expect("matrix");
+            let findings =
+                review_gates::evaluate(&reports, &[main.clone()].into(), &|_| true, &matrix);
+            assert!(
+                findings
+                    .iter()
+                    .any(|finding| finding.message.contains("duplicate"))
+            );
+            repo.write(&reports[0].0, &text);
+            let head = repo.commit("test: duplicate header");
+            assert!(
+                !pr75_findings(&repo, &main, &head).is_empty(),
+                "{field} invalid={invalid}"
+            );
+        }
+    }
+}
