@@ -5,7 +5,7 @@ description: >
   except for the exact bootstrap seed SHA attested on main (load.sh). Policy
   checks, deny.toml and check configuration are read from this tree, never from
   the pull request. This action is itself a protected path: a pull request that
-  changes it needs the owner's exact-head approval (trusted policy-approval gate).
+  changes it needs the owner's current-head approval (trusted review-tier gate).
 outputs:
   dir:
     description: Path of the trusted policy tree.

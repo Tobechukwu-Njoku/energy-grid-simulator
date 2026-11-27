@@ -1,6 +1,6 @@
 # Trusted gate graph and workflow policy (ADR 0001, NFR-12). The trusted gates read
 # this file from main, so a pull request cannot weaken the rules judging it.
-# Changing it needs the policy owner's approval (.github/CODEOWNERS, policy-approval).
+# Changing it needs the policy owner's approval (.github/CODEOWNERS, review-tier).
 
 allowed_triggers = ["pull_request", "push"]
 # The only `${{ }}` expressions allowed inside `run:` scripts. Everything else,
@@ -18,7 +18,7 @@ runner_labels = ["ubuntu-24.04", "macos-15"]
 # GIT_*, ...) are rejected even if listed here.
 allowed_env = [
     "CARGO_TERM_COLOR", "CARGO_INCREMENTAL", "CARGO_DENY_VERSION", "NEXTEST_VERSION",
-    "TRUSTED", "MAIN", "GH_TOKEN", "NEEDS", "NUMBER", "HEAD_SHA",
+    "TRUSTED", "MAIN", "GH_TOKEN", "NEEDS", "NUMBER", "HEAD_SHA", "REVIEW_RESULT",
 ]
 # Lines a `run:` script may contain that name a GitHub Actions file-command
 # file ($GITHUB_ENV, $GITHUB_PATH, $GITHUB_OUTPUT, $GITHUB_STATE,
@@ -54,11 +54,11 @@ link_search_roots = [
 # published name of every gate job and aggregator below they are protected: no
 # job of any workflow may take one as its id or name except the owning
 # workflow's job of that id (compared case-insensitively).
-required_checks = ["merge-gates", "independent-review", "policy-approval"]
+required_checks = ["merge-gates", "review-tier"]
 
 # Pull-request gates. They build and test PR code with a read-only token and no
 # secrets. Their workflow files are protected paths: any change needs the owner's
-# exact-head approval, checked by the trusted policy-approval gate below (F1).
+# current-head approval, checked by the trusted review-tier gate below (F1).
 [[workflow]]
 file = ".github/workflows/ci.yml"
 jobs = [
@@ -88,6 +88,8 @@ provenance = "provenance, secrets and raw data (D-56)"
 # Git data and never check out, build or run PR code (F1, ADV23R-08).
 [[workflow]]
 file = ".github/workflows/trusted-gates.yml"
-jobs = ["independent-review", "policy-approval"]
+jobs = ["review-tier"]
 triggers = ["pull_request_target"]
 trusted = true
+[workflow.names]
+review-tier = "evaluate review tier"

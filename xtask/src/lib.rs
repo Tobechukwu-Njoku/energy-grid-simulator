@@ -10,7 +10,7 @@ pub mod attribution;
 pub mod build_gate;
 pub mod docs;
 pub mod repository;
-pub mod review_gates;
+pub mod review_tier;
 pub mod rust_policy;
 pub mod secrets;
 pub mod util;

@@ -3,8 +3,8 @@
 # Policy checks, deny.toml and check configuration come from the current tip of
 # main (.github/actions/trusted-policy), never from the pull request (R1, F1).
 # This file is defined by the pull request when it runs; it is a protected path,
-# so the trusted policy-approval gate (trusted-gates.yml, run from main) fails
-# unless the owner approves the exact head of any change to it.
+# so the trusted review-tier gate (trusted-gates.yml, run from main) fails
+# unless the owner approves the current head of any change to it.
 # Never add pull_request_target, workflow_run, self-hosted runners or secrets here.
 name: ci
 
@@ -201,6 +201,6 @@ jobs:
           echo "N/A: benchmark-regression: B1 profile starts at M1 on the D-65 target runner"
           echo "N/A: mutation: no commitment/redispatch/network/pricing/optimisation model logic yet"
           echo "N/A: gpu-validation: no enabled GPU adapter (cuOpt is a capability stub)"
-          echo "SEPARATE: independent-review and policy-approval are required checks in trusted-gates.yml (run from main)"
+          echo "SEPARATE: review-tier is a required check in trusted-gates.yml (run from main)"
           failed="$(printf '%s' "$NEEDS" | jq '[.[] | select(.result != "success")] | length')"
           test "$failed" -eq 0

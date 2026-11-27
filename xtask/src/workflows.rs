@@ -3,7 +3,8 @@
 //! Every workflow is parsed with a YAML 1.2 parser, so flow mappings such as
 //! `permissions: {contents: write}` are seen (R6, ADV23-15). Checks:
 //! allow-listed triggers only; explicit top-level permissions; every
-//! permission read or none; hosted runner labels only; every action and
+//! permission read or none except status publishing in the trusted review job;
+//! hosted runner labels only; every action and
 //! reusable workflow pinned to a full SHA; checkout never persists
 //! credentials; `run:` scripts contain only allow-listed `${{ }}` expressions
 //! (ADV23-16) and never invoke Python (D-73); no secrets but `GITHUB_TOKEN`;
@@ -26,7 +27,7 @@
 //!    variables from the environment it builds in. Every other step of every
 //!    gate job runs trusted code from `main` before any pull-request code.
 //! 2. Workflow and action files are protected paths: any change needs the
-//!    owner's exact-head approval from the trusted `policy-approval` gate.
+//!    owner's current-head approval from the trusted `review-tier` gate.
 //! 3. As a lint over the reviewed text, a `run:` script may name a
 //!    file-command file only on a line the trusted `allowed_file_command_lines`
 //!    lists exactly (none by default), and may not use the indirect forms
@@ -176,19 +177,6 @@ impl Policy {
 }
 
 impl Policy {
-    /// Trusted (`pull_request_target`) workflow files and their gate jobs.
-    #[must_use]
-    pub fn trusted_gates(&self) -> (Vec<String>, Vec<String>) {
-        let trusted: Vec<&Graph> = self.graphs.iter().filter(|graph| graph.trusted).collect();
-        (
-            trusted.iter().map(|graph| graph.file.clone()).collect(),
-            trusted
-                .iter()
-                .flat_map(|graph| graph.jobs.iter().cloned())
-                .collect(),
-        )
-    }
-
     /// Every check name the trusted policy defines, with the workflow file
     /// and job that own it: the id AND the published `name:` of each gate job
     /// and aggregator of every gate graph (`merge-gates` included, R9-02,
@@ -291,12 +279,20 @@ fn strings(yaml: &Yaml, out: &mut Vec<String>) {
     }
 }
 
-fn check_permissions(path: &str, scope: &str, yaml: &Yaml, findings: &mut Vec<Finding>) {
+fn check_permissions(
+    path: &str,
+    scope: &str,
+    yaml: &Yaml,
+    allow_status_write: bool,
+    findings: &mut Vec<Finding>,
+) {
     match yaml {
         Yaml::Hash(_) => {
             for (name, level) in entries(yaml) {
                 let level = scalar(level);
-                if level != "read" && level != "none" {
+                let allowed = matches!(level.as_str(), "read" | "none")
+                    || (allow_status_write && name == "statuses" && level == "write");
+                if !allowed {
                     findings.push(Finding::at(
                         path,
                         None,
@@ -315,6 +311,68 @@ fn check_permissions(path: &str, scope: &str, yaml: &Yaml, findings: &mut Vec<Fi
             ),
         )),
     }
+}
+
+/// Jobs that reuse a check name defined by the trusted policy, which could
+/// make a spoofed status look like the real one (F1). Every gate job,
+/// aggregator (`merge-gates`) and required check is protected, in trusted and
+/// pull-request workflows alike: only the owning workflow's job with exactly
+/// that id may carry the name (ADV23R8-01).
+#[must_use]
+pub fn spoofed_gate_names(workflows: &[(String, String)], gates: &[ProtectedGate]) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    for (path, text) in workflows {
+        let Ok(documents) = YamlLoader::load_from_str(text) else {
+            continue;
+        };
+        let Some(jobs) = documents
+            .first()
+            .and_then(|doc| doc.as_hash())
+            .and_then(|hash| hash.get(&Yaml::String("jobs".into())))
+            .and_then(Yaml::as_hash)
+        else {
+            continue;
+        };
+        for (id, job) in jobs {
+            let id = id.as_str().unwrap_or_default();
+            let name = job
+                .as_hash()
+                .and_then(|hash| hash.get(&Yaml::String("name".into())));
+            // GitHub names the check run after `name:`, or after the job id
+            // when `name:` is absent; check names compare case-insensitively
+            // (ADV23R7-01). A computed name cannot be judged: fail closed.
+            let name = match name {
+                None => id,
+                Some(value) => value.as_str().unwrap_or("${{"),
+            };
+            if name.contains("${{") {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    format!("job `{id}` has a computed or non-string name; give it a literal name"),
+                ));
+                continue;
+            }
+            let same = |text: &str, gate: &str| text.trim().eq_ignore_ascii_case(gate.trim());
+            // Only the owning job (same file, same id) may publish a
+            // protected name; its exact name is checked by the gate graph.
+            if let Some(gate) = gates.iter().find(|gate| {
+                (same(id, &gate.name) || same(name, &gate.name))
+                    && !(gate.file.as_deref() == Some(path.as_str())
+                        && gate.job.as_deref() == Some(id))
+            }) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    format!(
+                        "job `{id}` reuses the check name `{}` defined by the trusted policy; rename it",
+                        gate.name
+                    ),
+                ));
+            }
+        }
+    }
+    findings
 }
 
 /// Whether a `uses:` reference is pinned. A local reference is accepted only
@@ -534,7 +592,7 @@ pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
     }
 
     match get(workflow, "permissions") {
-        Some(permissions) => check_permissions(path, "workflow", permissions, &mut findings),
+        Some(permissions) => check_permissions(path, "workflow", permissions, false, &mut findings),
         None => findings.push(Finding::at(
             path,
             None,
@@ -553,7 +611,23 @@ pub fn check_workflow(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
         findings.push(Finding::at(path, None, "workflow has no jobs"));
     }
     for (job_name, job) in &job_entries {
-        check_job(path, job_name, job, policy, &mut findings);
+        let allow_status_write = trusted
+            && triggers == ["pull_request_target"]
+            && get(workflow, "on")
+                .and_then(|on| get(on, "pull_request_target"))
+                .and_then(|target| get(target, "branches"))
+                .and_then(Yaml::as_vec)
+                .is_some_and(|branches| branches == &[Yaml::String("main".into())])
+            && path == ".github/workflows/trusted-gates.yml"
+            && job_name == "review-tier";
+        check_job(
+            path,
+            job_name,
+            job,
+            policy,
+            allow_status_write,
+            &mut findings,
+        );
         if triggers.iter().any(|t| t == "pull_request_target") {
             check_trusted_job(path, job_name, job, &mut findings);
         }
@@ -754,10 +828,17 @@ fn check_env(path: &str, name: &str, _value: &Yaml, policy: &Policy, findings: &
     }
 }
 
-fn check_job(path: &str, name: &str, job: &Yaml, policy: &Policy, findings: &mut Vec<Finding>) {
+fn check_job(
+    path: &str,
+    name: &str,
+    job: &Yaml,
+    policy: &Policy,
+    allow_status_write: bool,
+    findings: &mut Vec<Finding>,
+) {
     let scope = format!("job `{name}`");
     if let Some(permissions) = get(job, "permissions") {
-        check_permissions(path, &scope, permissions, findings);
+        check_permissions(path, &scope, permissions, allow_status_write, findings);
     }
     if let Some(uses) = get(job, "uses") {
         let action = scalar(uses);
@@ -1144,10 +1225,7 @@ pub fn check(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     }
     // ADV23R8-01: no job anywhere may take a check name the policy defines,
     // except the owning workflow's job of that id.
-    findings.extend(crate::review_gates::spoofed_gate_names(
-        &texts,
-        &policy.protected_gates(),
-    ));
+    findings.extend(spoofed_gate_names(&texts, &policy.protected_gates()));
     // Every action definition anywhere in the repository is checked, not
     // only those under .github/actions/ (ADV23R4-03).
     for path in tracked(&ctx.repo)? {
@@ -1199,7 +1277,14 @@ pub fn check_action(path: &str, text: &str, policy: &Policy) -> Vec<Finding> {
             .unwrap_or(Yaml::Array(Vec::new())),
     );
     let mut findings = Vec::new();
-    check_job(path, "composite", &Yaml::Hash(job), policy, &mut findings);
+    check_job(
+        path,
+        "composite",
+        &Yaml::Hash(job),
+        policy,
+        false,
+        &mut findings,
+    );
     let mut all = Vec::new();
     strings(action, &mut all);
     if all
@@ -1594,7 +1679,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: {persist-credentials: false, fetch-depth: 0}
-      - run: cargo run -p xtask -- review --main refs/remotes/origin/main
+      - run: cargo run -p xtask -- review-tier --main refs/remotes/origin/main
 "#;
 
     fn run_as(path: &str, text: &str) -> Vec<Finding> {
@@ -1637,9 +1722,25 @@ jobs:
         assert!(!run_as("t.yml", &dropped).is_empty());
         let conditional = TRUSTED.replace("  review:\n", "  review:\n    if: false\n");
         assert!(!run_as("t.yml", &conditional).is_empty());
-        let (files, jobs) = Policy::parse(POLICY).expect("policy").trusted_gates();
-        assert_eq!(files, ["t.yml"]);
-        assert_eq!(jobs, ["review"]);
+    }
+
+    #[test]
+    fn status_writes_are_limited_to_the_main_review_tier_job() {
+        let path = ".github/workflows/trusted-gates.yml";
+        let text = include_str!("../../.github/workflows/trusted-gates.yml");
+        let policy = Policy::parse(include_str!("../policy/gates.toml")).expect("policy");
+        assert!(check_workflow(path, text, &policy).is_empty());
+        for changed in [
+            text.replace("branches: [main]", "branches: [other]"),
+            text.replace("statuses: write", "actions: write"),
+            text.replace("  review-tier:", "  other:"),
+        ] {
+            assert!(
+                check_workflow(path, &changed, &policy)
+                    .iter()
+                    .any(|finding| finding.message.contains("is not read-only"))
+            );
+        }
     }
 
     // ADV23R8-02: dynamic-loader variables are rejected at workflow, job and

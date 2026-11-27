@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use xtask::util::{Ctx, Finding, report};
-use xtask::{attribution, build_gate, docs, repository, review_gates, rust_policy, workflows};
+use xtask::{attribution, build_gate, docs, repository, review_tier, rust_policy, workflows};
 
 const HELP: &str = "\
 usage: cargo xtask [--repo DIR] [--policy DIR] <command> [options]
@@ -40,9 +40,7 @@ commands:
                  body's GitHub edit history (gh api graphql, GH_TOKEN) shows
                  the bot introduced it; --body-history FILE replays a saved
                  GraphQL response locally (refused in GitHub Actions)
-  review         independent-review evidence gate: --main REV (current main,
-                 also the evidence tree); head from the pull-request event
-  approval       protected-path owner approval gate: --main REV; event fields
+  review-tier    review and feat/fix test-file gate: --main REV; PR from the event
   all            policy, provenance and docs
 ";
 
@@ -137,7 +135,7 @@ fn run_attribution(args: &Args) -> Result<bool, String> {
     } else if let Some((name, value)) = event()? {
         let mut range = attribution::Range::from_event(&name, &value)?;
         if range.body.is_some() {
-            pull = Some(review_gates::PullRequest::from_event(&value));
+            pull = Some(review_tier::PullRequest::from_event(&value));
         }
         if let Some(base) = option(args, "--base-ref") {
             range.base = Some(base.to_owned());
@@ -269,23 +267,12 @@ fn run(args: &Args) -> Result<bool, String> {
             ))
         }
         "attribution" => run_attribution(args),
-        "review" => {
-            let main = option(args, "--main").ok_or("review: --main REV required")?;
-            let value = pull_request_event()?;
-            let head = value["pull_request"]["head"]["sha"]
-                .as_str()
-                .unwrap_or_default();
-            let findings = review_gates::independent_review(&args.ctx, main, head)?;
-            Ok(report("independent-review", &findings))
-        }
-        "approval" => {
-            let main = option(args, "--main").ok_or("approval: --main REV required")?;
-            let value = pull_request_event()?;
-            let pull = review_gates::PullRequest::from_event(&value)?;
-            let gates = workflows::Policy::load(&args.ctx)?.protected_gates();
+        "review-tier" => {
+            let main = option(args, "--main").ok_or("review-tier: --main REV required")?;
+            let pull = review_tier::PullRequest::from_event(&pull_request_event()?)?;
             Ok(report(
-                "policy-approval",
-                &review_gates::policy_approval(&args.ctx, main, &pull, &gates)?,
+                "review-tier",
+                &review_tier::check(&args.ctx, main, &pull)?,
             ))
         }
         "all" => {
