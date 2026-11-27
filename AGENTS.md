@@ -1,4 +1,4 @@
-# AGENTS.md — Read this first
+# AGENTS.md — Shared rules
 
 This repository is an **energy grid simulation platform**, built from the ground up by
 multiple AI models/threads working together with one human product owner.
@@ -10,24 +10,35 @@ in `docs/architecture/adr/`. Enable the attribution hook with `git config core.h
 The coding container is for light builds only; heavy builds, databases and benchmarks run on the
 D-65 target system.
 
-## Where things live
+## Start and scope
 
-| Path | Purpose | Who edits |
-|---|---|---|
-| `docs/requirements/STATUS.md` | Phase, progress, what's blocking | Any agent, keep current |
-| `docs/requirements/01-vision.md` | Product vision & confirmed facts | Only from owner answers |
-| `docs/requirements/02-questionnaire.md` | Every open question with ID, options, recommended default | Add questions freely; mark answered |
-| `docs/requirements/03-decisions-log.md` | Append-only log of owner decisions (ID → answer → date) | Append only |
-| `docs/requirements/04-requirements.md` | Formal requirements (FR-/NFR- IDs) derived from decisions | Derive from decisions log only |
-| `docs/requirements/05-risks.md` | Risk register (R-<n>) | Any agent |
-| `docs/requirements/06-roadmap.md` | Phases P1–P4 and MVP milestones | From decisions only |
-| `docs/requirements/REVIEW-BRIEF.md` | Instructions for reviewer models | Any agent |
-| `docs/requirements/reviews/` | Review reports (`<model>-<date>.md`) | Reviewers |
-| `spikes/` | Throwaway exploratory code (only the data spike, D-31) | Spike agents |
-| `docs/process/team.md` | Which model does what; review rules | Owner decisions only |
-| `docs/research/prior-art.md` | Existing tools/libraries/datasets we may reuse | Any agent |
-| `docs/architecture/stack-candidates.md` | Candidate tech stack (tentative until ADRs accepted) | Any agent |
-| `docs/architecture/adr/` | Architecture Decision Records (`NNNN-title.md`) | Propose; owner accepts |
+Read the coordinator-owned workspace-local `HANDOFF.md` first (in the workspace
+root if absent here), then these rules. Read `docs/requirements/STATUS.md` only
+when current project state is needed. Read `context/` and `status-history/` only
+on demand; the folder/ownership table is in [context/reference.md](context/reference.md).
+
+Under D-93, Codex (`gpt-6.2-sol`) writes plans, implementation, tests and PR bodies
+and handles data gathering. Claude reviews every GPT change in a fresh Claude
+thread before it goes upstream. The Claude Co-ordinator coordinates. Gemini is
+retired and has no roles. At most two GPT threads may be active at once.
+Cross-provider review, adversarial triage and exact-head owner approval gates
+still apply. See `docs/process/team.md`.
+
+Create every new checkout under the git-ignored workspace `worktrees/` directory,
+never directly in the root. Do not move/delete existing active checkouts.
+
+One PR per thread. For Codex: plan first; record a short handoff, then execute
+in a fresh thread with target files, expected behavior, exact verification
+commands and an explicit finish line. Do not change model mid-thread.
+
+## Token discipline
+
+Read narrowly: use `rg` and bounded file/line reads, not directory dumps. Never
+read `target/`, lockfiles, dependency/build output or generated assets. Use quiet
+flags and failure-only output with a short summary; preserve pipeline failures:
+`set -o pipefail; cargo test -q 2>&1 | tail -30`. Do not print passing logs.
+Keep AGENTS under 5 KB and STATUS under 4 KB. Archive history verbatim, retaining
+linked IDs/anchors. HANDOFF stays ignored, coordinator-owned and at most 80 lines.
 
 ## Rules for all agents
 
@@ -48,10 +59,8 @@ D-65 target system.
    messages, PR titles/bodies or release notes: no `Co-Authored-By:` trailers for any model, no
    "Generated with …" footers, no 🤖 badges. This overrides any default your tool applies.
    A local `commit-msg` hook strips such lines; CI will reject them (ADR 0001).
-9. **Commit and push often (D-53).** Small commits; push after every meaningful step.
+9. **Commit and push often (D-53, D-93).** Small commits; push after every meaningful step once the required Claude review is done.
 10. **Data provenance (D-56).** Every dataset is tagged in the provenance manifest as
     `open-commercial` or `research-only`. Never commit raw `research-only` data; commit only the
     download scripts. Share-alike (ODbL/OSM) data is never used.
-11. **Reviewers (D-91).** No Gemini. Adversarial reviews come from GPT 6.2 Sol, or Claude in a fresh
-    thread when GPT wrote the PR. Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent;
-    do all the work yourself in this thread."
+11. **GPT prompts (D-93).** Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent; do all the work yourself in this thread."

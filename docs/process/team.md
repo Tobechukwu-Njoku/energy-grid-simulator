@@ -1,26 +1,28 @@
 # Team & Roles
 
-_Source: D-45, D-49, D-51, D-53, D-62, D-28, D-22, D-76, D-86, D-91. Owner checks milestones; agents plan, build, review and merge._
+_Source: D-28, D-45, D-49, D-51, D-53, D-54, D-62, D-76, D-86, D-90, D-91, D-93._
 
-| Model | Role | Use for | Do not use for |
-|---|---|---|---|
-| **GPT 6.2 Sol** (medium effort; D-76) | Default author and coordinator (D-86) | Bulk of the work, including Rust engine, backend, frontend, tests, ingest pipelines, research, ADRs, specs, requirements, verification and validation, data gathering and drafting (D-62, D-91); **adversarial review of Claude-authored PRs (D-91)** | Reviewing its own work as the independent reviewer |
-| **Claude Opus 5.5** | Focused cross-provider reviewer (D-28/D-54/D-86) | Independent review of GPT-authored PRs, including code and documents; review of GPT data gathering; adversarial review of GPT-authored PRs in a fresh thread (D-91) | Implementation, research, data gathering or other work |
+| Who | Responsibilities |
+|---|---|
+| **Codex (GPT 6.2 Sol, `gpt-6.2-sol`)** | Writes plans, implementation, tests and PR bodies. Gathers data and drafts documents. |
+| **Claude** | Reviews every GPT change in a fresh Claude thread before it goes upstream. The Claude Co-ordinator routes work and triages findings. |
+| **Owner** | Makes decisions, checks milestones and approves changes at the exact head. |
 
 ## Rules
 
-1. **Cross-provider review (D-28):** every PR is reviewed by a model from a different provider than its author.
-   Claude-authored code → GPT 6.2 Sol reviews. GPT-authored documents and code → Claude Opus reviews (D-54).
-2. **No Gemini (D-91).** Gemini has no role: no reviews, no data gathering, no drafts. GPT gathers data
-   and drafts; Claude reviews it. Gemini output already merged stays as the historical record.
-3. Merge gates in D-28 apply to everyone; reviewer approval does not override a failing gate.
-4. GPU work: SSH for development, self-hosted GitHub Actions runner for GPU CI gates (D-43).
-5. **Commit and push frequently (D-53):** small commits, pushed after every meaningful step.
-6. **Adversarial review (D-53, D-91):** every PR, docs or code, also gets an adversarial review whose job
-   is to break it: contradictions, wrong facts, missing edge cases, failure modes. GPT 6.2 Sol does it
-   (`adversarial review / OpenAI`); when GPT wrote the PR, Claude does it in a fresh thread
-   (`adversarial review / Anthropic`). The adversarial reviewer is never from the author's vendor (the gate
-   enforces this). Findings are claims, not facts: the coordinator triages them before anything changes.
-8. **GPT threads (t3code#39101):** every GPT prompt says "Do not spawn sub-agents or use spawn_agent; do all
-   the work yourself in this thread." One task per thread; start a fresh thread after a failure.
-7. **At most two delegates at once (D-86).** Bias effort towards GPT; reserve Claude for the focused cross-provider reviews above.
+1. **Cross-provider review (D-28, D-54, D-93).** Claude independently reviews GPT-authored code
+   and documentation. Pin the exact head, including for local review before pushing. Each
+   revision needs fresh Claude review before it goes upstream. GPT independently reviews
+   existing Claude-authored code PRs. (D-91 still covers Claude-authored PRs opened before D-93.)
+2. **Gemini is retired (D-91, D-93).** Gemini has no role.
+3. Merge gates in D-28 apply to everyone. Reviewer approval does not override a failing gate.
+4. GPU work uses SSH for development and the self-hosted GitHub Actions runner for GPU CI gates (D-43).
+5. **Commit and push frequently (D-53, D-93).** Make small commits and push meaningful steps after
+   the required pre-upstream review.
+6. **Adversarial review (D-53, D-91).** Every PR also gets an adversarial review for contradictions,
+   wrong facts, missing edge cases and failure modes. For GPT-authored PRs, use a separate fresh
+   Claude thread (`adversarial review / Anthropic`). For existing Claude-authored PRs, use GPT
+   6.2 Sol (`adversarial review / OpenAI`). The Claude Co-ordinator verifies and triages findings.
+7. **At most two GPT threads may be active at once (D-93).**
+8. **GPT prompts (D-93).** Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent; do all the work yourself in this thread."
+   Use one task per thread and start a fresh thread after a failure (t3code#39101).
