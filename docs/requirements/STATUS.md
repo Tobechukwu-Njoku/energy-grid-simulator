@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-18_
 
 Coordinator update (2026-11-26): #92 was repaired and pushed at `7a0eb12` as one
 commit containing only its original net diff on current main; four newer review
@@ -19,6 +19,24 @@ Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
 
+**PR #53 reconciliation (2026-11-18 UTC):** merged current `origin/main`,
+preserving both STATUS histories. [Cumulative triage](reviews/triage-pr23.md)
+now reconciles its round-14 snapshot with revision-15 verify-6 **ATTEST** for
+`260d5f9410ca9f6fff832752c8146e253765f796` and PR #23's merge as
+`3cf6a3f3327f0e42e0bfbf7112a9fa092b64722a` on 2026-11-16. Historical open rows
+are retained as dated evidence. Deferred encoded-key, terminator/header and
+lowercase-name work is being handled separately on
+`fix/xtask-deferred-policy-followups`, for a protected follow-up PR under D-75.
+This reconciliation supplies no new approving review or M0 sign-off.
+
+**PR #23 cumulative triage (historical snapshot, 2026-11-14 UTC):**
+[triage record](reviews/triage-pr23.md) inventories all 182 finding IDs from 28
+reports across rounds 1–14 against head `112de8d2b7452ecfcb45b79f91d96841add16954`,
+with revision/test evidence, partial-fix qualifications, accepted limitations and
+deferred operations. All 12 round-14 items remain **OPEN — scheduled for revision
+15**; revision 15 is paused. D-75 ends the review loop after that final revision
+and coordinator reproduction verification; this record does not approve, attest
+or modify PR #23.
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published
 [triage record](reviews/triage-gemini-2026-11-16-pr71.md); no implementation
