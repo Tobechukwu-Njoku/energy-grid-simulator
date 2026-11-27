@@ -819,6 +819,11 @@ verification and bootstrap attestation; this addendum is not an attestation.
   the shared hook/CI attribution patterns. Human/prose controls remain accepted.
 
 The existing extension/binary historical limitation remains, except that CSV/TSV
-extensions are now data even after removal. The lowercase ambiguous bare-tool
-attribution tradeoff (R14-04) remains a follow-up; it is outside the requested CORE
-repairs and preserves existing ordinary-prose controls.
+extensions are now data even after removal.
+
+**PR #92 attribution follow-up (R14-04).** The shared hook and CI rules match
+bare tool names case-insensitively in the covered credit phrases. Test notes
+with the wording `tested by sweep` keep the prose exemption regardless of the
+verb's case and with an optional final period or exclamation mark. Product
+capitalisation (`Sweep`) and explicit qualifiers such as `AI` or a version
+still identify tool credit. The existing `Fixed by sweep` exception also applies.

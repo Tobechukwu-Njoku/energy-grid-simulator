@@ -2754,6 +2754,19 @@ mod tests {
         }
     }
 
+    #[test]
+    fn parameter_sweep_test_notes_allow_sentence_case_and_punctuation() {
+        let p = patterns();
+        for verb in ["Tested", "tested"] {
+            for ending in ["", ".", "!"] {
+                assert!(!p.matches_line(&format!("{verb} by sweep{ending}")));
+            }
+        }
+        for tool in ["Sweep", "sweep AI", "sweep 2.0"] {
+            assert!(p.matches_line(&format!("Tested by {tool}.")));
+        }
+    }
+
     // R12-02, ADV23R12-03..08: CodeGemma, WizardCoder and Yi-Coder;
     // thank-you, kudos and shout-out phrases; acknowledgment forms;
     // consultation; and review/test verbs with a bare tool name passed at
