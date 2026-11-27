@@ -17,11 +17,12 @@ root if absent here), then these rules. Read `docs/requirements/STATUS.md` only
 when current project state is needed. Read `context/` and `status-history/` only
 on demand; the folder/ownership table is in [context/reference.md](context/reference.md).
 
-GPT authors, coordinates and gathers data; Claude reviews GPT PRs independently and,
-in a fresh thread, adversarially; GPT adversarially reviews Claude PRs; no Gemini
-(`D-86`, `D-91`). At most two delegates at once; respect occupied review slots.
-Existing cross-provider review, adversarial triage and exact-head owner approval
-gates still apply. See `docs/process/team.md` for the full review process.
+Under D-93, Codex (`gpt-6.2-sol`) writes plans, implementation, tests and PR bodies
+and handles data gathering. Claude reviews every GPT change in a fresh Claude
+thread before it goes upstream. The Claude Co-ordinator coordinates. Gemini is
+retired and has no roles. At most two GPT threads may be active at once.
+Cross-provider review, adversarial triage and exact-head owner approval gates
+still apply. See `docs/process/team.md`.
 
 Create every new checkout under the git-ignored workspace `worktrees/` directory,
 never directly in the root. Do not move/delete existing active checkouts.
@@ -58,10 +59,8 @@ linked IDs/anchors. HANDOFF stays ignored, coordinator-owned and at most 80 line
    messages, PR titles/bodies or release notes: no `Co-Authored-By:` trailers for any model, no
    "Generated with …" footers, no 🤖 badges. This overrides any default your tool applies.
    A local `commit-msg` hook strips such lines; CI will reject them (ADR 0001).
-9. **Commit and push often (D-53).** Small commits; push after every meaningful step.
+9. **Commit and push often (D-53).** Small commits; push reviewed changes after every meaningful step.
 10. **Data provenance (D-56).** Every dataset is tagged in the provenance manifest as
     `open-commercial` or `research-only`. Never commit raw `research-only` data; commit only the
     download scripts. Share-alike (ODbL/OSM) data is never used.
-11. **Reviewers (D-91).** No Gemini. Adversarial reviews come from GPT 6.2 Sol, or Claude in a fresh
-    thread when GPT wrote the PR. Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent;
-    do all the work yourself in this thread."
+11. **GPT prompts (D-93).** Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent; do all the work yourself in this thread."

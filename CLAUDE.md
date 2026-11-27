@@ -1,7 +1,9 @@
 @AGENTS.md
 
-You are the focused cross-provider reviewer of GPT-authored PRs, independent and adversarial (`D-86`, `D-91`).
-Verify findings against the exact head.
+Under D-93, review GPT changes in a fresh Claude thread before they go upstream.
+Verify independent and adversarial findings against the exact head. The Claude
+Co-ordinator manages work and triages findings. Codex writes plans, implementation,
+tests and PR bodies.
 
 # Compact instructions
 When compacting, keep:

@@ -1,16 +1,18 @@
 ---
 name: delegate-code
-description: Delegate a coding task or PR revision to Claude Opus 5.5 (medium effort, ultracode on, D-64) with a complete self-contained brief. Use for any code generation in this repo.
+description: Route code plans, implementation, tests and PR bodies to Codex GPT 6.2 Sol under D-93.
 ---
 
-# Delegate code to Opus
+# Route code to Codex
 
-Target: `providerInstanceId: claudeAgent`, `model: claude-opus-5-5`,
-`options: {effort: "medium", ultracode: true}`, `isolation: worktree`, `role: implementation`.
+The Claude Co-ordinator starts a fresh top-level Codex thread with `gpt-6.2-sol`.
+Check that starting it keeps the total at two active GPT threads or fewer.
 
-The child has no chat history; the brief must contain:
+Start every GPT prompt with: "Do not spawn sub-agents or use spawn_agent; do all the work yourself in this thread."
+
+The brief must be self-contained and include:
 - Repo, branch, current head SHA; "merge origin/main first"; "if the branch is checked out in
-  another worktree, work on a local branch and push to it".
+  another worktree, work on a local branch".
 - Files to read first: AGENTS.md, relevant D-IDs in 03-decisions-log.md, ADRs, and every review
   report whose findings must be fixed (by path and finding ID).
 - The design intent for anything non-obvious (what must be trusted, what must fail closed).
@@ -22,6 +24,6 @@ The child has no chat history; the brief must contain:
   `tools/reference-validators/`.
 - Rules: no AI attribution anywhere (D-52); never push `refs/t3/*`; don't merge; don't change
   repo settings.
-- "Final line: PR URL, head SHA, checks state."
+- "Keep the resulting change local for Claude review. Report the branch, head SHA and checks state."
 
-After it finishes, start a `review-round`.
+After it finishes, start a `review-round` on the local head before sending the change upstream.
