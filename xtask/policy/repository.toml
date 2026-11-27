@@ -8,6 +8,10 @@ policy_owner = "Tobechukwu-Njoku"
 # so the owner can approve them. Created by the owner on 2026-11-16 (D-74).
 agent_account = "automated-machines"
 
+# The only GitHub login whose APPROVED review on the current head satisfies the
+# trusted review-tier check for tier 1 and tier 2 (docs/process/team.md).
+review_approver = "Tobechukwu-Njoku"
+
 # Paths whose change is a policy change. Keep in step with .github/CODEOWNERS.
 protected_paths = [
     "/.github/",

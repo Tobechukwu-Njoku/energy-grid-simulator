@@ -1,6 +1,5 @@
 //! Classify pull-request changes and check GitHub reviews for the current head.
 
-use std::collections::BTreeMap;
 use std::process::Command;
 
 use serde_json::Value;
@@ -170,44 +169,36 @@ fn gh(args: &[&str]) -> Result<Value, String> {
     serde_json::from_slice(&output.stdout).map_err(|error| format!("gh api response: {error}"))
 }
 
-fn approval_findings(
-    tier: Tier,
-    pull: &PullRequest,
-    owner: &str,
-    reviews: &[&Value],
-) -> Vec<Finding> {
-    // GitHub lists reviews in chronological order. A comment or draft does
-    // not supersede a decision. A later decision on another SHA does.
-    let mut latest = BTreeMap::new();
+/// Whether `approver` (from trusted policy) approved the current head and
+/// has not since requested changes or had the approval dismissed. Only that
+/// one account counts: other people, bots and the PR author never do.
+fn approval_findings(pull: &PullRequest, approver: &str, reviews: &[&Value]) -> Vec<Finding> {
+    if pull.author.eq_ignore_ascii_case(approver) {
+        return vec![Finding::general(format!(
+            "{approver} authored this PR and cannot approve it; open it from another account"
+        ))];
+    }
+    // GitHub lists reviews in chronological order. A comment or pending draft
+    // does not supersede a decision; a later decision on any SHA does.
+    let mut approved = false;
     for review in reviews {
         let (Some(login), Some(state)) =
             (review["user"]["login"].as_str(), review["state"].as_str())
         else {
             continue;
         };
-        if !login.eq_ignore_ascii_case(&pull.author) && !matches!(state, "COMMENTED" | "PENDING") {
-            latest.insert(
-                login.to_ascii_lowercase(),
-                state == "APPROVED" && review["commit_id"].as_str() == Some(pull.head.as_str()),
-            );
+        if login.eq_ignore_ascii_case(approver) && !matches!(state, "COMMENTED" | "PENDING") {
+            approved =
+                state == "APPROVED" && review["commit_id"].as_str() == Some(pull.head.as_str());
         }
     }
-    let owner_key = owner.to_ascii_lowercase();
-    let mut findings = Vec::new();
-    if !latest
-        .iter()
-        .any(|(login, &approved)| approved && (tier != Tier::Policy || *login != owner_key))
-    {
-        findings.push(Finding::general(
-            "needs a non-author reviewer approval on the current head",
-        ));
+    if approved {
+        Vec::new()
+    } else {
+        vec![Finding::general(format!(
+            "needs an APPROVED review from {approver} on the current head"
+        ))]
     }
-    if tier == Tier::Policy && latest.get(&owner_key) != Some(&true) {
-        findings.push(Finding::general(format!(
-            "needs approval from {owner} on the current head"
-        )));
-    }
-    findings
 }
 
 fn paths(listing: &str) -> impl Iterator<Item = &str> {
@@ -306,10 +297,10 @@ pub fn check(ctx: &Ctx, main: &str, pull: &PullRequest) -> Result<Vec<Finding>, 
     }
     if tier != Tier::Docs {
         let document = ctx.policy_toml("xtask/policy/repository.toml")?;
-        let owner = document
-            .get("policy_owner")
+        let approver = document
+            .get("review_approver")
             .and_then(Item::as_str)
-            .ok_or("trusted policy: policy_owner missing")?;
+            .ok_or("trusted policy: review_approver missing")?;
         let pages = gh(&[
             "--paginate",
             "--slurp",
@@ -319,7 +310,7 @@ pub fn check(ctx: &Ctx, main: &str, pull: &PullRequest) -> Result<Vec<Finding>, 
         for page in pages.as_array().ok_or("GitHub response: no pages")? {
             reviews.extend(page.as_array().ok_or("GitHub response: no reviews")?.iter());
         }
-        findings.extend(approval_findings(tier, pull, owner, &reviews));
+        findings.extend(approval_findings(pull, approver, &reviews));
     }
     Ok(findings)
 }
@@ -410,63 +401,55 @@ mod tests {
     }
 
     #[test]
-    fn approval_must_be_current_non_author_and_separate_from_owner_on_tier_two() {
+    fn only_the_policy_approver_on_the_current_head_counts() {
         let pull = PullRequest {
             repository: "example/project".to_owned(),
             number: 1,
             head: "current".to_owned(),
             author: "automated-machines".to_owned(),
         };
-        let owner = "Tobechukwu-Njoku";
+        let approver = "Tobechukwu-Njoku";
         let review = |login: &str, state: &str, commit: &str| json!({"user": {"login": login}, "state": state, "commit_id": commit});
-        let reviewer = |state, commit| review("reviewer", state, commit);
-        let approved = reviewer("APPROVED", "current");
-        let owner_approved = review("tobechukwu-njoku", "APPROVED", "current");
+        let passes = |reviews: &[&Value]| approval_findings(&pull, approver, reviews).is_empty();
+        let owner = review("tobechukwu-njoku", "APPROVED", "current");
 
-        assert_eq!(
-            approval_findings(
-                Tier::Product,
-                &pull,
-                owner,
-                &[
-                    &review("AUTOMATED-MACHINES", "APPROVED", "current"),
-                    &reviewer("APPROVED", "old"),
-                ]
-            )
-            .len(),
-            1
-        );
-        assert!(
-            approval_findings(
-                Tier::Product,
-                &pull,
-                owner,
-                &[&approved, &reviewer("COMMENTED", "current")]
-            )
-            .is_empty()
-        );
+        assert!(!passes(&[]));
+        assert!(!passes(&[&review("outsider", "APPROVED", "current")]));
+        assert!(!passes(&[&review(
+            "dependabot[bot]",
+            "APPROVED",
+            "current"
+        )]));
+        assert!(!passes(&[&review(
+            "automated-machines",
+            "APPROVED",
+            "current"
+        )]));
+        assert!(!passes(&[&review("Tobechukwu-Njoku", "APPROVED", "old")]));
+        assert!(passes(&[&owner]));
+        assert!(passes(&[
+            &review("Tobechukwu-Njoku", "APPROVED", "old"),
+            &owner,
+            &review("Tobechukwu-Njoku", "COMMENTED", "current"),
+            &review("outsider", "CHANGES_REQUESTED", "current"),
+        ]));
         for state in ["CHANGES_REQUESTED", "DISMISSED"] {
-            assert_eq!(
-                approval_findings(
-                    Tier::Product,
-                    &pull,
-                    owner,
-                    &[&approved, &reviewer(state, "current")]
-                )
-                .len(),
-                1
-            );
+            assert!(!passes(&[
+                &owner,
+                &review("Tobechukwu-Njoku", state, "current")
+            ]));
         }
-        assert_eq!(
-            approval_findings(Tier::Policy, &pull, owner, &[&owner_approved]).len(),
-            1
-        );
-        assert_eq!(
-            approval_findings(Tier::Policy, &pull, owner, &[&approved]).len(),
-            1
-        );
-        assert!(
-            approval_findings(Tier::Policy, &pull, owner, &[&approved, &owner_approved]).is_empty()
-        );
+        // GitHub marks a dismissed approval itself as DISMISSED.
+        assert!(!passes(&[&review(
+            "Tobechukwu-Njoku",
+            "DISMISSED",
+            "current"
+        )]));
+        // The approver cannot approve their own PR.
+        let own = PullRequest {
+            author: "Tobechukwu-Njoku".to_owned(),
+            ..pull
+        };
+        assert!(!approval_findings(&own, approver, &[&owner]).is_empty());
     }
 }
