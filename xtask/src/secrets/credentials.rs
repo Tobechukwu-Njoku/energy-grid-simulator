@@ -387,10 +387,16 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         let line_start = text[..matched.start()]
             .rfind(['\r', '\n'])
             .map_or(0, |i| i + 1);
-        let indent = text[line_start..]
-            .bytes()
-            .take_while(|b| matches!(b, b' ' | b'\t'))
-            .count();
+        let blanks = |s: &str| s.bytes().take_while(|b| matches!(b, b' ' | b'\t')).count();
+        let mut indent = blanks(&text[line_start..]);
+        // A YAML/Markdown list marker puts the header itself deeper.
+        let rest = &text[line_start + indent..];
+        if rest.len() > 1 && rest.as_bytes()[0].is_ascii() && "-*+".contains(&rest[..1]) {
+            let marker = 1 + blanks(&rest[1..]);
+            if marker > 1 {
+                indent += marker;
+            }
+        }
         let continues = |after: &str| {
             after
                 .bytes()
@@ -441,7 +447,7 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             && raw_key.ends_with('%')
             && raw_key[1..raw_key.len() - 1]
                 .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'_')
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'%')
         {
             continue;
         }
@@ -449,7 +455,11 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         if password_key(&key) || (capture[1].contains('%') && malformed_password_key(&key)) {
             let prefix = &text[..matched.start()];
             let line = prefix.rsplit(['\r', '\n', '\'', '"']).next().unwrap_or("");
-            let jdbc = ["password", "pwd"].contains(&key.as_str())
+            // A password-like key that is itself a JDBC query parameter
+            // (including percent-encoded or malformed spellings) uses the
+            // JDBC value grammar.
+            let jdbc = (["password", "pwd"].contains(&key.as_str())
+                || line.trim_end_matches('`').ends_with(['?', '&']))
                 && line.to_ascii_lowercase().contains("jdbc:")
                 && line.contains('?');
             let query = jdbc || line.trim_end_matches('`').ends_with(['?', '&']);
@@ -578,6 +588,21 @@ mod tests {
     }
 
     #[test]
+    fn list_prefixed_headers_end_at_same_level_lines() {
+        let auth = ["Author", "ization"].concat();
+        for newline in ["\n", "\r\n"] {
+            check(
+                &format!("- {auth}: Bearer <token>{newline}  Accept: application/json"),
+                None,
+            );
+            check(
+                &format!("- {auth}:{newline}  Bearer tokens are rotated"),
+                None,
+            );
+        }
+    }
+
+    #[test]
     fn indented_headers_preserve_boundaries_and_fold_offsets() {
         let header = "Authorization";
         for newline in ["\n", "\r\n"] {
@@ -643,6 +668,19 @@ mod tests {
         for key in ["PASSWORD", "DB_PASS", "DB_PASSWORD"] {
             check(&format!("if \"%{key}%\"==\"\" echo missing"), None);
             check(&format!("if %{key}%==defined echo present"), None);
+            check(&format!("if \"%USER%_%{key}%\" == \"\" echo missing"), None);
+        }
+        for key in ["%70assword%", "password%GG", "%password%"] {
+            for placeholder in ["<secret>", "%3Cpassword%3E"] {
+                check(
+                    &format!("url = \"jdbc:postgresql://host/db?{key}={placeholder}\""),
+                    None,
+                );
+            }
+            check(
+                &format!("url = \"jdbc:postgresql://host/db?{key}=batch-synthetic\""),
+                Some("password"),
+            );
         }
     }
 
