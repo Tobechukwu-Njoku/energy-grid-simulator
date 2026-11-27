@@ -388,7 +388,11 @@ pub fn check(root: &Path) -> Result<Vec<(&'static str, Vec<Finding>)>, String> {
 
     let mut links = Vec::new();
     for path in &markdown {
-        links.extend(check_links_in(root, path, &read(path)?, &known));
+        // Archived reports are byte-for-byte copies; their relative links
+        // pointed at their old location and are not maintained.
+        if !path.starts_with(REVIEWS) {
+            links.extend(check_links_in(root, path, &read(path)?, &known));
+        }
     }
 
     let ids = decision_ids(&read(DECISIONS)?);
