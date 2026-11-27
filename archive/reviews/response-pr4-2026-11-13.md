@@ -244,7 +244,7 @@ the P1 Q-N register when resolving the questionnaire append conflict.
   Adopt/amend only the remaining engineering details at baseline. The 2024 I-SEM
   prices are gathered and independently verified (merged PR #18); before freezing a
   compatible common holdout, apply the remaining limits in
-  [COVERAGE.md](../../spikes/data-gathering/semo-2024/COVERAGE.md), especially
+  [COVERAGE.md](../../../spikes/data-gathering/semo-2024/COVERAGE.md), especially
   imbalance timezone confirmation and IDC interval identities. Research-only tags,
   missing observations and reuse designation remain; availability is not validation.
 - ADRs 0001/0003 remain Proposed; segment approximation bias, fallback success,

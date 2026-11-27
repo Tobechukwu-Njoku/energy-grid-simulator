@@ -26,7 +26,7 @@ research phase. Commercial permission is not a prerequisite for research ingest.
 Only scripts, provenance and non-reconstructive aggregates are committed for
 restricted sources; no raw or derived network export is added. Share-alike stays
 excluded. Commercial clearance remains in
-[TODO-pre-commercial.md](../../docs/requirements/TODO-pre-commercial.md), **PC-1–PC-5**; no legal grant
+[TODO-pre-commercial.md](../TODO-pre-commercial.md), **PC-1–PC-5**; no legal grant
 is invented and R-12 stays open for coverage/current-topology/electrical QA.
 
 The report now follows **D-55 DC plus proxy constraints**, **D-57 free/minuscule

@@ -79,7 +79,7 @@ Append these five content lines to Section P (Q-P-08 is unused at the reviewed h
   ★ (a), retaining original cadence and observed/imputed masks; every as-of value must have a verified publication timestamp no later than the knowledge cut, including auction-day observations.
 ```
 
-Replace source line 342 with `- **ASSUMPTION:** [Q-P-08](../../docs/requirements/requirements/02-questionnaire.md#q-p-08) Resampling, cadence, and as-of policy (proposed).` At line 348, add that auction values become eligible only from their verified publication timestamp, subject to the same knowledge cut. Seven changed/inserted content lines total; do not amend the decisions log.
+Replace source line 342 with `- **ASSUMPTION:** [Q-P-08](../requirements/02-questionnaire.md#q-p-08) Resampling, cadence, and as-of policy (proposed).` At line 348, add that auction values become eligible only from their verified publication timestamp, subject to the same knowledge cut. Seven changed/inserted content lines total; do not amend the decisions log.
 
 ### C-03 — Reconcile STATUS and qualify the completion claim
 

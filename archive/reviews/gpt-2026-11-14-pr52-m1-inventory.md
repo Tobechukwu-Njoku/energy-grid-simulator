@@ -17,10 +17,10 @@
 
 ## Method, evidence and limits
 
-Read [AGENTS.md](../../AGENTS.md), the [review brief](REVIEW-BRIEF.md),
-[decisions](../../docs/requirements/03-decisions-log.md), [roadmap](../../docs/requirements/06-roadmap.md),
-[requirements](../../docs/requirements/04-requirements.md), accepted
-[ADR 0002](../../docs/architecture/adr/0002-network-and-scenario-data-model.md),
+Read [AGENTS.md](../../../AGENTS.md), the [review brief](../REVIEW-BRIEF.md),
+[decisions](../03-decisions-log.md), [roadmap](../06-roadmap.md),
+[requirements](../04-requirements.md), accepted
+[ADR 0002](../../architecture/adr/0002-network-and-scenario-data-model.md),
 and the existing research notes, spike reports and manifests. In this tree
 the gathering directory is `spikes/data-gathering/`; there is no separate
 root `data-gathering/`.
@@ -47,17 +47,17 @@ root `data-gathering/`.
   Research classification is not legal advice or a publisher permission grant.
 
 Repository evidence:
-[network manifest](../../spikes/data-gathering/network-ie/manifest.toml),
-[network coverage](../../spikes/data-gathering/network-ie/COVERAGE.md),
-[Elexon manifest](../../spikes/data-gathering/elexon/manifest.toml),
-[Elexon coverage](../../spikes/data-gathering/elexon/COVERAGE.md),
-[SEMO manifest](../../spikes/data-gathering/semo-2024/manifest.toml),
-[SEMO coverage](../../spikes/data-gathering/semo-2024/COVERAGE.md),
-[spike report](../../spikes/data/REPORT.md),
-[source/download catalogue](../../spikes/data/sources.tsv),
-[GB notes](../../docs/research/data-sources-gb.md),
-[Irish/weather notes](../../docs/research/data-sources-ie-weather.md), and
-[DNO inventory](../../docs/research/dno-132kv-inventory.md).
+[network manifest](../../../spikes/data-gathering/network-ie/manifest.toml),
+[network coverage](../../../spikes/data-gathering/network-ie/COVERAGE.md),
+[Elexon manifest](../../../spikes/data-gathering/elexon/manifest.toml),
+[Elexon coverage](../../../spikes/data-gathering/elexon/COVERAGE.md),
+[SEMO manifest](../../../spikes/data-gathering/semo-2024/manifest.toml),
+[SEMO coverage](../../../spikes/data-gathering/semo-2024/COVERAGE.md),
+[spike report](../../../spikes/data/REPORT.md),
+[source/download catalogue](../../../spikes/data/sources.tsv),
+[GB notes](../../research/data-sources-gb.md),
+[Irish/weather notes](../../research/data-sources-ie-weather.md), and
+[DNO inventory](../../research/dno-132kv-inventory.md).
 
 ## Findings and corrections
 
@@ -401,7 +401,7 @@ Repository evidence:
     Concerns §1.4 lines 205–207 and §4 lines 750–758.
 
     The inventory renames **PC-5** as a DNO-specific item, but
-    [the actual ledger](../../docs/requirements/TODO-pre-commercial.md) defines PC-5 as review of
+    [the actual ledger](../TODO-pre-commercial.md) defines PC-5 as review of
     **every research-only dataset**. PC-3 is SEMO/SEMOpx, not an ENTSO-E
     clearance item. The “€1,040+/month” sentence generalises a particular
     EPEX API product to exchange power services. The GB research notes
