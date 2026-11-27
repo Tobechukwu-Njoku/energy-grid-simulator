@@ -332,6 +332,10 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         Regex::new(r#"(?i)((?:\b[a-z_]|%)[a-z0-9_.%\-]*)["']?[ \t]*=[ \t]*"#)
             .expect("assignment regex")
     });
+    // `if [/i] [not] ["]` directly before a batch comparison operand.
+    static BATCH_IF: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r#"(?i)(?:^|[\s(&|])if(?:\s+/i)?(?:\s+not)?\s+["']?$"#).expect("batch if regex")
+    });
     static URI: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r#"(?:[A-Za-z][A-Za-z0-9+.-]*|<scheme>)://[^\s:@/?#"'\\]*:"#)
             .expect("URI userinfo regex")
@@ -388,21 +392,33 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             .rfind(['\r', '\n'])
             .map_or(0, |i| i + 1);
         let blanks = |s: &str| s.bytes().take_while(|b| matches!(b, b' ' | b'\t')).count();
-        let mut indent = blanks(&text[line_start..]);
-        // A YAML/Markdown list marker puts the header itself deeper.
-        let rest = &text[line_start + indent..];
-        if rest.len() > 1 && rest.as_bytes()[0].is_ascii() && "-*+".contains(&rest[..1]) {
-            let marker = 1 + blanks(&rest[1..]);
-            if marker > 1 {
-                indent += marker;
-            }
-        }
-        let continues = |after: &str| {
-            after
+        let base = blanks(&text[line_start..]);
+        // A YAML/Markdown list marker (`-`, `*`, `+`, `1.`, `1)`) puts the
+        // item content at a deeper column. A line between the marker and the
+        // content column ends the header only when it starts a new header;
+        // otherwise it is a scalar continuation (a quoted fold may sit there).
+        let rest = &text[line_start + base..];
+        let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
+        let marker_len = if digits > 0 {
+            usize::from(matches!(rest.as_bytes().get(digits), Some(b'.' | b')'))) * (digits + 1)
+        } else {
+            usize::from(matches!(rest.as_bytes().first(), Some(b'-' | b'*' | b'+')))
+        };
+        let content = if marker_len > 0 && blanks(&rest[marker_len..]) > 0 {
+            base + marker_len + blanks(&rest[marker_len..])
+        } else {
+            base
+        };
+        let starts_header = |line: &str| {
+            let name = line
                 .bytes()
-                .take_while(|b| matches!(b, b' ' | b'\t'))
-                .count()
-                > indent
+                .take_while(|b| b.is_ascii_alphanumeric() || *b == b'-')
+                .count();
+            name > 0 && line.as_bytes().get(name) == Some(&b':')
+        };
+        let continues = |after: &str| {
+            let n = blanks(after);
+            n > content || (n > base && !starts_header(&after[n..]))
         };
         if text[matched.start()..matched.end()]
             .split('\n')
@@ -441,7 +457,11 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         let matched = capture.get(0).expect("whole match");
         // The match already consumed blanks after the first =, so this
         // accepts == and = = but not a lone = assignment.
+        let line_head = &text[text[..matched.start()]
+            .rfind(['\r', '\n'])
+            .map_or(0, |i| i + 1)..matched.start()];
         if text[matched.end()..].starts_with('=')
+            && BATCH_IF.is_match(line_head)
             && raw_key.len() > 2
             && raw_key.starts_with('%')
             && raw_key.ends_with('%')
@@ -596,8 +616,13 @@ mod tests {
                 None,
             );
             check(
-                &format!("- {auth}:{newline}  Bearer tokens are rotated"),
+                &format!("1. {auth}: Bearer <token>{newline}   Accept: application/json"),
                 None,
+            );
+            // A quoted scalar may fold at the list content column.
+            check(
+                &format!("- \"{auth}: Bearer{newline}  batch-synthetic-value\"{newline}"),
+                Some("local-http-authorization"),
             );
         }
     }
@@ -662,8 +687,10 @@ mod tests {
                 check(&format!("{prefix}{key}={value}"), Some("password"));
                 check(&format!("{prefix}{key}=<secret>"), None);
             }
-            check(&format!("{key}= ={value}"), None);
-            check(&format!("{key} == {value}"), None);
+            check(&format!("if {key}= ={value} echo x"), None);
+            check(&format!("{key}= ={value}"), Some("password"));
+            check(&format!("{key} == {value}"), Some("password"));
+            check(&format!("[connection]\n{key}=={value}"), Some("password"));
         }
         for key in ["PASSWORD", "DB_PASS", "DB_PASSWORD"] {
             check(&format!("if \"%{key}%\"==\"\" echo missing"), None);
