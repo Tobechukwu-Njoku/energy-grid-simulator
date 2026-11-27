@@ -21,7 +21,6 @@ fn tier(path: &str) -> Tier {
     if [
         ".github/",
         ".githooks/",
-        ".cargo/",
         ".claude/",
         "xtask/",
         "docs/process/",
@@ -36,12 +35,21 @@ fn tier(path: &str) -> Tier {
                 | "CONTRIBUTING.md"
                 | "SECURITY.md"
                 | "deny.toml"
-                | "rust-toolchain.toml"
                 | "docs/architecture/adr/0001-repo-layout-and-ci-gates.md"
         )
         || matches!(
             file,
-            "Cargo.toml" | "Cargo.lock" | "manifest.toml" | "sources.tsv"
+            "Cargo.toml"
+                | "Cargo.lock"
+                | "manifest.toml"
+                | "sources.tsv"
+                | "clippy.toml"
+                | ".clippy.toml"
+                | "rustfmt.toml"
+                | ".rustfmt.toml"
+                | "rust-toolchain"
+                | "rust-toolchain.toml"
+                | "build.rs"
         )
         || components.iter().any(|part| {
             matches!(
@@ -55,10 +63,14 @@ fn tier(path: &str) -> Tier {
                     | "data_rules.rs"
                     | "migrations"
                     | "schema-migrations"
+                    | ".cargo"
+                    | ".config"
             )
         })
     {
         Tier::Policy
+    } else if path.starts_with("crates/") || path.starts_with("spikes/") {
+        Tier::Product
     } else if path.starts_with("docs/")
         || path.starts_with("notes/")
         || file == "STATUS"
@@ -74,27 +86,29 @@ fn classify<'a>(paths: impl IntoIterator<Item = &'a str>) -> Tier {
     paths.into_iter().map(tier).max().unwrap_or(Tier::Docs)
 }
 
+/// A source file (.rs .py .ts .js .go) under a `tests`, `test` or
+/// `__tests__` directory, or named `*_test.*` or `test_*.*`.
 fn is_test_file(path: &str) -> bool {
     let (directory, file) = path.rsplit_once('/').unwrap_or(("", path));
-    if file.ends_with(".md") {
+    let Some((stem, extension)) = file.rsplit_once('.') else {
         return false;
-    }
-    directory
-        .split('/')
-        .any(|part| matches!(part, "tests" | "test" | "__tests__"))
-        || matches!(file, "tests.rs" | "test.rs")
-        || file
-            .strip_suffix(".rs")
-            .is_some_and(|stem| stem.ends_with("_test") || stem.ends_with("_tests"))
-        || file
-            .rsplit_once('.')
-            .is_some_and(|(stem, _)| stem.ends_with(".test") || stem.ends_with(".spec"))
+    };
+    matches!(extension, "rs" | "py" | "ts" | "js" | "go")
+        && (directory
+            .split('/')
+            .any(|part| matches!(part, "tests" | "test" | "__tests__"))
+            || stem.ends_with("_test")
+            || stem.starts_with("test_"))
 }
 
+/// A conventional `feat` or `fix` title, with an optional scope and `!`,
+/// compared after trimming and lowercasing.
 fn is_feat_or_fix(title: &str) -> bool {
+    let title = title.trim().to_ascii_lowercase();
     let Some((prefix, _)) = title.split_once(':') else {
         return false;
     };
+    let prefix = prefix.trim_end();
     let prefix = prefix.strip_suffix('!').unwrap_or(prefix);
     let kind = match prefix.split_once('(') {
         Some((kind, scope)) if scope.ends_with(')') && scope.len() > 1 => kind,
@@ -205,11 +219,25 @@ fn paths(listing: &str) -> impl Iterator<Item = &str> {
     listing.split_terminator('\0')
 }
 
-fn missing_test(title: &str, changed_or_added: impl IntoIterator<Item = impl AsRef<str>>) -> bool {
+/// `changes` are the added or modified paths with their added-line counts.
+fn missing_test<'a>(title: &str, changes: impl IntoIterator<Item = (&'a str, u64)>) -> bool {
     is_feat_or_fix(title)
-        && !changed_or_added
+        && !changes
             .into_iter()
-            .any(|path| is_test_file(path.as_ref()))
+            .any(|(path, added)| added > 0 && is_test_file(path))
+}
+
+/// Parse `git diff --numstat -z --no-renames` output; binary files count 0.
+fn numstat(listing: &str) -> Vec<(&str, u64)> {
+    listing
+        .split_terminator('\0')
+        .filter_map(|entry| {
+            let mut fields = entry.splitn(3, '\t');
+            let added = fields.next()?.parse().unwrap_or(0);
+            let _deleted = fields.next()?;
+            Some((fields.next()?, added))
+        })
+        .collect()
 }
 
 /// Check the current PR's net changes and reviews using policy from main.
@@ -279,9 +307,9 @@ pub fn check(ctx: &Ctx, main: &str, pull: &PullRequest) -> Result<Vec<Finding>, 
             &ctx.repo,
             &[
                 "diff",
-                "--name-only",
+                "--numstat",
                 "-z",
-                "--diff-filter=AMT",
+                "--diff-filter=AM",
                 "--no-renames",
                 "--no-ext-diff",
                 main,
@@ -289,7 +317,7 @@ pub fn check(ctx: &Ctx, main: &str, pull: &PullRequest) -> Result<Vec<Finding>, 
                 "--",
             ],
         )?;
-        if missing_test(title, paths(&String::from_utf8_lossy(&test_candidates))) {
+        if missing_test(title, numstat(&String::from_utf8_lossy(&test_candidates))) {
             findings.push(Finding::general(
                 "feat/fix PRs must add or modify a test file",
             ));
@@ -328,13 +356,14 @@ mod tests {
             "notes/draft.txt",
             "STATUS",
             "README.md",
-            "crates/domain/README.md",
             "archive/reviews/old-review.md",
         ] {
             assert_eq!(classify([path]), Tier::Docs, "{path}");
         }
         for path in [
             "crates/network/src/lib.rs",
+            "crates/domain/README.md",
+            "spikes/data/REPORT.md",
             "spikes/example/model.py",
             "tests/acceptance/case.toml",
             "apps/web/src/main.ts",
@@ -344,6 +373,7 @@ mod tests {
         for path in [
             ".github/workflows/ci.yml",
             "xtask/src/main.rs",
+            "xtask/README.md",
             ".githooks/commit-msg",
             "deny.toml",
             "crates/domain/Cargo.toml",
@@ -356,6 +386,17 @@ mod tests {
             "docs/process/team.md",
             "docs/security/ci-runner-policy.md",
             "AGENTS.md",
+            ".config/nextest.toml",
+            "crates/domain/.config/nextest.toml",
+            "clippy.toml",
+            "crates/domain/.clippy.toml",
+            "rustfmt.toml",
+            "crates/domain/.rustfmt.toml",
+            "rust-toolchain",
+            "crates/domain/rust-toolchain.toml",
+            "crates/domain/build.rs",
+            ".cargo/config.toml",
+            "crates/domain/.cargo/config.toml",
         ] {
             assert_eq!(
                 classify(["docs/roadmap.md", path, "crates/network/src/lib.rs"]),
@@ -366,27 +407,38 @@ mod tests {
     }
 
     #[test]
-    fn conventional_feat_and_fix_need_a_test_file() {
-        let no_paths: [&str; 0] = [];
+    fn conventional_feat_and_fix_need_an_added_test_line() {
+        let none: [(&str, u64); 0] = [];
         for title in [
             "feat: network",
             "fix(api): dispatch",
             "feat!: breaking",
             "fix(io)!: breaking",
+            "  Feat: padded and capitalised",
+            "FIX(Grid)!: upper case",
         ] {
-            assert!(missing_test(title, no_paths));
-            assert!(missing_test(
-                title,
-                ["crates/domain/src/lib.rs", "tests/README.md"]
-            ));
+            assert!(missing_test(title, none), "{title}");
+            for not_test in [
+                "crates/domain/src/lib.rs",
+                "tests/README.md",
+                "tests/cases/grid.toml",
+                "crates/domain/src/tests.rs",
+                "apps/web/src/grid.spec.ts",
+                "crates/domain/src/contest_x.rs",
+            ] {
+                assert!(missing_test(title, [(not_test, 5)]), "{title} {not_test}");
+            }
             for test in [
                 "crates/domain/tests/grid.rs",
-                "crates/domain/src/tests.rs",
-                "tests/cases/grid.toml",
-                "apps/web/src/grid.spec.ts",
-                "spikes/example/test/test_grid.py",
+                "spikes/example/test/grid.py",
+                "apps/web/__tests__/grid.ts",
+                "apps/web/src/grid_test.js",
+                "tools/check/grid_test.go",
+                "spikes/example/test_grid.py",
             ] {
-                assert!(!missing_test(title, [test]), "{title} {test}");
+                assert!(!missing_test(title, [(test, 1)]), "{title} {test}");
+                // Only deletions, or a binary change, do not count.
+                assert!(missing_test(title, [(test, 0)]), "{title} {test}");
             }
         }
         for title in [
@@ -396,8 +448,16 @@ mod tests {
             "fix the grid",
             "feat(): text",
         ] {
-            assert!(!missing_test(title, no_paths));
+            assert!(!missing_test(title, none), "{title}");
         }
+    }
+
+    #[test]
+    fn numstat_reads_added_lines() {
+        assert_eq!(
+            numstat("3\t1\tcrates/a/tests/x.rs\0-\t-\tlogo.png\0"),
+            [("crates/a/tests/x.rs", 3), ("logo.png", 0)]
+        );
     }
 
     #[test]
