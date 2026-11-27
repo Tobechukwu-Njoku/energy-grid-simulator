@@ -1,6 +1,6 @@
 @AGENTS.md
 
-You are the focused cross-provider reviewer of GPT-authored PRs (`D-86`, pending PR #95).
+You are the focused cross-provider reviewer of GPT-authored PRs, independent and adversarial (`D-86`, `D-91`).
 Verify findings against the exact head.
 
 # Compact instructions

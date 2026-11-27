@@ -23,7 +23,7 @@ checks/reviews must be re-read before acting.
   and #100 were owner-authorised admin merges (`D-89`, `D-92`). Decisions run D-1 … D-92.
 - #92 (credential/attribution scanner fixes) needs a GPT independent re-review, an
   adversarial review and exact-head owner approval.
-- GPT is unavailable until ChatGPT is re-linked (t3code#39101); reviews wait on it.
+- GPT threads must not spawn sub-agents (t3code#39101); one task per fresh thread.
 - #59/#60 need refresh against the new decisions; #60 also has four optional Claude
   wording fixes. #53/#78 need relevance refresh; #78 must drop claims superseded by #81.
 - This token-efficiency PR needs independent/adversarial review via the coordinator.
@@ -45,10 +45,6 @@ never into chat, repository files or logs.
   accepted ERA5 terms and API configuration; UKPN, SPEN, NPg and ENWL portal logins.
   Optional: CEDA account for MIDAS Open; Renewables.ninja account/token if selected.
 - **Security:** enable private vulnerability reporting on GitHub.
-- **Q-P-01–08:** rating proxies; micro-PV interpolation/scaling; HVDC loss model;
-  clearing proxy versus unit commitment; thermal efficiency/VOM; wind shear;
-  PV temperature derating; fuel/carbon resampling. Proposed answers await #87;
-  use [questionnaire section P](02-questionnaire.md), never infer acceptance.
 
 ## Next steps (agents may do now)
 

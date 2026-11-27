@@ -17,9 +17,9 @@ root if absent here), then these rules. Read `docs/requirements/STATUS.md` only
 when current project state is needed. Read `context/` and `status-history/` only
 on demand; the folder/ownership table is in [context/reference.md](context/reference.md).
 
-GPT authors and coordinates; Claude only reviews GPT PRs independently; Gemini
-gathers data and supplies adversarial review, always verified by GPT (`D-86`,
-recorded in PR #95). At most two delegates at once; respect occupied review slots.
+GPT authors, coordinates and gathers data; Claude reviews GPT PRs independently and,
+in a fresh thread, adversarially; GPT adversarially reviews Claude PRs; no Gemini
+(`D-86`, `D-91`). At most two delegates at once; respect occupied review slots.
 Existing cross-provider review, adversarial triage and exact-head owner approval
 gates still apply. See `docs/process/team.md` for the full review process.
 
