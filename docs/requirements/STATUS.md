@@ -14,7 +14,19 @@ preserving newer review documents; provenance, fresh reviews and policy approval
 decisions. #78/#57/#53 remain open for relevance assessment. No failing gate is waived;
 the coordinator must not merge #81. See `context/threads.md` and `HANDOFF.md` for recovery work.
 
-**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
+Coordinator update (2026-11-26): #92 was repaired and pushed at `7a0eb12` as one
+commit containing only its original net diff on current main; four newer review
+blobs are retained. Local all/full-range provenance pass; fresh gates and reviews
+remain. Independent content reviews of #95/#96 are recorded; hold #96 until #95
+and its #81/#87 prerequisites land. Fresh #81 independent review approves the code;
+a new valid adversarial report and triage remain required. Legacy worktree removal
+is deferred for audits. #95/#96 adversarial reports and verified triage are
+recorded separately; dependency holds remain. Fresh #81/#92 adversarial reviews
+report no new findings, with OpenAI verification recorded. #92 replacement build/scanning
+checks all pass, with current-head review and owner approval still outstanding.
+
+
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-88 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
