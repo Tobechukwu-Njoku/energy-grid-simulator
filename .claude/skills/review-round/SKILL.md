@@ -6,7 +6,7 @@ description: Run a review round on a PR per D-53/D-54 — GPT reviews Claude's c
 # Review round for a PR
 
 Routing (docs/process/team.md):
-- Code by Claude → GPT reviewer (`gpt-6.1-sol`, reasoningEffort high).
+- Code by Claude → GPT reviewer (`gpt-6.2-sol`, reasoningEffort high).
 - Docs by GPT → Claude reviewer.
 - Every substantive PR → also Gemini (`gemini-3.8-flash`, thinking_level high), alternating the
   `antigravity` and `Antigravity-Homelab` accounts each round.

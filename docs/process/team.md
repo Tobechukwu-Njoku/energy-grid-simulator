@@ -5,15 +5,15 @@ _Source: D-45, D-49, D-51, D-53, D-62, D-28, D-22. Owner checks milestones; agen
 | Model | Role | Use for | Do not use for |
 |---|---|---|---|
 | **Claude Opus 5.5** (medium effort, ultracode on; D-64) | Code generation only (D-51) | Writing code: Rust engine, backend, frontend, tests, data pipelines | Research, specs, verification (→ GPT); reviews only of GPT-authored work (D-54) |
-| **GPT 6.1 Sol** | Default for everything except code generation (D-51) | Research, ADRs, specs, requirements, task breakdown, code review, **verifying all Gemini output**, validation reports | Bulk routine work (→ Gemini) |
+| **GPT 6.2 Sol** | Default for everything except code generation (D-51) | Research, ADRs, specs, requirements, task breakdown, code review, **verifying all Gemini output**, validation reports | Bulk routine work (→ Gemini) |
 | **Gemini Flash 3.8** (high) | Assistant | **Significant data gathering (D-62)**: bulk downloads, scraping, collation and inventories of datasets; licence/docs lookups; formatting; first-pass summaries. Both accounts in parallel | Anything complex or needing scrutiny: engine/solver code, architecture, merge decisions, reviews |
 
 ## Rules
 
 1. **Cross-provider review (D-28):** every PR is reviewed by a model from a different provider than its author.
-   Claude-authored code → GPT 6.1 Sol reviews. GPT-authored documents and code → Claude Opus reviews (D-54).
+   Claude-authored code → GPT 6.2 Sol reviews. GPT-authored documents and code → Claude Opus reviews (D-54).
 2. **Gemini output is never trusted on its own.** Anything Gemini produces (data, licence findings, summaries)
-   is checked by GPT 6.1 Sol (D-51) before it is used or merged. Gemini never reviews or merges.
+   is checked by GPT 6.2 Sol (D-51) before it is used or merged. Gemini never reviews or merges.
 3. Merge gates in D-28 apply to everyone; reviewer approval does not override a failing gate.
 4. GPU work: SSH for development, self-hosted GitHub Actions runner for GPU CI gates (D-43).
 5. **Commit and push frequently (D-53):** small commits, pushed after every meaningful step.

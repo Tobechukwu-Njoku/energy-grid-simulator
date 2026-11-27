@@ -14,7 +14,8 @@ report no new findings, with OpenAI verification recorded. #92 replacement build
 checks all pass, with current-head review and owner approval still outstanding.
 
 
-Owner decision D-89 (2026-11-27): #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock; no standing gate exception. D-89 merges after #95 (D-77–D-88).
+Owner decisions D-89/D-90 (2026-11-27): GPT 6.2 Sol replaces 6.1 for all GPT roles (D-90).
+ #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock; no standing gate exception. D-89 merges after #95 (D-77–D-88).
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
