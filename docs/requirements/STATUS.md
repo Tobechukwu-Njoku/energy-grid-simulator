@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-18_
 
 Coordinator update (2026-11-26): #92 was repaired and pushed at `7a0eb12` as one
 commit containing only its original net diff on current main; four newer review
@@ -17,7 +17,15 @@ checks all pass, with current-head review and owner approval still outstanding.
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
-**Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+**Repo:** public (visibility verified 2026-11-18; required status enforcement remains pending), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
+
+**M0 exit audit (2026-11-18 UTC):** [Evidence and ordered backlog](../process/m0-exit-audit-2026-11-18.md)
+audits main at `0efa30f720dcb7b596b2f6bff5f9b57a1e9be8d0`. M0 remains partial:
+light bootstrap checks and contracts exist, but review-evidence publication and
+required-status enforcement need closure. PR #75 is unmerged with red trusted
+review/approval gates; #53 conflicts and #57 lacks current review evidence. M0.5
+still needs full network/weather handoff; M1 needs implemented ingestion and
+qualified D-65 runner evidence. This is an audit, not milestone acceptance.
 
 **PR #71 adversarial triage (2026-11-16 UTC):** verified the zero-finding
 Gemini report against the exact reviewed head and approval logic. Published
