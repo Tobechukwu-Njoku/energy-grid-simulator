@@ -8,3 +8,33 @@
 /Cargo.toml @Tobechukwu-Njoku
 /rust-toolchain.toml @Tobechukwu-Njoku
 /docs/security/ @Tobechukwu-Njoku
+
+# Other tier 2 paths (xtask/src/review_tier.rs), anywhere in the tree.
+/.claude/ @Tobechukwu-Njoku
+/AGENTS.md @Tobechukwu-Njoku
+/CLAUDE.md @Tobechukwu-Njoku
+/CONTRIBUTING.md @Tobechukwu-Njoku
+/SECURITY.md @Tobechukwu-Njoku
+/docs/process/ @Tobechukwu-Njoku
+/docs/architecture/adr/0001-repo-layout-and-ci-gates.md @Tobechukwu-Njoku
+Cargo.toml @Tobechukwu-Njoku
+Cargo.lock @Tobechukwu-Njoku
+manifest.toml @Tobechukwu-Njoku
+sources.tsv @Tobechukwu-Njoku
+clippy.toml @Tobechukwu-Njoku
+.clippy.toml @Tobechukwu-Njoku
+rustfmt.toml @Tobechukwu-Njoku
+.rustfmt.toml @Tobechukwu-Njoku
+rust-toolchain @Tobechukwu-Njoku
+rust-toolchain.toml @Tobechukwu-Njoku
+build.rs @Tobechukwu-Njoku
+.cargo/ @Tobechukwu-Njoku
+.config/ @Tobechukwu-Njoku
+security/ @Tobechukwu-Njoku
+security.rs @Tobechukwu-Njoku
+provenance/ @Tobechukwu-Njoku
+provenance.rs @Tobechukwu-Njoku
+data-rules.md @Tobechukwu-Njoku
+data_rules.rs @Tobechukwu-Njoku
+migrations/ @Tobechukwu-Njoku
+schema-migrations/ @Tobechukwu-Njoku
