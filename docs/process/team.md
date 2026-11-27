@@ -13,7 +13,7 @@ _Source: D-28, D-45, D-49, D-51, D-53, D-54, D-62, D-76, D-86, D-90, D-91, D-93.
 1. **Cross-provider review (D-28, D-54, D-93).** Claude independently reviews GPT-authored code
    and documentation. Pin the exact head, including for local review before pushing. Each
    revision needs fresh Claude review before it goes upstream. GPT independently reviews
-   existing Claude-authored code PRs.
+   existing Claude-authored code PRs. (D-91 still covers Claude-authored PRs opened before D-93.)
 2. **Gemini is retired (D-91, D-93).** Gemini has no role.
 3. Merge gates in D-28 apply to everyone. Reviewer approval does not override a failing gate.
 4. GPU work uses SSH for development and the self-hosted GitHub Actions runner for GPU CI gates (D-43).

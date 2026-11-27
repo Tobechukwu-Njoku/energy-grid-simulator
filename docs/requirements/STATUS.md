@@ -20,7 +20,7 @@ The Claude Co-ordinator coordinates. Gemini is retired. At most two GPT threads
 may be active at once (D-93). Current-head checks and review gates still apply.
 
 - On main: #81, #97 and #99 (with #87, #95, #98 carried by the #99 squash). #97, #99
-  and #100 were owner-authorised admin merges (`D-89`, `D-92`). D-93 is recorded on this branch.
+  and #100 were owner-authorised admin merges (`D-89`, `D-92`). Decisions run D-1 … D-93.
 - #92 (credential/attribution scanner fixes) needs a GPT independent re-review, an
   adversarial review and exact-head owner approval.
 - Every GPT prompt says: "Do not spawn sub-agents or use spawn_agent; do all the work yourself in this thread."
