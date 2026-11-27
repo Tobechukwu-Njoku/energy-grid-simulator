@@ -832,8 +832,10 @@ The [team process](../../process/team.md) defines the three review tiers.
 `trusted-gates.yml` now runs the `review-tier` job from main. It classifies
 the net merge changes against current main, reads current-head reviews through
 the GitHub API, and checks that `feat` and `fix` PRs add or modify a test file.
-The job publishes the `review-tier` commit status on the PR head and GitHub's
-test merge commit using its dedicated `statuses: write` permission. PR code stays in read-only jobs.
+Its job id and name are both `review-tier`, and branch protection requires that
+job's own result; it holds only read permissions and writes no commit status.
+PR code stays in read-only jobs. `pull_request_review` is not a trigger, because
+it would run the PR's copy of the workflow; re-run the job after a review.
 
 `review-tier` replaces `independent-review` and `policy-approval`. Main requires
 `merge-gates` and `review-tier`. Enable repository auto-merge. The previous

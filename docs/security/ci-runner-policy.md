@@ -27,9 +27,8 @@ GPU gate (NFR-12.AC3, NFR-7.AC4).
    `xtask/policy/gates.toml`; its jobs may not set a checkout `ref` or `repository`,
    use a local action or a cache. PR code runs with a read-only token and no secrets.
 2. An explicit top-level `permissions:` block; every workflow and job permission is `read`
-   or `none`, in block or flow form. The trusted `review-tier` job on main may use
-   `statuses: write` to publish its result on the PR head and GitHub's test merge commit. It needs this scope
-   because the trusted workflow runs in the base branch context.
+   or `none`, in block or flow form, with no exceptions. The trusted `review-tier`
+   job writes nothing: branch protection requires that job's own result.
 3. Every third-party action is pinned to a full 40-character commit SHA; the tag goes in a
    comment. Updating a pin is a reviewed policy change.
 4. `actions/checkout` always sets `persist-credentials: false`.
