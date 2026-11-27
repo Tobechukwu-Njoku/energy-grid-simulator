@@ -269,14 +269,15 @@ impl Matrix {
 
     /// D-91: an allowed adversarial role and vendor, never the author's vendor.
     fn adversarial_valid(&self, header: &ReviewHeader) -> bool {
-        let author = self
-            .party_vendor(header.author.as_ref())
-            .map(|(_, vendor)| vendor);
+        // The author must name exactly one vendor, or the comparison is vacuous.
+        let Some((_, author)) = self.party_vendor(header.author.as_ref()) else {
+            return false;
+        };
         self.party_vendor(header.reviewer.as_ref())
             .is_some_and(|(role, vendor)| {
                 self.adversarial_roles.contains(&role)
                     && self.adversarial_vendors.contains(&vendor)
-                    && author.as_ref() != Some(&vendor)
+                    && author != vendor
             })
     }
 
@@ -1135,6 +1136,21 @@ mod tests {
             "adversarial review / Anthropic",
         );
         bad("documentation / OpenAI", "adversarial review / OpenAI");
+        // A missing, unknown or two-vendor author cannot dodge the check.
+        bad("code generation / Nobody", "adversarial review / Anthropic");
+        bad(
+            "code generation / Anthropic and OpenAI",
+            "adversarial review / OpenAI",
+        );
+        let mut no_author = complete(&sha('a'));
+        no_author[1] = (
+            ADVERSARIAL.into(),
+            format!(
+                "- Reviewer role/provider: adversarial review / Anthropic\n- Reviewed head: `{}`\n- Verdict: **must-fix**\n\n### ADV9-01: first\n\n### ADV9-02: second\n",
+                sha('a')
+            ),
+        );
+        assert!(!evaluate(&no_author, &commits, &yes, &m).is_empty());
     }
 
     // F6 / ADV23R-07: vendors, not model names, must differ, and roles must
