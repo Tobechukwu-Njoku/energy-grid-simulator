@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-11-26_
+_Last updated: 2026-11-27_
 
 **Coordinator recovery (2026-11-26, D-86):** GPT 6.2 Sol now leads the bulk of work,
 including code. Claude is reserved for focused cross-provider reviews of GPT PRs;
@@ -27,6 +27,10 @@ checks all pass, with current-head review and owner approval still outstanding.
 
 
 Owner decisions D-89–D-91 (2026-11-27): Gemini removed; GPT/Claude adversarial reviews (D-91). #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock (no standing gate exception); GPT 6.2 Sol replaces 6.1 for all GPT roles.
+
+PR #92 local review fixes cover folded Authorization headers, JDBC query values,
+batch comparisons, single-line assignment scanning and sweep prose. Fresh review
+of the local changes is pending.
 
 **Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-91 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.

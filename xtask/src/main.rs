@@ -43,7 +43,7 @@ commands:
   review         independent-review evidence gate: --main REV (current main,
                  also the evidence tree); head from the pull-request event
   approval       protected-path owner approval gate: --main REV; event fields
-  all            policy, provenance and docs
+  all            policy, provenance and docs (same range options as provenance)
 ";
 
 struct Args {
@@ -228,23 +228,25 @@ fn provenance_history(args: &Args) -> Result<Option<repository::History>, String
     Ok(None)
 }
 
+fn run_provenance(args: &Args) -> Result<bool, String> {
+    let history = provenance_history(args)?;
+    if let Some(history) = &history {
+        println!(
+            "history: {}..{}",
+            history.base.as_deref().unwrap_or("(root)"),
+            history.head
+        );
+    }
+    Ok(report(
+        "provenance/secrets/data (D-56)",
+        &repository::provenance_range(&args.ctx, history.as_ref())?,
+    ))
+}
+
 fn run(args: &Args) -> Result<bool, String> {
     match args.command.as_str() {
         "policy" => run_policy(&args.ctx),
-        "provenance" => {
-            let history = provenance_history(args)?;
-            if let Some(history) = &history {
-                println!(
-                    "history: {}..{}",
-                    history.base.as_deref().unwrap_or("(root)"),
-                    history.head
-                );
-            }
-            Ok(report(
-                "provenance/secrets/data (D-56)",
-                &repository::provenance_range(&args.ctx, history.as_ref())?,
-            ))
-        }
+        "provenance" => run_provenance(args),
         "docs" => run_docs(&args.ctx),
         "build-gate" => {
             let wrapper = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
@@ -290,10 +292,7 @@ fn run(args: &Args) -> Result<bool, String> {
         }
         "all" => {
             let policy = run_policy(&args.ctx)?;
-            let provenance = report(
-                "provenance/secrets/data (D-56)",
-                &repository::provenance(&args.ctx)?,
-            );
+            let provenance = run_provenance(args)?;
             let docs = run_docs(&args.ctx)?;
             Ok(policy && provenance && docs)
         }

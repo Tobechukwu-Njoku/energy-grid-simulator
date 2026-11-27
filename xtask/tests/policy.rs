@@ -1275,3 +1275,94 @@ fn r15v5_credentials_reject_in_checkout_and_deleted_history() {
         );
     }
 }
+
+// `all` must not silently ignore a requested history range.
+#[test]
+fn all_honors_provenance_history_range() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_xtask"))
+        .current_dir(root())
+        .args([
+            "all",
+            "--head",
+            "refs/heads/xtask-missing-history-regression",
+        ])
+        .env_remove("GITHUB_EVENT_NAME")
+        .env_remove("GITHUB_EVENT_PATH")
+        .env_remove("GITHUB_ACTIONS")
+        .output()
+        .expect("run all");
+    assert!(!output.status.success());
+    let error = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(error.contains("is not a commit"), "{error}");
+}
+
+#[test]
+fn all_scans_added_then_deleted_credentials_in_valid_range() {
+    let repo = Repo::new();
+    // Use a complete policy-clean checkout so failures cannot hide a skipped
+    // history scan behind unrelated policy or documentation diagnostics.
+    let output = std::process::Command::new("git")
+        .current_dir(root())
+        .args(["ls-files", "-z"])
+        .output()
+        .expect("tracked files");
+    assert!(output.status.success());
+    for path in output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+    {
+        let path = std::str::from_utf8(path).expect("path");
+        let target = repo.path().join(path);
+        std::fs::create_dir_all(target.parent().expect("parent")).expect("mkdir");
+        std::fs::copy(root().join(path), target).expect("copy");
+    }
+    let base = repo.commit("chore: clean baseline");
+    let key = "DB_PASSWORD";
+    repo.write(
+        "removed-secret.txt",
+        &format!("{key}=synthetic-range-value\n"),
+    );
+    let added = repo.commit("test: add credential fixture");
+    std::fs::remove_file(repo.path().join("removed-secret.txt")).expect("remove");
+    let head = repo.commit("test: remove credential fixture");
+    let run = |range: bool| {
+        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_xtask"));
+        command
+            .current_dir(repo.path())
+            .arg("all")
+            .arg("--policy")
+            .arg(root());
+        if range {
+            command.args(["--base", &base, "--head", &head]);
+        }
+        command
+            .env_remove("GITHUB_EVENT_NAME")
+            .env_remove("GITHUB_EVENT_PATH")
+            .env_remove("GITHUB_ACTIONS")
+            .output()
+            .expect("run all")
+    };
+    let clean = run(false);
+    assert!(
+        clean.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&clean.stdout),
+        String::from_utf8_lossy(&clean.stderr)
+    );
+    let ranged = run(true);
+    let diagnostic = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&ranged.stdout),
+        String::from_utf8_lossy(&ranged.stderr)
+    );
+    assert!(!ranged.status.success(), "{diagnostic}");
+    assert!(
+        diagnostic.contains("local-connection-password") && diagnostic.contains(&added[..12]),
+        "{diagnostic}"
+    );
+}

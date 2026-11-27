@@ -45,6 +45,9 @@ and allow-listed offline reference validators; CI rejects it elsewhere.
 The coding container is for light builds only. Heavy builds, databases and benchmarks run
 on the separate target system (D-65).
 
+`all` accepts the same history range options as `provenance`. In GitHub Actions,
+both commands require an event-derived or explicit range; without one they fail.
+
 ## Rules that CI enforces
 
 - **No AI attribution** in commits, PR titles and bodies, or added lines (D-52).
