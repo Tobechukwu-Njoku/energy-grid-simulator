@@ -28,7 +28,7 @@ checks all pass, with current-head review and owner approval still outstanding.
 
 Owner decisions D-89/D-90 (2026-11-27): #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock (no standing gate exception); GPT 6.2 Sol replaces 6.1 for all GPT roles.
 
-**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-90 (D-5 superseded by D-23).
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-91 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
