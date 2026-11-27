@@ -2,8 +2,9 @@
 //!
 //! Both gates run from `main` (`.github/workflows/trusted-gates.yml`, a
 //! `pull_request_target` workflow that never builds or runs pull-request
-//! code) and compare against the current tip of `main`, never the event's
-//! possibly stale base (F1, ADV23R-08).
+//! code) and use the current tip of `main`, never the event's possibly stale
+//! base (F1, ADV23R-08). PR-owned paths are measured from current main to the
+//! actual merge result; conflicting merges fail closed.
 //!
 //! `independent-review` passes only when the trusted evidence tree (`main`)
 //! holds, for commits of this pull request:
@@ -52,9 +53,11 @@ pub struct Party {
 /// Parsed machine-checked review header.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReviewHeader {
+    /// Malformed or repeated header fields, which invalidate the report.
+    pub errors: Vec<String>,
     /// Reviewed commit.
     pub head: Option<String>,
-    /// Verdict word, lower case.
+    /// Verdict text, lower case.
     pub verdict: Option<String>,
     /// Author role and provider.
     pub author: Option<Party>,
@@ -92,23 +95,38 @@ fn party(value: &str) -> Option<Party> {
 #[must_use]
 pub fn parse_header(text: &str) -> ReviewHeader {
     let mut header = ReviewHeader::default();
+    let mut seen = BTreeSet::new();
     for line in text.lines().take(40) {
+        for name in [
+            "Reviewed head",
+            "Verdict",
+            "Author role/provider",
+            "Reviewer role/provider",
+            "Triager role/provider",
+            "Triaged report",
+        ] {
+            if field(line, name).is_some() && !seen.insert(name) {
+                header.errors.push(format!("duplicate {name} header field"));
+            }
+        }
         if let Some(value) = field(line, "Reviewed head") {
-            let sha: String = value
-                .trim_matches(['`', ' ', '.'])
-                .chars()
-                .take(40)
-                .collect();
-            if is_sha(&sha) {
-                header.head = Some(sha);
+            let value = value.strip_suffix('.').unwrap_or(value);
+            let sha = value
+                .strip_prefix('`')
+                .and_then(|value| value.strip_suffix('`'))
+                .unwrap_or(value);
+            if is_sha(sha) {
+                header.head = Some(sha.to_owned());
+            } else {
+                header.errors.push("invalid Reviewed head SHA".to_owned());
             }
         } else if let Some(value) = field(line, "Verdict") {
             let word: String = value
                 .trim_start_matches(['*', '_', '`'])
                 .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '-')
+                .take_while(|c| c.is_alphanumeric() || matches!(*c, '-' | ' '))
                 .collect();
-            header.verdict = Some(word.to_lowercase());
+            header.verdict = Some(word.trim().to_lowercase());
         } else if let Some(value) = field(line, "Author role/provider") {
             header.author = party(value);
         } else if let Some(value) = field(line, "Reviewer role/provider") {
@@ -249,10 +267,17 @@ impl Matrix {
             .is_some_and(|party| self.adversarial_roles.contains(&party.role))
     }
 
+    /// D-91: an allowed adversarial role and vendor, never the author's vendor.
     fn adversarial_valid(&self, header: &ReviewHeader) -> bool {
+        // The author must name exactly one vendor, or the comparison is vacuous.
+        let Some((_, author)) = self.party_vendor(header.author.as_ref()) else {
+            return false;
+        };
         self.party_vendor(header.reviewer.as_ref())
             .is_some_and(|(role, vendor)| {
-                self.adversarial_roles.contains(&role) && self.adversarial_vendors.contains(&vendor)
+                self.adversarial_roles.contains(&role)
+                    && self.adversarial_vendors.contains(&vendor)
+                    && author != vendor
             })
     }
 
@@ -339,15 +364,21 @@ pub fn evaluate(
     let mut triages = Vec::new();
     for (path, text) in reports {
         let header = parse_header(text);
+        let cites_pr = header.head.as_ref().is_some_and(|h| commits.contains(h))
+            || ((header.head.is_none() || !header.errors.is_empty())
+                && text
+                    .split(|c: char| !c.is_ascii_hexdigit())
+                    .any(|word| commits.contains(word)));
+        if !header.errors.is_empty() {
+            if cites_pr {
+                findings.push(Finding::at(path.as_str(), None, header.errors.join("; ")));
+            }
+            continue;
+        }
         if header.triager.is_some() {
             triages.push((path.as_str(), text.as_str(), header));
             continue;
         }
-        let cites_pr = header.head.as_ref().is_some_and(|h| commits.contains(h))
-            || (header.head.is_none()
-                && text
-                    .split(|c: char| !c.is_ascii_hexdigit())
-                    .any(|word| commits.contains(word)));
         if !cites_pr {
             continue;
         }
@@ -384,7 +415,7 @@ pub fn evaluate(
     }
     if !valid_adversarial {
         findings.push(Finding::general(
-            "no adversarial report with a valid header (adversarial review / Google) cites a commit of this PR",
+            "no adversarial report with a valid header (adversarial review by an allowed vendor other than the author's) cites a commit of this PR",
         ));
     }
     for (path, ids) in &adversarial {
@@ -461,6 +492,15 @@ fn changed_paths(repo: &Path, from: &str, to: &str) -> Result<BTreeSet<String>, 
     .collect())
 }
 
+fn merge_result(repo: &Path, main: &str, head: &str) -> Result<String, String> {
+    let output = git(repo, &["merge-tree", "--write-tree", main, head])?;
+    let tree = String::from_utf8_lossy(&output).trim().to_owned();
+    if !is_sha(&tree) {
+        return Err("merge-tree did not return a single merge result tree".to_owned());
+    }
+    Ok(tree)
+}
+
 /// Whether a review of `reviewed` still covers `head`: every path changed
 /// between them either has the same tree entry (blob AND mode) or is no
 /// longer changed by the pull request (`main`'s version, after a merge of
@@ -472,17 +512,154 @@ fn changed_paths(repo: &Path, from: &str, to: &str) -> Result<BTreeSet<String>, 
 ///
 /// Fails if Git fails.
 pub fn still_current(repo: &Path, main: &str, reviewed: &str, head: &str) -> Result<bool, String> {
-    let merge_base = String::from_utf8_lossy(&git(repo, &["merge-base", main, head])?)
-        .trim()
-        .to_owned();
+    let merged = merge_result(repo, main, head)?;
     for path in changed_paths(repo, reviewed, head)? {
-        if !same_entries(repo, reviewed, head, &path)
-            && !same_entries(repo, &merge_base, head, &path)
-        {
+        if !same_entries(repo, reviewed, head, &path) && !same_entries(repo, main, &merged, &path) {
             return Ok(false);
         }
     }
     Ok(true)
+}
+
+/// Whether a repository path is a review-evidence document.
+#[must_use]
+pub fn is_review_document_path(path: &str) -> bool {
+    path == "docs/requirements/STATUS.md"
+        || path.strip_prefix(REVIEWS).is_some_and(|name| {
+            name.len() > 3 && name.ends_with(".md") && !name.contains(['/', '\\'])
+        })
+}
+
+fn evaluate_review_evidence_pr(
+    repo: &Path,
+    main: &str,
+    head: &str,
+    changed: &BTreeSet<String>,
+    matrix: &Matrix,
+) -> Result<Option<Vec<Finding>>, String> {
+    if changed.is_empty() || !changed.iter().all(|path| is_review_document_path(path)) {
+        return Ok(None);
+    }
+    let mut findings = Vec::new();
+    for path in changed {
+        let entry = git(
+            repo,
+            &[
+                "ls-tree",
+                "-z",
+                "--full-tree",
+                head,
+                "--",
+                &format!(":(literal){path}"),
+            ],
+        )?;
+        if entry.is_empty() {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "review document cannot be deleted in a review-evidence pull request",
+            ));
+            continue;
+        }
+        if !(entry.starts_with(b"100644 blob ") || entry.starts_with(b"100755 blob ")) {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "review document must be a regular file (no symlinks or gitlinks)",
+            ));
+            continue;
+        }
+        if path.starts_with(REVIEWS)
+            && git(repo, &["cat-file", "-e", &format!("{main}:{path}")]).is_ok()
+            && !same_entries(repo, main, head, path)
+        {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "existing review evidence on main cannot be modified",
+            ));
+            continue;
+        }
+        if !path.starts_with(REVIEWS) {
+            continue;
+        }
+        let bytes = git(repo, &["show", &format!("{head}:{path}")])?;
+        let text = String::from_utf8_lossy(&bytes);
+        let header = parse_header(&text);
+        if !header.errors.is_empty() {
+            findings.push(Finding::at(path.as_str(), None, header.errors.join("; ")));
+            continue;
+        }
+        let Some(reviewed_head) = &header.head else {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "missing Reviewed head SHA in review report header",
+            ));
+            continue;
+        };
+        if !is_sha(reviewed_head) {
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                format!("invalid Reviewed head SHA: {reviewed_head}"),
+            ));
+            continue;
+        }
+        if header.triager.is_some() {
+            if !header
+                .triaged
+                .as_ref()
+                .is_some_and(|value| !value.trim().is_empty())
+            {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "triage record missing non-empty Triaged report field",
+                ));
+            }
+            if !matrix.triager_valid(&header) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "triager role or vendor not permitted by review policy",
+                ));
+            }
+        } else if matrix.is_adversarial_role(&header) || path.contains("adversarial") {
+            if !matrix.adversarial_valid(&header) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "adversarial review role or vendor not permitted by review policy",
+                ));
+            }
+        } else {
+            if !header.verdict.as_deref().is_some_and(|verdict| {
+                APPROVING.contains(&verdict)
+                    || matches!(verdict, "request changes" | "request-changes" | "must-fix")
+            }) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    "independent review missing recognized Verdict field",
+                ));
+            }
+            if let Some(problem) = matrix.independent_problem(&header) {
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    format!("independent review pairing invalid: {problem}"),
+                ));
+            }
+        }
+    }
+    if findings.is_empty() {
+        println!(
+            "review-evidence pull request: {} review document(s) verified",
+            changed.len()
+        );
+    }
+    Ok(Some(findings))
 }
 
 /// Runs the independent-review gate. `main` is the current tip of `main`
@@ -509,6 +686,14 @@ pub fn independent_review(ctx: &Ctx, main: &str, head: &str) -> Result<Vec<Findi
     )?)
     .trim()
     .to_owned();
+    let merged = merge_result(repo, &main, head)?;
+    let changed = changed_paths(repo, &main, &merged)?;
+    if changed.is_empty() {
+        return Ok(Vec::new());
+    }
+    if let Some(findings) = evaluate_review_evidence_pr(repo, &main, &merged, &changed, &matrix)? {
+        return Ok(findings);
+    }
     let commits: BTreeSet<String> =
         String::from_utf8_lossy(&git(repo, &["rev-list", &format!("{main}..{head}")])?)
             .split_whitespace()
@@ -739,12 +924,8 @@ pub fn policy_approval(
     let protected = string_array(&document["protected_paths"]);
     let repo = ctx.repo.as_path();
     let head = pull.head.as_str();
-    let merge_base = String::from_utf8_lossy(&git(repo, &["merge-base", main, head])?)
-        .trim()
-        .to_owned();
-    let changed: Vec<String> = changed_paths(repo, &merge_base, head)?
-        .into_iter()
-        .collect();
+    let merged = merge_result(repo, main, head)?;
+    let changed: Vec<String> = changed_paths(repo, main, &merged)?.into_iter().collect();
     let listing = git(
         repo,
         &[
@@ -752,7 +933,7 @@ pub fn policy_approval(
             "-r",
             "-z",
             "--name-only",
-            head,
+            &merged,
             "--",
             ".github/workflows/",
         ],
@@ -760,7 +941,7 @@ pub fn policy_approval(
     let mut workflows = Vec::new();
     for name in String::from_utf8_lossy(&listing).split('\0') {
         if name.ends_with(".yml") || name.ends_with(".yaml") {
-            let body = git(repo, &["show", &format!("{head}:{name}")])?;
+            let body = git(repo, &["show", &format!("{merged}:{name}")])?;
             workflows.push((name.to_owned(), String::from_utf8_lossy(&body).into_owned()));
         }
     }
@@ -900,6 +1081,78 @@ mod tests {
         assert!(!evaluate(&complete(&sha('a')), &commits, &stale, &m).is_empty());
     }
 
+    // D-91: GPT or Claude adversarial reviews count, never from the author's
+    // vendor; existing Gemini reports still count; the coordinator may triage.
+    #[test]
+    fn d91_adversarial_vendor_differs_from_author() {
+        let commits: BTreeSet<String> = [sha('a')].into_iter().collect();
+        let yes = |_: &str| true;
+        let m = matrix();
+        let with = |author: &str, reviewer: &str, triager: &str| {
+            let mut set = complete(&sha('a'));
+            set[1] = (
+                ADVERSARIAL.into(),
+                format!(
+                    "{}\n### ADV9-01: first\n\n### ADV9-02: second\n",
+                    report(&sha('a'), "must-fix", author, reviewer)
+                ),
+            );
+            set[2] = triage(
+                &sha('a'),
+                "| ADV9-01 | **fixed** | test |\n| ADV9-02 | rejected | reason |\n",
+                triager,
+            );
+            evaluate(&set, &commits, &yes, &m)
+        };
+        let ok = |author, reviewer, triager| {
+            assert!(
+                with(author, reviewer, triager).is_empty(),
+                "{author} {reviewer} {triager}"
+            )
+        };
+        let bad = |author, reviewer| {
+            assert!(
+                !with(author, reviewer, "triage / OpenAI").is_empty(),
+                "{author} {reviewer}"
+            )
+        };
+        ok(
+            "code generation / Anthropic",
+            "adversarial review / OpenAI",
+            "coordinator triage / Anthropic",
+        );
+        ok(
+            "code generation / Anthropic",
+            "adversarial review / Google",
+            "triage / OpenAI",
+        );
+        ok(
+            "documentation / OpenAI",
+            "adversarial review / Anthropic",
+            "coordinator triage / Anthropic",
+        );
+        bad(
+            "code generation / Anthropic",
+            "adversarial review / Anthropic",
+        );
+        bad("documentation / OpenAI", "adversarial review / OpenAI");
+        // A missing, unknown or two-vendor author cannot dodge the check.
+        bad("code generation / Nobody", "adversarial review / Anthropic");
+        bad(
+            "code generation / Anthropic and OpenAI",
+            "adversarial review / OpenAI",
+        );
+        let mut no_author = complete(&sha('a'));
+        no_author[1] = (
+            ADVERSARIAL.into(),
+            format!(
+                "- Reviewer role/provider: adversarial review / Anthropic\n- Reviewed head: `{}`\n- Verdict: **must-fix**\n\n### ADV9-01: first\n\n### ADV9-02: second\n",
+                sha('a')
+            ),
+        );
+        assert!(!evaluate(&no_author, &commits, &yes, &m).is_empty());
+    }
+
     // F6 / ADV23R-07: vendors, not model names, must differ, and roles must
     // be compatible; Gemini never supplies independent review.
     #[test]
@@ -974,7 +1227,7 @@ mod tests {
             ),
             (
                 "| ADV9-01 | fixed | x |\n| ADV9-02 | rejected | x |\n",
-                "triage / Anthropic",
+                "triage / Google",
             ),
         ] {
             let mut reports = complete(&head);

@@ -7,8 +7,8 @@ description: Add or update an external dataset under the provenance rules (D-56)
 
 1. Classify the licence: `open-commercial` or `research-only`. ODbL/OSM or any share-alike
    data is never used (D-56). If unclear, stop and add a questionnaire item.
-2. Bulk gathering is Gemini donkey work (D-53 routing); the result must be checked by GPT or
-   Claude before merge.
+2. Bulk gathering is done by GPT 6.2 Sol (D-62, D-91); Claude reviews the result before merge.
+   Gemini is not used.
 3. Write a download script (Rust, D-73; Python only under `spikes/`). Never commit raw
    `research-only` files; `open-commercial` samples only if registered.
 4. Register it in the dataset's `manifest.toml` (the only accepted manifest name): source URL,
