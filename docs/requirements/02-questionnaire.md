@@ -338,50 +338,58 @@ clarification is tracked in Q-H-7; the D-48 planning floor remains an assumption
 The following items record open engineering assumptions proposed in `docs/research/m1-deficit-sources.md` to resolve M1 data gaps under D-71. In accordance with AGENTS.md rule 1, these author proxies remain unapproved assumptions until evaluated or decided by the owner.
 
 <a id="q-p-01"></a>
-- [ ] **Q-P-01 Post-fault to continuous thermal rating proxy (M1 Deficit 1).**
+- [x] **Q-P-01 Post-fault to continuous thermal rating proxy (M1 Deficit 1).**
   Candidate 1.1 proposes estimating continuous branch rating as $0.88 \times \text{Post-Fault Rating}$ where continuous ratings are omitted in ETYS Appendix B.
   Options: (a) adopt universal 0.88 multiplier as an unvalidated proxy · (b) require asset-specific post-fault to continuous multipliers differentiated by cable/overhead line and voltage class · (c) omit branches lacking continuous ratings from thermal constraint monitoring · (d) acquire DNO/TO asset registers with explicit continuous ratings under D-71.
   ★ (b) Differentiated asset-class proxies evaluated with sensitivity sweeps against (a), pending acquisition of explicit continuous ratings under D-71.
+  **Answered:** recommendation accepted → D-78 (2026-11-19).
 
 <a id="q-p-02"></a>
-- [ ] **Q-P-02 ROI micro-PV capacity interpolation and rooftop scaling (M1 Deficit 3).**
+- [x] **Q-P-02 ROI micro-PV capacity interpolation and rooftop scaling (M1 Deficit 3).**
   Candidate 3.3 proposes linear interpolation between end-2023 (~300 MW) and end-2024 (~500 MW) ESB report endpoints and scaling from utility PV_Live profiles to estimate Irish rooftop PV.
   Options: (a) linear capacity interpolation between annual endpoints with utility profile scaling · (b) monthly step interpolation tracking quarterly microgen reporting · (c) independent synthetic rooftop solar model with temperature/tilt adjustments · (d) defer embedded Irish micro-PV until metered distribution feeds are available.
   ★ (a) Linear capacity interpolation between verified annual endpoints with utility profile scaling, tagged as `ASSUMPTION` with observed vs imputed flags.
+  **Answered:** recommendation accepted → D-79 (2026-11-19).
 
 <a id="q-p-03"></a>
-- [ ] **Q-P-03 HVDC interconnector loss formulation and parameters (M1 Deficit 4).**
+- [x] **Q-P-03 HVDC interconnector loss formulation and parameters (M1 Deficit 4).**
   Candidate 4.3 proposes an exploratory proxy of constant 0.75% loss per converter station (1.50% combined) and 0.30% per 100 km of cable where certified physical loss curves are unavailable.
   Options: (a) constant fractional exploratory proxy (0.75% per converter + 0.30%/100 km cable) with omitted standby losses · (b) calibrated power-loss model with fixed standby ($P_{\text{standby}}$), linear ($k_1 P$), and quadratic ($k_2 P^2$) terms and physical units · (c) commercial deemed loss factors (e.g. BritNed 3.0%, ElecLink 1.471% midpoint) as physical flow proxies · (d) zero physical interconnector loss baseline.
   ★ (b) Calibrated three-term power-loss formulation ($P_{\text{standby}} + k_1 P + k_2 P^2$) where coefficients are known, falling back to (a) as an explicit exploratory proxy labeled `ASSUMPTION: [Q-P-03]`.
+  **Answered:** recommendation accepted → D-80 (2026-11-19).
 
 <a id="q-p-04"></a>
-- [ ] **Q-P-04 Wholesale market clearing proxy vs unit commitment (M1 Deficit 5).**
+- [x] **Q-P-04 Wholesale market clearing proxy vs unit commitment (M1 Deficit 5).**
   Candidate 5 proposes a continuous merit-order clearing proxy (linear dispatch sorted by generator SRMC) for exploratory runs where commercial clearing solvers (e.g. Euphemia) are not runnable.
   Options: (a) continuous SRMC merit-order clearing proxy for exploratory runs · (b) open-source MILP unit commitment matching D-26 / FR-7 / ADR 0002 · (c) historical schedule replay without economic dispatch.
   ★ (b) Baseline MILP unit commitment per D-26 / FR-7, with (a) permitted strictly as an exploratory diagnostic proxy labeled `ASSUMPTION: [Q-P-04]`.
+  **Answered:** recommendation accepted → D-81 (2026-11-19).
 
 <a id="q-p-05"></a>
-- [ ] **Q-P-05 Thermal generation efficiency and variable O&M defaults (M1 Deficit 6).**
+- [x] **Q-P-05 Thermal generation efficiency and variable O&M defaults (M1 Deficit 6).**
   Candidate 6.2 proposes default net efficiencies (52% CCGT, 35% OCGT) and variable O&M (£3.50–£5.00/MWh CCGT, £5.00–£8.00/MWh OCGT) based on DESNZ future-build projections rather than operating-fleet heat rates.
   Options: (a) author-proposed technology proxies (52% CCGT, 35% OCGT; £4/MWh CCGT VOM, £6.50/MWh OCGT VOM) · (b) unit-specific heat rates and O&M calibrated from historical fuel consumption and generation outturns · (c) vintage-banded efficiency curves by commissioning decade.
   ★ (a) Author-proposed technology proxies for MVP exploratory dispatch, marked `ASSUMPTION: [Q-P-05]`, migrating to (b) as plant-specific data is gathered.
+  **Answered:** recommendation accepted → D-82 (2026-11-19).
 
 <a id="q-p-06"></a>
-- [ ] **Q-P-06 Wind speed hub-height scaling shear exponent (M1 Deficit 7).**
+- [x] **Q-P-06 Wind speed hub-height scaling shear exponent (M1 Deficit 7).**
   Candidate 7.1 proposes power-law wind shear scaling $v(h) = v_{10} \times (h/10)^\alpha$ with default exponents ($\alpha = 0.143$ onshore, $\alpha = 0.11$ offshore) where mast measurements or vertical profiles are absent.
   Options: (a) standard constant power-law shear exponents ($\alpha = 0.143$ onshore, $\alpha = 0.11$ offshore) · (b) atmospheric stability-dependent dynamic shear (e.g. Monin-Obukhov similarity) · (c) multi-level reanalysis wind interpolation (e.g. ERA5 100 m wind directly) · (d) zero shear (unscaled 10 m wind).
   ★ (c) Multi-level ERA5 fields where available, falling back to (a) as an exploratory proxy marked `ASSUMPTION: [Q-P-06]`.
+  **Answered:** recommendation accepted → D-83 (2026-11-19).
 
 <a id="q-p-07"></a>
-- [ ] **Q-P-07 Solar PV temperature derating coefficient (M1 Deficit 7).**
+- [x] **Q-P-07 Solar PV temperature derating coefficient (M1 Deficit 7).**
   Candidate 7.1 proposes linear cell temperature derating $P_{\text{dc}} = P_{\text{stc}} \times [1 - \gamma (T_{\text{cell}} - 25)]$ with constant $\gamma = 0.004 / ^\circ\text{C}$ ($0.40\% / ^\circ\text{C}$).
   Options: (a) constant derating coefficient $\gamma = 0.004 / ^\circ\text{C}$ ($0.40\% / ^\circ\text{C}$) · (b) manufacturer-specific temperature coefficients by module technology (monocrystalline vs polycrystalline vs thin-film) · (c) zero temperature derating ($P = P_{\text{stc}}$).
   ★ (a) Constant default $\gamma = 0.004 / ^\circ\text{C}$ as author-proposed technology proxy marked `ASSUMPTION: [Q-P-07]`.
+  **Answered:** recommendation accepted → D-84 (2026-11-19).
 
 <a id="q-p-08"></a>
-- [ ] **Q-P-08 Fuel/carbon price resampling (M1 Deficit 6).**
+- [x] **Q-P-08 Fuel/carbon price resampling (M1 Deficit 6).**
   Monthly averages and auction observations require an imputation policy; see research Section 6. ASSUMPTION: resampled values are proxies, not observed spot prices.
   Options: (a) two-sided interpolation in reconstruction only, release-time step-holding for as-of · (b) release-time step-holding in both modes · (c) defer until daily observations are acquired.
   ★ (a), retaining original cadence and observed/imputed masks; every as-of value must have a verified publication timestamp no later than the knowledge cut, including auction-day observations.
+  **Answered:** recommendation accepted → D-85 (2026-11-19).
 

@@ -1,6 +1,18 @@
 # STATUS
 
-_Last updated: 2026-11-16_
+_Last updated: 2026-11-26_
+
+**Coordinator recovery (2026-11-26, D-86):** GPT 6.2 Sol now leads the bulk of work,
+including code. Claude is reserved for focused cross-provider reviews of GPT PRs;
+Gemini is removed (D-91); GPT gathers data and does adversarial reviews (Claude for GPT-authored PRs). Maximum two
+delegates at once. D-78–D-85 remain pending in PR #87; D-86 records the new owner instruction.
+
+Live queue confirmed on 2026-11-26: #81 is mergeable but lacks current independent/
+adversarial evidence and exact-head owner policy approval; build/scanning checks pass.
+#83 conflicts; #87 fails independent-review and documentation gates. #92 is being rebuilt with only its original net changes on current main (D-88),
+preserving newer review documents; provenance, fresh reviews and policy approval remain required. #59/#60 await #87's
+decisions. #78/#57/#53 remain open for relevance assessment. No failing gate is waived;
+the coordinator must not merge #81. See `context/threads.md` and `HANDOFF.md` for recovery work.
 
 Coordinator update (2026-11-26): #92 was repaired and pushed at `7a0eb12` as one
 commit containing only its original net diff on current main; four newer review
@@ -14,7 +26,9 @@ report no new findings, with OpenAI verification recorded. #92 replacement build
 checks all pass, with current-head review and owner approval still outstanding.
 
 
-**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-76 (D-5 superseded by D-23).
+Owner decisions D-89–D-91 (2026-11-27): Gemini removed; GPT/Claude adversarial reviews (D-91). #97 admin squash-merged as `3e82264` to break the #81/#97 deadlock (no standing gate exception); GPT 6.2 Sol replaces 6.1 for all GPT roles.
+
+**Phase:** Build (M0). Requirements engineering complete. Decisions D-1 … D-91 (D-5 superseded by D-23).
 Fable review (`reviews/claude-fable-5-2-2026-11-12.md`) processed in rounds A–C.
 **Code allowed?** **Yes** (D-72, 2026-11-13). Requirements baselined; ADRs 0001–0006 accepted. Current milestone: **M0** (workspace, CI, licence gate).
 **Repo:** private (to go public per D-58 once preconditions are met), https://github.com/Tobechukwu-Njoku/energy-grid-simulator
@@ -392,8 +406,8 @@ The owner's core questions are listed in D-40.
 **Rust everywhere code is needed**; TypeScript web UI in a pro-analytics, dark-mode style (D-47).
 PostgreSQL 18 + Redis. Linux machine: Ryzen 5900X / 128 GB, consumer NVIDIA GPU, so the **CPU
 path is primary** (R-14). Pluggable solvers. Future commercial SaaS, so **no share-alike data**.
-Team (`docs/process/team.md`): Claude Opus 5.5 codes, GPT 6.1 Sol architects and reviews,
-Gemini Flash does checked donkey work. Strict merge gates (D-28).
+Team (`docs/process/team.md`): Claude Opus 5.5 codes, GPT 6.2 Sol architects and reviews,
+Gemini has no role (D-91). Strict merge gates (D-28).
 
 ## Still open (non-blocking)
 

@@ -267,10 +267,17 @@ impl Matrix {
             .is_some_and(|party| self.adversarial_roles.contains(&party.role))
     }
 
+    /// D-91: an allowed adversarial role and vendor, never the author's vendor.
     fn adversarial_valid(&self, header: &ReviewHeader) -> bool {
+        // The author must name exactly one vendor, or the comparison is vacuous.
+        let Some((_, author)) = self.party_vendor(header.author.as_ref()) else {
+            return false;
+        };
         self.party_vendor(header.reviewer.as_ref())
             .is_some_and(|(role, vendor)| {
-                self.adversarial_roles.contains(&role) && self.adversarial_vendors.contains(&vendor)
+                self.adversarial_roles.contains(&role)
+                    && self.adversarial_vendors.contains(&vendor)
+                    && author != vendor
             })
     }
 
@@ -408,7 +415,7 @@ pub fn evaluate(
     }
     if !valid_adversarial {
         findings.push(Finding::general(
-            "no adversarial report with a valid header (adversarial review / Google) cites a commit of this PR",
+            "no adversarial report with a valid header (adversarial review by an allowed vendor other than the author's) cites a commit of this PR",
         ));
     }
     for (path, ids) in &adversarial {
@@ -1074,6 +1081,78 @@ mod tests {
         assert!(!evaluate(&complete(&sha('a')), &commits, &stale, &m).is_empty());
     }
 
+    // D-91: GPT or Claude adversarial reviews count, never from the author's
+    // vendor; existing Gemini reports still count; the coordinator may triage.
+    #[test]
+    fn d91_adversarial_vendor_differs_from_author() {
+        let commits: BTreeSet<String> = [sha('a')].into_iter().collect();
+        let yes = |_: &str| true;
+        let m = matrix();
+        let with = |author: &str, reviewer: &str, triager: &str| {
+            let mut set = complete(&sha('a'));
+            set[1] = (
+                ADVERSARIAL.into(),
+                format!(
+                    "{}\n### ADV9-01: first\n\n### ADV9-02: second\n",
+                    report(&sha('a'), "must-fix", author, reviewer)
+                ),
+            );
+            set[2] = triage(
+                &sha('a'),
+                "| ADV9-01 | **fixed** | test |\n| ADV9-02 | rejected | reason |\n",
+                triager,
+            );
+            evaluate(&set, &commits, &yes, &m)
+        };
+        let ok = |author, reviewer, triager| {
+            assert!(
+                with(author, reviewer, triager).is_empty(),
+                "{author} {reviewer} {triager}"
+            )
+        };
+        let bad = |author, reviewer| {
+            assert!(
+                !with(author, reviewer, "triage / OpenAI").is_empty(),
+                "{author} {reviewer}"
+            )
+        };
+        ok(
+            "code generation / Anthropic",
+            "adversarial review / OpenAI",
+            "coordinator triage / Anthropic",
+        );
+        ok(
+            "code generation / Anthropic",
+            "adversarial review / Google",
+            "triage / OpenAI",
+        );
+        ok(
+            "documentation / OpenAI",
+            "adversarial review / Anthropic",
+            "coordinator triage / Anthropic",
+        );
+        bad(
+            "code generation / Anthropic",
+            "adversarial review / Anthropic",
+        );
+        bad("documentation / OpenAI", "adversarial review / OpenAI");
+        // A missing, unknown or two-vendor author cannot dodge the check.
+        bad("code generation / Nobody", "adversarial review / Anthropic");
+        bad(
+            "code generation / Anthropic and OpenAI",
+            "adversarial review / OpenAI",
+        );
+        let mut no_author = complete(&sha('a'));
+        no_author[1] = (
+            ADVERSARIAL.into(),
+            format!(
+                "- Reviewer role/provider: adversarial review / Anthropic\n- Reviewed head: `{}`\n- Verdict: **must-fix**\n\n### ADV9-01: first\n\n### ADV9-02: second\n",
+                sha('a')
+            ),
+        );
+        assert!(!evaluate(&no_author, &commits, &yes, &m).is_empty());
+    }
+
     // F6 / ADV23R-07: vendors, not model names, must differ, and roles must
     // be compatible; Gemini never supplies independent review.
     #[test]
@@ -1148,7 +1227,7 @@ mod tests {
             ),
             (
                 "| ADV9-01 | fixed | x |\n| ADV9-02 | rejected | x |\n",
-                "triage / Anthropic",
+                "triage / Google",
             ),
         ] {
             let mut reports = complete(&head);
