@@ -325,7 +325,7 @@ fn malformed_password_key(key: &str) -> bool {
 
 pub(super) fn scan(text: &str) -> Vec<Match> {
     static AUTH: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)\bauthorization(?:["']|`+)?[ \t]*:[ \t]*(?:\r?\n[ \t]+)?(?P<quote>["']?)(?:basic|bearer)(?:[ \t]+(?:\r?\n[ \t]+)?|\r?\n[ \t]+)"#)
+        Regex::new(r#"(?i)\bauthorization(?:["']|`+)?[ \t]*:[ \t]*(?:(?:\r\n?|\n)[ \t]+)?(?P<quote>["']?)(?P<scheme>basic|bearer)(?:[ \t]+(?:(?:\r\n?|\n)[ \t]+)?|(?:\r\n?|\n)[ \t]+)"#)
             .expect("header regex")
     });
     static ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
@@ -334,7 +334,8 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
     });
     // `if [/i] [not] ["]` directly before a batch comparison operand.
     static BATCH_IF: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r#"(?i)(?:^|[\s(&|])if(?:\s+/i)?(?:\s+not)?\s+["']?$"#).expect("batch if regex")
+        Regex::new(r#"(?i)(?:^[ \t]*|[(&|][ \t]*)@?if(?:\s+/i)?(?:\s+not)?\s+["']?$"#)
+            .expect("batch if regex")
     });
     static URI: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r#"(?:[A-Za-z][A-Za-z0-9+.-]*|<scheme>)://[^\s:@/?#"'\\]*:"#)
@@ -410,34 +411,49 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             base
         };
         let starts_header = |line: &str| {
+            let line = line.split(['\r', '\n']).next().unwrap_or("");
+            if let Some(quote @ ('"' | '\'')) = line.chars().next() {
+                return line[1..].split_once(quote).is_some_and(|(_, rest)| {
+                    rest.trim_start_matches([' ', '\t']).starts_with(':')
+                });
+            }
             let name = line
                 .bytes()
-                .take_while(|b| b.is_ascii_alphanumeric() || *b == b'-')
+                .take_while(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(b))
                 .count();
-            name > 0 && line.as_bytes().get(name) == Some(&b':')
+            name > 0
+                && line[name..]
+                    .trim_start_matches([' ', '\t'])
+                    .starts_with(':')
         };
         let continues = |after: &str| {
             let n = blanks(after);
             n > content || (n > base && !starts_header(&after[n..]))
         };
-        if text[matched.start()..matched.end()]
-            .split('\n')
-            .skip(1)
-            .any(|after| !continues(after))
-        {
+        let folds = |start: usize, end: usize| {
+            text[start..end]
+                .match_indices(['\r', '\n'])
+                .filter_map(move |(index, newline)| {
+                    let next = start + index + 1;
+                    if newline == "\n" && next >= 2 && text.as_bytes()[next - 2] == b'\r' {
+                        return None;
+                    }
+                    let next = next
+                        + usize::from(newline == "\r" && text.as_bytes().get(next) == Some(&b'\n'));
+                    Some((index, next))
+                })
+        };
+        let scheme = capture.name("scheme").expect("header scheme");
+        let quoted = !quote.is_empty() || text[..matched.start()].ends_with(['"', '\'']);
+        if folds(matched.start(), matched.end()).any(|(_, next)| {
+            let after = &text[next..];
+            !continues(after) || (next <= scheme.start() && !quoted && blanks(after) <= content)
+        }) {
             continue;
         }
-        let mut end = raw.len();
-        for (index, byte) in raw.bytes().enumerate() {
-            if byte == b'\n' && !continues(&raw[index + 1..]) {
-                end = index - usize::from(index > 0 && raw.as_bytes()[index - 1] == b'\r');
-                break;
-            }
-            if byte == b'\r' && raw.as_bytes().get(index + 1) != Some(&b'\n') {
-                end = index;
-                break;
-            }
-        }
+        let end = folds(matched.end(), matched.end() + raw.len())
+            .find(|&(_, next)| !continues(&text[next..]))
+            .map_or(raw.len(), |(index, _)| index);
         let raw = &raw[..end];
         // Preserve byte lengths so finding offsets still refer to the input.
         let unfolded = raw.replace(['\r', '\n'], " ");
@@ -457,17 +473,19 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         let matched = capture.get(0).expect("whole match");
         // The match already consumed blanks after the first =, so this
         // accepts == and = = but not a lone = assignment.
-        let line_head = &text[text[..matched.start()]
-            .rfind(['\r', '\n'])
-            .map_or(0, |i| i + 1)..matched.start()];
         if text[matched.end()..].starts_with('=')
-            && BATCH_IF.is_match(line_head)
             && raw_key.len() > 2
             && raw_key.starts_with('%')
             && raw_key.ends_with('%')
             && raw_key[1..raw_key.len() - 1]
                 .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'%')
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'%' | b'.'))
+            && BATCH_IF.is_match(
+                text[..matched.start()]
+                    .rsplit(['\r', '\n'])
+                    .next()
+                    .unwrap_or(""),
+            )
         {
             continue;
         }
@@ -499,7 +517,12 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
             } else {
                 value_text
             };
-            let (value, length) = if query {
+            let (value, length) = if jdbc {
+                let length = value_text
+                    .find(['&', '#', '\r', '\n'])
+                    .unwrap_or(value_text.len());
+                (value_text[..length].to_owned(), length)
+            } else if query {
                 grammar_value(value_text, "&#")
             } else if connection {
                 assignment_value(value_text)
@@ -604,6 +627,77 @@ mod tests {
             );
         } else {
             assert!(hits.is_empty(), "{text:?}: {hits:?}");
+        }
+    }
+
+    #[test]
+    fn authorization_folds_support_all_line_endings() {
+        let header = "Authorization";
+        for newline in ["\n", "\r\n", "\r"] {
+            for text in [
+                format!("  {header}:{newline}    Bearer fixture-value"),
+                format!("  {header}: Bearer{newline}    fixture-value"),
+                format!("  {header}: Bearer <token>{newline}    fixture-value"),
+            ] {
+                let hits = scan(&text);
+                assert!(
+                    hits.contains(&(2, text.len(), "local-http-authorization")),
+                    "{text:?}: {hits:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn list_header_siblings_end_empty_and_placeholder_values() {
+        let header = "Authorization";
+        for newline in ["\n", "\r\n", "\r"] {
+            for sibling in ["Accept", "'Accept'", "\"Accept\"", "X_Accept"] {
+                for token in ["", " <token>"] {
+                    check(
+                        &format!("- {header}: Bearer{token}{newline}  {sibling}: application/json"),
+                        None,
+                    );
+                }
+            }
+            check(
+                &format!("- {header}:{newline}  Bearer tokens are rotated"),
+                None,
+            );
+        }
+    }
+
+    #[test]
+    fn many_ordinary_assignments_on_one_line() {
+        assert!(scan(&"limit=10;".repeat(1_000)).is_empty());
+    }
+
+    #[test]
+    fn jdbc_query_checks_the_whole_value_before_exempting_placeholders() {
+        let key = "password";
+        let url = "jdbc:postgresql://host/db";
+        for suffix in ["", "&ssl=true", "#fragment"] {
+            check(
+                &format!("{url}?{key}='changeme'fixture{suffix}"),
+                Some("local-jdbc-password"),
+            );
+            check(&format!("url: \"{url}?{key}=%63hangeme{suffix}\""), None);
+        }
+    }
+
+    #[test]
+    fn batch_comparisons_allow_echo_suppression_and_dotted_variables() {
+        for key in ["%DB_PASSWORD%", "%DB.PASSWORD%"] {
+            for command in ["@if", "if", "  @if"] {
+                check(&format!("{command} \"{key}\"==\"\" echo missing"), None);
+            }
+            for line in [
+                format!("{key}==fixture-value"),
+                format!("@if {key}=fixture-value"),
+                format!("echo if {key}==fixture-value"),
+            ] {
+                check(&line, Some("local-connection-password"));
+            }
         }
     }
 
