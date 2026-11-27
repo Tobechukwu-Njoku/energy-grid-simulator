@@ -432,7 +432,11 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
     for capture in ASSIGNMENT.captures_iter(text) {
         // A batch expansion on the left of == is a value, not a key.
         let raw_key = &capture[1];
-        if raw_key.len() > 2
+        let matched = capture.get(0).expect("whole match");
+        // The match already consumed blanks after the first =, so this
+        // accepts == and = = but not a lone = assignment.
+        if text[matched.end()..].starts_with('=')
+            && raw_key.len() > 2
             && raw_key.starts_with('%')
             && raw_key.ends_with('%')
             && raw_key[1..raw_key.len() - 1]
@@ -443,7 +447,6 @@ pub(super) fn scan(text: &str) -> Vec<Match> {
         }
         let key = credential_key(raw_key);
         if password_key(&key) || (capture[1].contains('%') && malformed_password_key(&key)) {
-            let matched = capture.get(0).expect("whole match");
             let prefix = &text[..matched.start()];
             let line = prefix.rsplit(['\r', '\n', '\'', '"']).next().unwrap_or("");
             let jdbc = ["password", "pwd"].contains(&key.as_str())
@@ -623,6 +626,23 @@ mod tests {
                 &format!("machine host login user {key} synthetic-value"),
             );
             check(&text, Some("local-netrc-credentials"));
+        }
+    }
+
+    #[test]
+    fn percent_wrapped_password_assignments_are_not_batch_comparisons() {
+        let value = ["batch", "-synthetic-value"].concat();
+        for key in ["%70assword%", "%70wd%", "%password%", "%DB_PASSWORD%"] {
+            for prefix in ["", "?", "jdbc:postgresql://host/db?"] {
+                check(&format!("{prefix}{key}={value}"), Some("password"));
+                check(&format!("{prefix}{key}=<secret>"), None);
+            }
+            check(&format!("{key}= ={value}"), None);
+            check(&format!("{key} == {value}"), None);
+        }
+        for key in ["PASSWORD", "DB_PASS", "DB_PASSWORD"] {
+            check(&format!("if \"%{key}%\"==\"\" echo missing"), None);
+            check(&format!("if %{key}%==defined echo present"), None);
         }
     }
 
