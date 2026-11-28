@@ -1605,7 +1605,9 @@ fn check_tier_owners(text: &str, owner: &str, tracked: &[String]) -> Vec<Finding
     let (rules, mut findings) = parse_codeowners(text);
     let handle = format!("@{owner}");
     let owns = |rule: &OwnerRule| {
-        rule.owners.iter().any(|candidate| candidate.eq_ignore_ascii_case(&handle))
+        rule.owners
+            .iter()
+            .any(|candidate| candidate.eq_ignore_ascii_case(&handle))
     };
     for &pattern in POLICY_PATTERNS {
         // An unanchored literal also covers its root-anchored equivalent.
@@ -1616,15 +1618,22 @@ fn check_tier_owners(text: &str, owner: &str, tracked: &[String]) -> Vec<Finding
         });
         if !rule.is_some_and(owns) {
             findings.push(Finding::at(
-                ".github/CODEOWNERS", None, format!("{pattern} must be owned by {handle}"),
+                ".github/CODEOWNERS",
+                None,
+                format!("{pattern} must be owned by {handle}"),
             ));
         }
     }
     for path in tracked.iter().filter(|path| is_policy_path(path)) {
-        let last = rules.iter().rev().find(|rule| codeowners_match(&rule.pattern, path));
+        let last = rules
+            .iter()
+            .rev()
+            .find(|rule| codeowners_match(&rule.pattern, path));
         if !last.is_some_and(owns) {
             findings.push(Finding::at(
-                ".github/CODEOWNERS", None, format!("{path} must be owned by {handle}"),
+                ".github/CODEOWNERS",
+                None,
+                format!("{path} must be owned by {handle}"),
             ));
         }
     }
@@ -1945,7 +1954,9 @@ mod tests {
     #[test]
     fn codeowners_requires_unpopulated_tier_patterns_and_checks_overrides() {
         let rules = crate::review_tier::POLICY_PATTERNS
-            .iter().map(|pattern| format!("{pattern} @Owner\n")).collect::<String>();
+            .iter()
+            .map(|pattern| format!("{pattern} @Owner\n"))
+            .collect::<String>();
         assert!(check_tier_owners(&rules, "Owner", &[]).is_empty());
         let missing = rules.replace("data-rules/ @Owner\n", "/data-rules/ @Owner\n");
         assert_eq!(check_tier_owners(&missing, "Owner", &[]).len(), 1);

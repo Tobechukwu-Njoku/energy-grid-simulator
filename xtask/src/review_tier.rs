@@ -16,14 +16,40 @@ enum Tier {
 }
 
 pub(crate) const POLICY_PATTERNS: &[&str] = &[
-    "/.github/", "/.githooks/", "/.claude/", "/xtask/", "/docs/process/",
-    "/docs/security/", "/AGENTS.md", "/CLAUDE.md", "/CONTRIBUTING.md",
-    "/SECURITY.md", "/deny.toml", "/docs/architecture/adr/0001-repo-layout-and-ci-gates.md",
-    "Cargo.toml", "Cargo.lock", "manifest.toml", "sources.tsv", "clippy.toml",
-    ".clippy.toml", "rustfmt.toml", ".rustfmt.toml", "rust-toolchain",
-    "rust-toolchain.toml", "build.rs", "security/", "security.rs", "provenance/",
-    "provenance.rs", "data-rules/", "data-rules.md", "data_rules.rs", "migrations/",
-    "schema-migrations/", ".cargo/", ".config/",
+    "/.github/",
+    "/.githooks/",
+    "/.claude/",
+    "/xtask/",
+    "/docs/process/",
+    "/docs/security/",
+    "/AGENTS.md",
+    "/CLAUDE.md",
+    "/CONTRIBUTING.md",
+    "/SECURITY.md",
+    "/deny.toml",
+    "/docs/architecture/adr/0001-repo-layout-and-ci-gates.md",
+    "Cargo.toml",
+    "Cargo.lock",
+    "manifest.toml",
+    "sources.tsv",
+    "clippy.toml",
+    ".clippy.toml",
+    "rustfmt.toml",
+    ".rustfmt.toml",
+    "rust-toolchain",
+    "rust-toolchain.toml",
+    "build.rs",
+    "security/",
+    "security.rs",
+    "provenance/",
+    "provenance.rs",
+    "data-rules/",
+    "data-rules.md",
+    "data_rules.rs",
+    "migrations/",
+    "schema-migrations/",
+    ".cargo/",
+    ".config/",
 ];
 
 pub(crate) fn is_policy_path(path: &str) -> bool {
@@ -35,9 +61,8 @@ pub(crate) fn is_policy_path(path: &str) -> bool {
                 path == anchored
             }
         } else if let Some(directory) = pattern.strip_suffix('/') {
-            path.rsplit_once('/').is_some_and(|(parent, _)| {
-                parent.split('/').any(|part| part == directory)
-            })
+            path.rsplit_once('/')
+                .is_some_and(|(parent, _)| parent.split('/').any(|part| part == directory))
         } else {
             path.rsplit('/').next() == Some(*pattern)
         }
@@ -48,7 +73,9 @@ fn tier(path: &str) -> Tier {
     if is_policy_path(path) {
         Tier::Policy
     } else if (!path.contains('/') && path.ends_with(".md"))
-        || (["docs/", "notes/"].iter().any(|prefix| path.starts_with(prefix))
+        || (["docs/", "notes/"]
+            .iter()
+            .any(|prefix| path.starts_with(prefix))
             && [".md", ".txt"].iter().any(|suffix| path.ends_with(suffix)))
     {
         Tier::Docs
@@ -62,14 +89,13 @@ fn classify<'a>(paths: impl IntoIterator<Item = &'a str>) -> Tier {
 }
 
 pub(crate) fn in_rust_tree(path: &str) -> bool {
-    ["crates/", "spikes/", "xtask/"].iter().any(|prefix| path.starts_with(prefix))
+    ["crates/", "spikes/", "xtask/"]
+        .iter()
+        .any(|prefix| path.starts_with(prefix))
 }
 
 /// Whether the file is a test target, reading Rust contents for inline tests.
-fn is_test_file(
-    path: &str,
-    read: impl FnOnce() -> Result<String, String>,
-) -> Result<bool, String> {
+fn is_test_file(path: &str, read: impl FnOnce() -> Result<String, String>) -> Result<bool, String> {
     if !in_rust_tree(path) && !path.starts_with("tests/") {
         return Ok(false);
     }
@@ -91,7 +117,9 @@ fn is_test_file(
         fn visit_attribute(&mut self, attr: &'ast syn::Attribute) {
             self.0 |= attr.path().is_ident("test")
                 || (attr.path().is_ident("cfg")
-                    && attr.parse_args::<syn::Ident>().is_ok_and(|arg| arg == "test"));
+                    && attr
+                        .parse_args::<syn::Ident>()
+                        .is_ok_and(|arg| arg == "test"));
         }
     }
     let mut found = TestAttribute::default();
@@ -219,7 +247,10 @@ fn paths(listing: &str) -> impl Iterator<Item = &str> {
     listing.split_terminator('\0')
 }
 
-fn has_test_change(listing: &str, mut read: impl FnMut(&str) -> Result<String, String>) -> Result<bool, String> {
+fn has_test_change(
+    listing: &str,
+    mut read: impl FnMut(&str) -> Result<String, String>,
+) -> Result<bool, String> {
     for path in paths(listing) {
         if is_test_file(path, || read(path))? {
             return Ok(true);
@@ -403,12 +434,22 @@ mod tests {
     #[test]
     fn conventional_feat_and_fix_titles() {
         for title in [
-            "feat: network", "fix(api): dispatch", "feat!: breaking",
-            "fix(io)!: breaking", "  Feat: padded and capitalised", "FIX(Grid)!: upper case",
+            "feat: network",
+            "fix(api): dispatch",
+            "feat!: breaking",
+            "fix(io)!: breaking",
+            "  Feat: padded and capitalised",
+            "FIX(Grid)!: upper case",
         ] {
             assert!(is_feat_or_fix(title), "{title}");
         }
-        for title in ["docs: fix links", "feature: text", "fixing: text", "fix the grid", "feat(): text"] {
+        for title in [
+            "docs: fix links",
+            "feature: text",
+            "fixing: text",
+            "fix the grid",
+            "feat(): text",
+        ] {
             assert!(!is_feat_or_fix(title), "{title}");
         }
     }
@@ -428,7 +469,10 @@ mod tests {
             ("docs/tests/grid.rs", "#[test] fn grid() {}"),
             ("tools/test_grid.py", ""),
             ("crates/domain/src/tests.rs", "// #[test]"),
-            ("crates/domain/src/grid.rs", r#"const TEXT: &str = "#[cfg(test)]";"#),
+            (
+                "crates/domain/src/grid.rs",
+                r##"const TEXT: &str = "#[cfg(test)]";"##,
+            ),
             ("spikes/example/tests/grid.py", ""),
             ("tests/README.md", ""),
             ("tests/grid.js", ""),

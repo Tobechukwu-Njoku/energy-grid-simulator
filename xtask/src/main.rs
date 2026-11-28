@@ -103,6 +103,7 @@ fn event() -> Result<Option<(String, serde_json::Value)>, String> {
 fn run_policy(ctx: &Ctx) -> Result<bool, String> {
     let mut ok = true;
     ok &= report("unsafe-scope", &rust_policy::check_sources(ctx)?);
+    ok &= report("include-paths", &rust_policy::check_include_paths(ctx)?);
     ok &= report("manifests", &rust_policy::check_manifests(ctx)?);
     ok &= report("workflows", &workflows::check(ctx)?);
     ok &= report("python", &repository::python(ctx)?);

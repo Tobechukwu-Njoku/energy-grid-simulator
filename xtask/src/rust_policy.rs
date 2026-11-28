@@ -533,6 +533,109 @@ pub fn check_sources(ctx: &Ctx) -> Result<Vec<Finding>, String> {
     }
 }
 
+/// Check the tracked Rust sources for compile-time references outside the Rust trees.
+///
+/// # Errors
+///
+/// Fails if Git or a source file cannot be read.
+pub fn check_include_paths(ctx: &Ctx) -> Result<Vec<Finding>, String> {
+    let root = ctx.repo.canonicalize().map_err(|error| error.to_string())?;
+    let mut findings = Vec::new();
+    for path in tracked(&root)? {
+        if crate::review_tier::in_rust_tree(&path) && path.ends_with(".rs") {
+            let source = std::fs::read_to_string(root.join(&path))
+                .map_err(|error| format!("{path}: {error}"))?;
+            findings.extend(include_findings(&root, &path, &source));
+        }
+    }
+    Ok(findings)
+}
+
+fn include_findings(root: &Path, path: &str, source: &str) -> Vec<Finding> {
+    let tokens = match source.parse::<proc_macro2::TokenStream>() {
+        Ok(tokens) => tokens,
+        Err(error) => {
+            return vec![Finding::at(
+                path,
+                Some(error.span().start().line),
+                "cannot scan Rust source for compile-time file references",
+            )];
+        }
+    };
+    let mut findings = Vec::new();
+    let parent = Path::new(path).parent().unwrap_or_else(|| Path::new(""));
+    visit_file_references(tokens, false, &mut |kind, line, literal| {
+        let allowed = literal.is_some_and(|literal| {
+            let value = literal.value();
+            let target = Path::new(&value);
+            !target.is_absolute()
+                && root
+                    .join(parent)
+                    .join(target)
+                    .canonicalize()
+                    .is_ok_and(|resolved| {
+                        resolved
+                            .strip_prefix(root)
+                            .ok()
+                            .and_then(Path::to_str)
+                            .is_some_and(crate::review_tier::in_rust_tree)
+                    })
+        });
+        if !allowed {
+            findings.push(Finding::at(path, Some(line), format!(
+                "{kind} must resolve through a relative string literal to a file under crates/, spikes/ or xtask/"
+            )));
+        }
+    });
+    findings
+}
+
+fn visit_file_references(
+    stream: proc_macro2::TokenStream,
+    in_attribute: bool,
+    visit: &mut impl FnMut(&str, usize, Option<syn::LitStr>),
+) {
+    use proc_macro2::{Delimiter, TokenTree};
+
+    let tokens: Vec<_> = stream.into_iter().collect();
+    for window in tokens.windows(3) {
+        let [TokenTree::Ident(name), TokenTree::Punct(op), argument] = window else {
+            continue;
+        };
+        let name_text = name.to_string();
+        let argument = match (name_text.as_str(), op.as_char(), argument) {
+            ("include" | "include_str" | "include_bytes", '!', TokenTree::Group(group)) => {
+                let mut tokens: Vec<_> = group.stream().into_iter().collect();
+                if matches!(tokens.last(), Some(TokenTree::Punct(p)) if p.as_char() == ',') {
+                    tokens.pop();
+                }
+                tokens.into_iter().collect()
+            }
+            ("path", '=', TokenTree::Literal(literal)) if in_attribute => {
+                TokenTree::Literal(literal.clone()).into()
+            }
+            ("path", '=', _) if in_attribute => proc_macro2::TokenStream::new(),
+            _ => continue,
+        };
+        visit(
+            &name_text,
+            name.span().start().line,
+            syn::parse2(argument).ok(),
+        );
+    }
+    for (index, token) in tokens.iter().enumerate() {
+        if let TokenTree::Group(group) = token {
+            let attribute = group.delimiter() == Delimiter::Bracket
+                && (matches!(index.checked_sub(1).and_then(|i| tokens.get(i)),
+                    Some(TokenTree::Punct(p)) if p.as_char() == '#')
+                    || matches!(index.checked_sub(2).and_then(|i| tokens.get(i..index)),
+                        Some([TokenTree::Punct(hash), TokenTree::Punct(bang)])
+                            if hash.as_char() == '#' && bang.as_char() == '!'));
+            visit_file_references(group.stream(), in_attribute || attribute, visit);
+        }
+    }
+}
+
 fn level(item: &Item) -> Option<&str> {
     item.as_str()
         .or_else(|| item.get("level").and_then(Item::as_str))
@@ -718,6 +821,36 @@ pub fn check_manifests(ctx: &Ctx) -> Result<Vec<Finding>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rust_file_references_stay_in_rust_trees() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("repo root");
+        let path = "xtask/src/rust_policy.rs";
+        let check = |source| include_findings(root, path, source);
+        assert!(
+            check(
+                r#"
+            include_str!("../policy/repository.toml",);
+            #[path = "util.rs"] mod util;
+            let path = "../../README.md";
+            // include_bytes!("../../README.md");
+        "#
+            )
+            .is_empty()
+        );
+        for source in [
+            r#"include!("../../README.md");"#,
+            r#"core::include_str!("../../README.md");"#,
+            r#"include_bytes!("../../README.md");"#,
+            r##"#[path = "../../README.md"] mod external;"##,
+            r##"#[cfg_attr(test, path = "../../README.md")] mod external;"##,
+            r#"include_str!(concat!("../../", "README.md"));"#,
+        ] {
+            assert_eq!(check(source).len(), 1, "{source}");
+        }
+    }
 
     fn doc(text: &str) -> DocumentMut {
         text.parse().expect("toml")

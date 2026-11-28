@@ -316,7 +316,11 @@ pub fn spoofed_gate_names(workflows: &[(String, String)], gates: &[ProtectedGate
         let documents = match YamlLoader::load_from_str(text) {
             Ok(documents) => documents,
             Err(error) => {
-                findings.push(Finding::at(path.as_str(), None, format!("invalid workflow YAML: {error}")));
+                findings.push(Finding::at(
+                    path.as_str(),
+                    None,
+                    format!("invalid workflow YAML: {error}"),
+                ));
                 continue;
             }
         };
@@ -326,7 +330,11 @@ pub fn spoofed_gate_names(workflows: &[(String, String)], gates: &[ProtectedGate
             .and_then(|hash| hash.get(&Yaml::String("jobs".into())))
             .and_then(Yaml::as_hash)
         else {
-            findings.push(Finding::at(path.as_str(), None, "workflow is missing a jobs mapping"));
+            findings.push(Finding::at(
+                path.as_str(),
+                None,
+                "workflow is missing a jobs mapping",
+            ));
             continue;
         };
         for (id, job) in jobs {
@@ -1708,8 +1716,10 @@ jobs:
     fn trusted_workflow_is_read_only_and_owns_review_tier() {
         let path = ".github/workflows/trusted-gates.yml";
         let text = std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../.github/workflows/trusted-gates.yml"),
-        ).expect("trusted workflow");
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../.github/workflows/trusted-gates.yml"),
+        )
+        .expect("trusted workflow");
         let text = text.as_str();
         let policy = Policy::parse(include_str!("../policy/gates.toml")).expect("policy");
         assert!(check_workflow(path, text, &policy).is_empty());
