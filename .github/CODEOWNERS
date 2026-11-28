@@ -1,5 +1,4 @@
-# Policy paths: a change needs the policy owner's review (ADR 0001, R1).
-# Keep in step with protected_paths in xtask/policy/repository.toml.
+# Tier 2 paths require the policy owner. The classifier lives in xtask/src/review_tier.rs.
 /.github/ @Tobechukwu-Njoku
 /.githooks/ @Tobechukwu-Njoku
 /.cargo/ @Tobechukwu-Njoku
@@ -34,6 +33,7 @@ security/ @Tobechukwu-Njoku
 security.rs @Tobechukwu-Njoku
 provenance/ @Tobechukwu-Njoku
 provenance.rs @Tobechukwu-Njoku
+data-rules/ @Tobechukwu-Njoku
 data-rules.md @Tobechukwu-Njoku
 data_rules.rs @Tobechukwu-Njoku
 migrations/ @Tobechukwu-Njoku

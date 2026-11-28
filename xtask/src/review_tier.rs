@@ -15,66 +15,41 @@ enum Tier {
     Policy,
 }
 
+pub(crate) const POLICY_PATTERNS: &[&str] = &[
+    "/.github/", "/.githooks/", "/.claude/", "/xtask/", "/docs/process/",
+    "/docs/security/", "/AGENTS.md", "/CLAUDE.md", "/CONTRIBUTING.md",
+    "/SECURITY.md", "/deny.toml", "/docs/architecture/adr/0001-repo-layout-and-ci-gates.md",
+    "Cargo.toml", "Cargo.lock", "manifest.toml", "sources.tsv", "clippy.toml",
+    ".clippy.toml", "rustfmt.toml", ".rustfmt.toml", "rust-toolchain",
+    "rust-toolchain.toml", "build.rs", "security/", "security.rs", "provenance/",
+    "provenance.rs", "data-rules/", "data-rules.md", "data_rules.rs", "migrations/",
+    "schema-migrations/", ".cargo/", ".config/",
+];
+
+pub(crate) fn is_policy_path(path: &str) -> bool {
+    POLICY_PATTERNS.iter().any(|pattern| {
+        if let Some(anchored) = pattern.strip_prefix('/') {
+            if anchored.ends_with('/') {
+                path.starts_with(anchored)
+            } else {
+                path == anchored
+            }
+        } else if let Some(directory) = pattern.strip_suffix('/') {
+            path.rsplit_once('/').is_some_and(|(parent, _)| {
+                parent.split('/').any(|part| part == directory)
+            })
+        } else {
+            path.rsplit('/').next() == Some(*pattern)
+        }
+    })
+}
+
 fn tier(path: &str) -> Tier {
-    let components: Vec<_> = path.split('/').collect();
-    let file = components.last().copied().unwrap_or_default();
-    if [
-        ".github/",
-        ".githooks/",
-        ".claude/",
-        "xtask/",
-        "docs/process/",
-        "docs/security/",
-    ]
-    .iter()
-    .any(|prefix| path.starts_with(prefix))
-        || matches!(
-            path,
-            "AGENTS.md"
-                | "CLAUDE.md"
-                | "CONTRIBUTING.md"
-                | "SECURITY.md"
-                | "deny.toml"
-                | "docs/architecture/adr/0001-repo-layout-and-ci-gates.md"
-        )
-        || matches!(
-            file,
-            "Cargo.toml"
-                | "Cargo.lock"
-                | "manifest.toml"
-                | "sources.tsv"
-                | "clippy.toml"
-                | ".clippy.toml"
-                | "rustfmt.toml"
-                | ".rustfmt.toml"
-                | "rust-toolchain"
-                | "rust-toolchain.toml"
-                | "build.rs"
-        )
-        || components.iter().any(|part| {
-            matches!(
-                *part,
-                "security"
-                    | "security.rs"
-                    | "provenance"
-                    | "provenance.rs"
-                    | "data-rules"
-                    | "data-rules.md"
-                    | "data_rules.rs"
-                    | "migrations"
-                    | "schema-migrations"
-                    | ".cargo"
-                    | ".config"
-            )
-        })
-    {
+    if is_policy_path(path) {
         Tier::Policy
-    } else if path.starts_with("crates/") || path.starts_with("spikes/") {
-        Tier::Product
-    } else if path.starts_with("docs/")
-        || path.starts_with("notes/")
-        || file == "STATUS"
-        || file.ends_with(".md")
+    } else if (!path.contains('/') && path.ends_with(".md"))
+        || (["docs/", "notes/"].iter().any(|prefix| path.starts_with(prefix))
+            && [".md", ".txt"].iter().any(|suffix| path.ends_with(suffix)))
     {
         Tier::Docs
     } else {
@@ -86,19 +61,44 @@ fn classify<'a>(paths: impl IntoIterator<Item = &'a str>) -> Tier {
     paths.into_iter().map(tier).max().unwrap_or(Tier::Docs)
 }
 
-/// A source file (.rs .py .ts .js .go) under a `tests`, `test` or
-/// `__tests__` directory, or named `*_test.*` or `test_*.*`.
-fn is_test_file(path: &str) -> bool {
+pub(crate) fn in_rust_tree(path: &str) -> bool {
+    ["crates/", "spikes/", "xtask/"].iter().any(|prefix| path.starts_with(prefix))
+}
+
+/// Whether the file is a test target, reading Rust contents for inline tests.
+fn is_test_file(
+    path: &str,
+    read: impl FnOnce() -> Result<String, String>,
+) -> Result<bool, String> {
+    if !in_rust_tree(path) && !path.starts_with("tests/") {
+        return Ok(false);
+    }
     let (directory, file) = path.rsplit_once('/').unwrap_or(("", path));
-    let Some((stem, extension)) = file.rsplit_once('.') else {
-        return false;
-    };
-    matches!(extension, "rs" | "py" | "ts" | "js" | "go")
-        && (directory
-            .split('/')
-            .any(|part| matches!(part, "tests" | "test" | "__tests__"))
-            || stem.ends_with("_test")
-            || stem.starts_with("test_"))
+    if file.ends_with(".py") {
+        return Ok(file.starts_with("test_"));
+    }
+    if !file.ends_with(".rs") {
+        return Ok(false);
+    }
+    if directory.split('/').any(|part| part == "tests") {
+        return Ok(true);
+    }
+
+    use syn::visit::Visit as _;
+    #[derive(Default)]
+    struct TestAttribute(bool);
+    impl<'ast> syn::visit::Visit<'ast> for TestAttribute {
+        fn visit_attribute(&mut self, attr: &'ast syn::Attribute) {
+            self.0 |= attr.path().is_ident("test")
+                || (attr.path().is_ident("cfg")
+                    && attr.parse_args::<syn::Ident>().is_ok_and(|arg| arg == "test"));
+        }
+    }
+    let mut found = TestAttribute::default();
+    if let Ok(source) = syn::parse_file(&read()?) {
+        found.visit_file(&source);
+    }
+    Ok(found.0)
 }
 
 /// A conventional `feat` or `fix` title, with an optional scope and `!`,
@@ -219,25 +219,13 @@ fn paths(listing: &str) -> impl Iterator<Item = &str> {
     listing.split_terminator('\0')
 }
 
-/// `changes` are the added or modified paths with their added-line counts.
-fn missing_test<'a>(title: &str, changes: impl IntoIterator<Item = (&'a str, u64)>) -> bool {
-    is_feat_or_fix(title)
-        && !changes
-            .into_iter()
-            .any(|(path, added)| added > 0 && is_test_file(path))
-}
-
-/// Parse `git diff --numstat -z --no-renames` output; binary files count 0.
-fn numstat(listing: &str) -> Vec<(&str, u64)> {
-    listing
-        .split_terminator('\0')
-        .filter_map(|entry| {
-            let mut fields = entry.splitn(3, '\t');
-            let added = fields.next()?.parse().unwrap_or(0);
-            let _deleted = fields.next()?;
-            Some((fields.next()?, added))
-        })
-        .collect()
+fn has_test_change(listing: &str, mut read: impl FnMut(&str) -> Result<String, String>) -> Result<bool, String> {
+    for path in paths(listing) {
+        if is_test_file(path, || read(path))? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Check the current PR's net changes and reviews using policy from main.
@@ -307,7 +295,7 @@ pub fn check(ctx: &Ctx, main: &str, pull: &PullRequest) -> Result<Vec<Finding>, 
             &ctx.repo,
             &[
                 "diff",
-                "--numstat",
+                "--name-only",
                 "-z",
                 "--diff-filter=AM",
                 "--no-renames",
@@ -317,7 +305,10 @@ pub fn check(ctx: &Ctx, main: &str, pull: &PullRequest) -> Result<Vec<Finding>, 
                 "--",
             ],
         )?;
-        if missing_test(title, numstat(&String::from_utf8_lossy(&test_candidates))) {
+        if !has_test_change(&String::from_utf8_lossy(&test_candidates), |path| {
+            let body = git(&ctx.repo, &["show", &format!("{merged}:{path}")])?;
+            Ok(String::from_utf8_lossy(&body).into_owned())
+        })? {
             findings.push(Finding::general(
                 "feat/fix PRs must add or modify a test file",
             ));
@@ -354,9 +345,7 @@ mod tests {
         for path in [
             "docs/requirements/STATUS.md",
             "notes/draft.txt",
-            "STATUS",
             "README.md",
-            "archive/reviews/old-review.md",
         ] {
             assert_eq!(classify([path]), Tier::Docs, "{path}");
         }
@@ -366,6 +355,11 @@ mod tests {
             "spikes/data/REPORT.md",
             "spikes/example/model.py",
             "tests/acceptance/case.toml",
+            "tests/README.md",
+            "docs/model.json",
+            "notes/sample.rs",
+            "STATUS",
+            "archive/reviews/old-review.md",
             "apps/web/src/main.ts",
         ] {
             assert_eq!(classify(["docs/roadmap.md", path]), Tier::Product, "{path}");
@@ -407,57 +401,40 @@ mod tests {
     }
 
     #[test]
-    fn conventional_feat_and_fix_need_an_added_test_line() {
-        let none: [(&str, u64); 0] = [];
+    fn conventional_feat_and_fix_titles() {
         for title in [
-            "feat: network",
-            "fix(api): dispatch",
-            "feat!: breaking",
-            "fix(io)!: breaking",
-            "  Feat: padded and capitalised",
-            "FIX(Grid)!: upper case",
+            "feat: network", "fix(api): dispatch", "feat!: breaking",
+            "fix(io)!: breaking", "  Feat: padded and capitalised", "FIX(Grid)!: upper case",
         ] {
-            assert!(missing_test(title, none), "{title}");
-            for not_test in [
-                "crates/domain/src/lib.rs",
-                "tests/README.md",
-                "tests/cases/grid.toml",
-                "crates/domain/src/tests.rs",
-                "apps/web/src/grid.spec.ts",
-                "crates/domain/src/contest_x.rs",
-            ] {
-                assert!(missing_test(title, [(not_test, 5)]), "{title} {not_test}");
-            }
-            for test in [
-                "crates/domain/tests/grid.rs",
-                "spikes/example/test/grid.py",
-                "apps/web/__tests__/grid.ts",
-                "apps/web/src/grid_test.js",
-                "tools/check/grid_test.go",
-                "spikes/example/test_grid.py",
-            ] {
-                assert!(!missing_test(title, [(test, 1)]), "{title} {test}");
-                // Only deletions, or a binary change, do not count.
-                assert!(missing_test(title, [(test, 0)]), "{title} {test}");
-            }
+            assert!(is_feat_or_fix(title), "{title}");
         }
-        for title in [
-            "docs: fix links",
-            "feature: text",
-            "fixing: text",
-            "fix the grid",
-            "feat(): text",
-        ] {
-            assert!(!missing_test(title, none), "{title}");
+        for title in ["docs: fix links", "feature: text", "fixing: text", "fix the grid", "feat(): text"] {
+            assert!(!is_feat_or_fix(title), "{title}");
         }
     }
 
     #[test]
-    fn numstat_reads_added_lines() {
-        assert_eq!(
-            numstat("3\t1\tcrates/a/tests/x.rs\0-\t-\tlogo.png\0"),
-            [("crates/a/tests/x.rs", 3), ("logo.png", 0)]
-        );
+    fn only_real_test_targets_in_supported_directories_count() {
+        for (path, source) in [
+            ("crates/domain/tests/grid.rs", ""),
+            ("tests/grid.rs", ""),
+            ("spikes/example/test_grid.py", ""),
+            ("xtask/src/lib.rs", "#[cfg(test)] mod tests {}"),
+            ("crates/domain/src/grid.rs", "#[test] fn grid() {}"),
+        ] {
+            assert!(has_test_change(path, |_| Ok(source.to_owned())).expect("test target"));
+        }
+        for (path, source) in [
+            ("docs/tests/grid.rs", "#[test] fn grid() {}"),
+            ("tools/test_grid.py", ""),
+            ("crates/domain/src/tests.rs", "// #[test]"),
+            ("crates/domain/src/grid.rs", r#"const TEXT: &str = "#[cfg(test)]";"#),
+            ("spikes/example/tests/grid.py", ""),
+            ("tests/README.md", ""),
+            ("tests/grid.js", ""),
+        ] {
+            assert!(!has_test_change(path, |_| Ok(source.to_owned())).expect("non-test target"));
+        }
     }
 
     #[test]

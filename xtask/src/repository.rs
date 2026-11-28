@@ -1594,10 +1594,41 @@ pub fn codeowners(ctx: &Ctx) -> Result<Vec<Finding>, String> {
         .get("policy_owner")
         .and_then(Item::as_str)
         .ok_or("trusted policy: policy_owner missing")?;
-    let protected = string_array(&document["protected_paths"]);
     let text = std::fs::read_to_string(ctx.repo.join(".github/CODEOWNERS")).unwrap_or_default();
     let paths = tracked(&ctx.repo)?;
-    Ok(check_codeowners_paths(&text, owner, &protected, &paths))
+    Ok(check_tier_owners(&text, owner, &paths))
+}
+
+fn check_tier_owners(text: &str, owner: &str, tracked: &[String]) -> Vec<Finding> {
+    use crate::review_tier::{POLICY_PATTERNS, is_policy_path};
+
+    let (rules, mut findings) = parse_codeowners(text);
+    let handle = format!("@{owner}");
+    let owns = |rule: &OwnerRule| {
+        rule.owners.iter().any(|candidate| candidate.eq_ignore_ascii_case(&handle))
+    };
+    for &pattern in POLICY_PATTERNS {
+        // An unanchored literal also covers its root-anchored equivalent.
+        let rule = rules.iter().rev().find(|rule| {
+            matches!(rule.pattern.as_str(), "*" | "**")
+                || rule.pattern == pattern
+                || pattern.strip_prefix('/') == Some(rule.pattern.as_str())
+        });
+        if !rule.is_some_and(owns) {
+            findings.push(Finding::at(
+                ".github/CODEOWNERS", None, format!("{pattern} must be owned by {handle}"),
+            ));
+        }
+    }
+    for path in tracked.iter().filter(|path| is_policy_path(path)) {
+        let last = rules.iter().rev().find(|rule| codeowners_match(&rule.pattern, path));
+        if !last.is_some_and(owns) {
+            findings.push(Finding::at(
+                ".github/CODEOWNERS", None, format!("{path} must be owned by {handle}"),
+            ));
+        }
+    }
+    findings
 }
 
 /// One parsed CODEOWNERS rule.
@@ -1911,6 +1942,21 @@ mod tests {
     }
 
     // R1: protected policy paths need the owner in CODEOWNERS.
+    #[test]
+    fn codeowners_requires_unpopulated_tier_patterns_and_checks_overrides() {
+        let rules = crate::review_tier::POLICY_PATTERNS
+            .iter().map(|pattern| format!("{pattern} @Owner\n")).collect::<String>();
+        assert!(check_tier_owners(&rules, "Owner", &[]).is_empty());
+        let missing = rules.replace("data-rules/ @Owner\n", "/data-rules/ @Owner\n");
+        assert_eq!(check_tier_owners(&missing, "Owner", &[]).len(), 1);
+
+        let tracked = paths(&["crates/domain/data-rules/check.rs", "docs/guide.md"]);
+        let overridden = format!("{rules}/crates/domain/data-rules/check.rs @Other\n");
+        let findings = check_tier_owners(&overridden, "Owner", &tracked);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains(&tracked[0]));
+    }
+
     #[test]
     fn r1_codeowners_cover_protected_paths() {
         let protected = paths(&["/deny.toml", "/xtask/"]);
